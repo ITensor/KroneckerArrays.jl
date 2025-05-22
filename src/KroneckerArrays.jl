@@ -38,7 +38,8 @@ function KroneckerArray(a::AbstractArray, b::AbstractArray)
       ArgumentError("Kronecker product requires arrays of the same number of dimensions.")
     )
   end
-  return KroneckerArray(Base.promote_eltype(a, b)...)
+  elt = promote_type(eltype(a), eltype(b))
+  return KroneckerArray(convert(AbstractArray{elt}, a), convert(AbstractArray{elt}, b))
 end
 const KroneckerMatrix{T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}} = KroneckerArray{T,2,A,B}
 const KroneckerVector{T,A<:AbstractVector{T},B<:AbstractVector{T}} = KroneckerArray{T,1,A,B}
@@ -122,6 +123,9 @@ end
 function Base.:(==)(a::KroneckerArray, b::KroneckerArray)
   return a.a == b.a && a.b == b.b
 end
+function Base.isapprox(a::KroneckerArray, b::KroneckerArray; kwargs...)
+  return isapprox(a.a, b.a; kwargs...) && isapprox(a.b, b.b; kwargs...)
+end
 function Base.iszero(a::KroneckerArray)
   return iszero(a.a) || iszero(a.b)
 end
@@ -162,10 +166,8 @@ function diagonal(a::KroneckerArray)
   return Diagonal(a.a) ⊗ Diagonal(a.b)
 end
 
-# TODO: Overload `similar` instead?
-function LinearAlgebra.matprod_dest(a::KroneckerArray, b::KroneckerArray, elt)
-  return LinearAlgebra.matprod_dest(a.a, b.a, elt) ⊗
-         LinearAlgebra.matprod_dest(a.b, b.b, elt)
+function Base.:*(a::KroneckerArray, b::KroneckerArray)
+  return (a.a * b.a) ⊗ (a.b * b.b)
 end
 function LinearAlgebra.mul!(c::KroneckerArray, a::KroneckerArray, b::KroneckerArray)
   mul!(c.a, a.a, b.a)
