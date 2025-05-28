@@ -381,7 +381,10 @@ using MatrixAlgebraKit:
   TruncationStrategy,
   default_eig_algorithm,
   default_eigh_algorithm,
+  default_lq_algorithm,
+  default_polar_algorithm,
   default_qr_algorithm,
+  default_svd_algorithm,
   eig_full!,
   eig_trunc!,
   eig_vals!,
@@ -390,7 +393,19 @@ using MatrixAlgebraKit:
   eigh_vals!,
   initialize_output,
   left_null!,
+  left_orth!,
+  left_polar!,
+  lq_compact!,
+  lq_full!,
+  qr_compact!,
+  qr_full!,
   right_null!,
+  right_orth!,
+  right_polar!,
+  svd_compact!,
+  svd_full!,
+  svd_trunc!,
+  svd_vals!,
   truncate!
 
 struct KroneckerAlgorithm{A,B} <: AbstractAlgorithm
@@ -398,99 +413,87 @@ struct KroneckerAlgorithm{A,B} <: AbstractAlgorithm
   b::B
 end
 
-function MatrixAlgebraKit.default_eig_algorithm(a::KroneckerMatrix)
-  return KroneckerAlgorithm(default_eig_algorithm(a.a), default_eig_algorithm(a.b))
+for f in (:eig, :eigh, :lq, :qr, :polar, :svd)
+  ff = Symbol("default_", f, "_algorithm")
+  @eval begin
+    function MatrixAlgebraKit.$ff(a::KroneckerMatrix; kwargs...)
+      return KroneckerAlgorithm($ff(a.a; kwargs...), $ff(a.b; kwargs...))
+    end
+  end
 end
-function MatrixAlgebraKit.initialize_output(
-  f::typeof(eig_full!), a::KroneckerMatrix, alg::KroneckerAlgorithm
+
+for f in (
+  :eig_full!,
+  :eigh_full!,
+  :qr_compact!,
+  :qr_full!,
+  :left_polar!,
+  :lq_compact!,
+  :lq_full!,
+  :right_polar!,
+  :svd_compact!,
+  :svd_full!,
 )
-  return initialize_output(f, a.a, alg.a) .⊗ initialize_output(f, a.b, alg.b)
-end
-function MatrixAlgebraKit.eig_full!(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
-  eig_full!(a.a, Base.Fix2(getfield, :a).(F), alg.a)
-  eig_full!(a.b, Base.Fix2(getfield, :b).(F), alg.b)
-  return F
-end
-
-function MatrixAlgebraKit.truncate!(
-  ::typeof(eig_trunc!),
-  (D, V)::Tuple{KroneckerMatrix,KroneckerMatrix},
-  strategy::TruncationStrategy,
-)
-  return throw(MethodError(truncate!, (eig_trunc!, (D, V), strategy)))
+  @eval begin
+    function MatrixAlgebraKit.initialize_output(
+      ::typeof($f), a::KroneckerMatrix, alg::KroneckerAlgorithm
+    )
+      return initialize_output($f, a.a, alg.a) .⊗ initialize_output($f, a.b, alg.b)
+    end
+    function MatrixAlgebraKit.$f(a::KroneckerMatrix, F, alg::KroneckerAlgorithm; kwargs...)
+      $f(a.a, Base.Fix2(getfield, :a).(F), alg.a; kwargs...)
+      $f(a.b, Base.Fix2(getfield, :b).(F), alg.b; kwargs...)
+      return F
+    end
+  end
 end
 
-function MatrixAlgebraKit.initialize_output(
-  f::typeof(eig_vals!), a::KroneckerMatrix, alg::KroneckerAlgorithm
-)
-  return initialize_output(f, a.a, alg.a) ⊗ initialize_output(f, a.b, alg.b)
-end
-function MatrixAlgebraKit.eig_vals!(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
-  eig_vals!(a.a, F.a, alg.a)
-  eig_vals!(a.b, F.b, alg.b)
-  return F
-end
-
-function MatrixAlgebraKit.default_eigh_algorithm(a::KroneckerMatrix)
-  return KroneckerAlgorithm(default_eigh_algorithm(a.a), default_eigh_algorithm(a.b))
-end
-function MatrixAlgebraKit.initialize_output(
-  f::typeof(eigh_full!), a::KroneckerMatrix, alg::KroneckerAlgorithm
-)
-  return initialize_output(f, a.a, alg.a) .⊗ initialize_output(f, a.b, alg.b)
-end
-function MatrixAlgebraKit.eigh_full!(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
-  eigh_full!(a.a, Base.Fix2(getfield, :a).(F), alg.a)
-  eigh_full!(a.b, Base.Fix2(getfield, :b).(F), alg.b)
-  return F
+for f in (:eig_vals!, :eigh_vals!, :svd_vals!)
+  @eval begin
+    function MatrixAlgebraKit.initialize_output(
+      ::typeof($f), a::KroneckerMatrix, alg::KroneckerAlgorithm
+    )
+      return initialize_output($f, a.a, alg.a) ⊗ initialize_output($f, a.b, alg.b)
+    end
+    function MatrixAlgebraKit.$f(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
+      $f(a.a, F.a, alg.a)
+      $f(a.b, F.b, alg.b)
+      return F
+    end
+  end
 end
 
-function MatrixAlgebraKit.truncate!(
-  ::typeof(eigh_trunc!),
-  (D, V)::Tuple{KroneckerMatrix,KroneckerMatrix},
-  strategy::TruncationStrategy,
-)
-  return throw(MethodError(truncate!, (eigh_trunc!, (D, V), strategy)))
+for f in (:eig_trunc!, :eigh_trunc!, :svd_trunc!)
+  @eval begin
+    function MatrixAlgebraKit.truncate!(
+      ::typeof($f),
+      (D, V)::Tuple{KroneckerMatrix,KroneckerMatrix},
+      strategy::TruncationStrategy,
+    )
+      return throw(MethodError(truncate!, ($f, (D, V), strategy)))
+    end
+  end
 end
 
-function MatrixAlgebraKit.initialize_output(
-  f::typeof(eigh_vals!), a::KroneckerMatrix, alg::KroneckerAlgorithm
-)
-  return initialize_output(f, a.a, alg.a) ⊗ initialize_output(f, a.b, alg.b)
-end
-function MatrixAlgebraKit.eigh_vals!(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
-  eigh_vals!(a.a, F.a, alg.a)
-  eigh_vals!(a.b, F.b, alg.b)
-  return F
+for f in (:left_orth!, :right_orth!)
+  @eval begin
+    function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
+      return initialize_output($f, a.a) .⊗ initialize_output($f, a.b)
+    end
+  end
 end
 
-function MatrixAlgebraKit.default_qr_algorithm(a::KroneckerMatrix; kwargs...)
-  return KroneckerAlgorithm(
-    default_qr_algorithm(a.a; kwargs...), default_qr_algorithm(a.b; kwargs...)
-  )
-end
-function MatrixAlgebraKit.default_lq_algorithm(a::KroneckerMatrix; kwargs...)
-  return KroneckerAlgorithm(
-    default_lq_algorithm(a.a; kwargs...), default_lq_algorithm(a.b; kwargs...)
-  )
-end
-
-function MatrixAlgebraKit.initialize_output(f::typeof(left_null!), a::KroneckerMatrix)
-  return initialize_output(f, a.a) ⊗ initialize_output(f, a.b)
-end
-function MatrixAlgebraKit.left_null!(a::KroneckerMatrix, F; kwargs...)
-  left_null!(a.a, F.a; kwargs...)
-  left_null!(a.b, F.b; kwargs...)
-  return F
-end
-
-function MatrixAlgebraKit.initialize_output(f::typeof(right_null!), a::KroneckerMatrix)
-  return initialize_output(f, a.a) ⊗ initialize_output(f, a.b)
-end
-function MatrixAlgebraKit.right_null!(a::KroneckerMatrix, F; kwargs...)
-  right_null!(a.a, F.a; kwargs...)
-  right_null!(a.b, F.b; kwargs...)
-  return F
+for f in (:left_null!, :right_null!)
+  @eval begin
+    function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
+      return initialize_output($f, a.a) ⊗ initialize_output($f, a.b)
+    end
+    function MatrixAlgebraKit.$f(a::KroneckerMatrix, F; kwargs...)
+      $f(a.a, F.a; kwargs...)
+      $f(a.b, F.b; kwargs...)
+      return F
+    end
+  end
 end
 
 end

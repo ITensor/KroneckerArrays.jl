@@ -1,5 +1,5 @@
 using KroneckerArrays: ⊗
-using LinearAlgebra: Hermitian, diag, norm
+using LinearAlgebra: Hermitian, I, diag, norm
 using MatrixAlgebraKit:
   eig_full,
   eig_trunc,
@@ -48,6 +48,26 @@ using Test: @test, @test_throws, @testset
   d = eigh_vals(a)
   @test d ≈ diag(eigh_full(a)[1])
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  u, c = qr_compact(a)
+  @test u * c ≈ a
+  @test collect(u'u) ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  u, c = qr_full(a)
+  @test u * c ≈ a
+  @test collect(u'u) ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  c, u = lq_compact(a)
+  @test c * u ≈ a
+  @test collect(u * u') ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  c, u = lq_full(a)
+  @test c * u ≈ a
+  @test collect(u * u') ≈ I
+
   a = randn(elt, 3, 2) ⊗ randn(elt, 4, 3)
   n = left_null(a)
   @test norm(n' * a) ≈ 0 atol = √eps(real(elt))
@@ -55,4 +75,43 @@ using Test: @test, @test_throws, @testset
   a = randn(elt, 2, 3) ⊗ randn(elt, 3, 4)
   n = right_null(a)
   @test norm(a * n') ≈ 0 atol = √eps(real(elt))
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  u, c = left_orth(a)
+  @test u * c ≈ a
+  @test collect(u'u) ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  c, u = right_orth(a)
+  @test c * u ≈ a
+  @test collect(u * u') ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  u, c = left_polar(a)
+  @test u * c ≈ a
+  @test collect(u'u) ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  c, u = right_polar(a)
+  @test c * u ≈ a
+  @test collect(u * u') ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  u, s, v = svd_compact(a)
+  @test u * s * v ≈ a
+  @test collect(u'u) ≈ I
+  @test collect(v * v') ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  u, s, v = svd_full(a)
+  @test u * s * v ≈ a
+  @test collect(u'u) ≈ I
+  @test collect(v * v') ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  @test_throws MethodError svd_trunc(a)
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  s = svd_vals(a)
+  @test s ≈ diag(svd_compact(a)[2])
 end
