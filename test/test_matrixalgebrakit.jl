@@ -1,5 +1,5 @@
 using KroneckerArrays: ⊗
-using LinearAlgebra: Hermitian, diag
+using LinearAlgebra: Hermitian, diag, norm
 using MatrixAlgebraKit:
   eig_full,
   eig_trunc,
@@ -24,24 +24,35 @@ using MatrixAlgebraKit:
 using Test: @test, @test_throws, @testset
 
 @testset "MatrixAlgebraKit" begin
-  x = randn(2, 2)
-  y = randn(3, 3)
-  a = x ⊗ y
-  ah = Hermitian(x) ⊗ Hermitian(y)
+  elt = Float32
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   d, v = eig_full(a)
   @test a * v ≈ v * d
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   @test_throws MethodError eig_trunc(a)
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   d = eig_vals(a)
   @test d ≈ diag(eig_full(a)[1])
 
-  d, v = eigh_full(ah)
-  @test ah * v ≈ v * d
+  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  d, v = eigh_full(a)
+  @test a * v ≈ v * d
 
-  @test_throws MethodError eigh_trunc(ah)
+  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  @test_throws MethodError eigh_trunc(a)
 
-  d = eigh_vals(ah)
-  @test d ≈ diag(eigh_full(ah)[1])
+  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  d = eigh_vals(a)
+  @test d ≈ diag(eigh_full(a)[1])
+
+  a = randn(elt, 3, 2) ⊗ randn(elt, 4, 3)
+  n = left_null(a)
+  @test norm(n' * a) ≈ 0 atol = √eps(real(elt))
+
+  a = randn(elt, 2, 3) ⊗ randn(elt, 3, 4)
+  n = right_null(a)
+  @test norm(a * n') ≈ 0 atol = √eps(real(elt))
 end

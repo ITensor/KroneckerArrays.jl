@@ -381,6 +381,7 @@ using MatrixAlgebraKit:
   TruncationStrategy,
   default_eig_algorithm,
   default_eigh_algorithm,
+  default_qr_algorithm,
   eig_full!,
   eig_trunc!,
   eig_vals!,
@@ -388,6 +389,8 @@ using MatrixAlgebraKit:
   eigh_trunc!,
   eigh_vals!,
   initialize_output,
+  left_null!,
+  right_null!,
   truncate!
 
 struct KroneckerAlgorithm{A,B} <: AbstractAlgorithm
@@ -458,6 +461,35 @@ end
 function MatrixAlgebraKit.eigh_vals!(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
   eigh_vals!(a.a, F.a, alg.a)
   eigh_vals!(a.b, F.b, alg.b)
+  return F
+end
+
+function MatrixAlgebraKit.default_qr_algorithm(a::KroneckerMatrix; kwargs...)
+  return KroneckerAlgorithm(
+    default_qr_algorithm(a.a; kwargs...), default_qr_algorithm(a.b; kwargs...)
+  )
+end
+function MatrixAlgebraKit.default_lq_algorithm(a::KroneckerMatrix; kwargs...)
+  return KroneckerAlgorithm(
+    default_lq_algorithm(a.a; kwargs...), default_lq_algorithm(a.b; kwargs...)
+  )
+end
+
+function MatrixAlgebraKit.initialize_output(f::typeof(left_null!), a::KroneckerMatrix)
+  return initialize_output(f, a.a) ⊗ initialize_output(f, a.b)
+end
+function MatrixAlgebraKit.left_null!(a::KroneckerMatrix, F; kwargs...)
+  left_null!(a.a, F.a; kwargs...)
+  left_null!(a.b, F.b; kwargs...)
+  return F
+end
+
+function MatrixAlgebraKit.initialize_output(f::typeof(right_null!), a::KroneckerMatrix)
+  return initialize_output(f, a.a) ⊗ initialize_output(f, a.b)
+end
+function MatrixAlgebraKit.right_null!(a::KroneckerMatrix, F; kwargs...)
+  right_null!(a.a, F.a; kwargs...)
+  right_null!(a.b, F.b; kwargs...)
   return F
 end
 
