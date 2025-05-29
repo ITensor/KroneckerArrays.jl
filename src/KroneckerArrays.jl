@@ -118,7 +118,29 @@ function Base.similar(
   return similar(promote_type(A, B), sz)
 end
 
-Base.collect(a::KroneckerArray) = kron(a.a, a.b)
+function flatten(t::Tuple{Tuple,Tuple,Vararg{Tuple}})
+  return (t[1]..., flatten(Base.tail(t))...)
+end
+function flatten(t::Tuple{Tuple})
+  return t[1]
+end
+flatten(::Tuple{}) = ()
+function interleave(x::Tuple, y::Tuple)
+  length(x) == length(y) || throw(ArgumentError("Tuples must have the same length."))
+  xy = ntuple(i -> (x[i], y[i]), length(x))
+  return flatten(xy)
+end
+function kron_nd(a::AbstractArray{<:Any,N}, b::AbstractArray{<:Any,N}) where {N}
+  a′ = reshape(a, interleave(size(a), ntuple(one, N)))
+  b′ = reshape(b, interleave(ntuple(one, N), size(b)))
+  c′ = permutedims(a′ .* b′, reverse(ntuple(identity, 2N)))
+  sz = ntuple(i -> size(a, i) * size(b, i), N)
+  return permutedims(reshape(c′, sz), reverse(ntuple(identity, N)))
+end
+kron_nd(a::AbstractMatrix, b::AbstractMatrix) = kron(a, b)
+kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
+
+Base.collect(a::KroneckerArray) = kron_nd(a.a, a.b)
 
 function Base.Array{T,N}(a::KroneckerArray{S,N}) where {T,S,N}
   return convert(Array{T,N}, collect(a))
@@ -150,10 +172,18 @@ function Base.show(io::IO, a::KroneckerArray)
   return nothing
 end
 
-⊗(a::AbstractVecOrMat, b::AbstractVecOrMat) = KroneckerArray(a, b)
+⊗(a::AbstractArray, b::AbstractArray) = KroneckerArray(a, b)
 ⊗(a::Number, b::Number) = a * b
-⊗(a::Number, b::AbstractVecOrMat) = a * b
-⊗(a::AbstractVecOrMat, b::Number) = a * b
+⊗(a::Number, b::AbstractArray) = a * b
+⊗(a::AbstractArray, b::Number) = a * b
+
+function Base.getindex(a::KroneckerArray, i::Integer)
+  return a[CartesianIndices(a)[i]]
+end
+
+function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {N}
+  return error("Not implemented.")
+end
 
 function Base.getindex(a::KroneckerMatrix, i1::Integer, i2::Integer)
   GPUArraysCore.assertscalar("getindex")
@@ -162,9 +192,6 @@ function Base.getindex(a::KroneckerMatrix, i1::Integer, i2::Integer)
   k, l = size(a.b)
   return a.a[cld(i1, k), cld(i2, l)] * a.b[(i1 - 1) % k + 1, (i2 - 1) % l + 1]
 end
-function Base.getindex(a::KroneckerMatrix, i::Integer)
-  return a[CartesianIndices(a)[i]]
-end
 
 function Base.getindex(a::KroneckerVector, i::Integer)
   GPUArraysCore.assertscalar("getindex")
@@ -172,12 +199,14 @@ function Base.getindex(a::KroneckerVector, i::Integer)
   return a.a[cld(i, k)] * a.b[(i - 1) % k + 1]
 end
 
-function Base.getindex(a::KroneckerVector, i::CartesianProduct)
-  return a.a[i.a] ⊗ a.b[i.b]
+## function Base.getindex(a::KroneckerVector, i::CartesianProduct)
+##   return a.a[i.a] ⊗ a.b[i.b]
+## end
+function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianProduct,N}) where {N}
+  return a.a[map(Base.Fix2(getfield, :a), I)...] ⊗ a.b[map(Base.Fix2(getfield, :b), I)...]
 end
-function Base.getindex(a::KroneckerMatrix, i::CartesianProduct, j::CartesianProduct)
-  return a.a[i.a, j.a] ⊗ a.b[i.b, j.b]
-end
+# Fix ambigiuity error.
+Base.getindex(a::KroneckerArray{<:Any,0}) = a.a[] * a.b[]
 
 function Base.:(==)(a::KroneckerArray, b::KroneckerArray)
   return a.a == b.a && a.b == b.b
@@ -220,7 +249,7 @@ using LinearAlgebra:
   svd,
   svdvals,
   tr
-diagonal(a::AbstractVecOrMat) = Diagonal(a)
+diagonal(a::AbstractArray) = Diagonal(a)
 function diagonal(a::KroneckerArray)
   return Diagonal(a.a) ⊗ Diagonal(a.b)
 end
@@ -275,10 +304,10 @@ end
 function Base.:*(a::KroneckerQ, b::KroneckerQ)
   return (a.a * b.a) ⊗ (a.b * b.b)
 end
-function Base.:*(a::KroneckerQ, b::KroneckerMatrix)
+function Base.:*(a::KroneckerQ, b::KroneckerArray)
   return (a.a * b.a) ⊗ (a.b * b.b)
 end
-function Base.:*(a::KroneckerMatrix, b::KroneckerQ)
+function Base.:*(a::KroneckerArray, b::KroneckerQ)
   return (a.a * b.a) ⊗ (a.b * b.b)
 end
 function Base.adjoint(a::KroneckerQ)

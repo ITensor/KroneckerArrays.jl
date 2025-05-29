@@ -1,4 +1,4 @@
-using KroneckerArrays: KroneckerArrays, ⊗, ×, diagonal
+using KroneckerArrays: KroneckerArrays, ⊗, ×, diagonal, kron_nd
 using LinearAlgebra: Diagonal, I, eigen, eigvals, lq, qr, svd, svdvals, tr
 using Test: @test, @testset
 
@@ -39,6 +39,16 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   end
   @test tr(a) ≈ tr(collect(a))
 
+  a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
+  @test collect(a) ≈ kron_nd(a.a, a.b)
+  @test a[1 × 1, 1 × 1, 1 × 1] == a.a[1, 1, 1] * a.b[1, 1, 1]
+  @test a[1 × 3, 2 × 1, 2 × 2] == a.a[1, 2, 2] * a.b[3, 1, 2]
+  @test collect(a + a) ≈ 2 * collect(a)
+  @test collect(2a) ≈ 2 * collect(a)
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  c = a.a ⊗ b.b
   U, S, V = svd(a)
   @test collect(U * diagonal(S) * V') ≈ collect(a)
   @test svdvals(a) ≈ S
@@ -46,10 +56,12 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test collect(U'U) ≈ I
   @test collect(V * V') ≈ I
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   D, V = eigen(a)
   @test collect(a * V) ≈ collect(V * diagonal(D))
   @test eigvals(a) ≈ D
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   Q, R = qr(a)
   @test collect(Q * R) ≈ collect(a)
   @test collect(Q'Q) ≈ I
