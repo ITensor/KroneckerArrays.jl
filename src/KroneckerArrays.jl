@@ -112,6 +112,11 @@ function Base.similar(
 ) where {A,B}
   return similar(A, map(ax -> ax.product.a, axs)) ⊗ similar(B, map(ax -> ax.product.b, axs))
 end
+function Base.similar(
+  ::Type{<:KroneckerArray{<:Any,<:Any,A,B}}, sz::Tuple{Int,Vararg{Int}}
+) where {A,B}
+  return similar(promote_type(A, B), sz)
+end
 
 Base.collect(a::KroneckerArray) = kron(a.a, a.b)
 
