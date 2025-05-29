@@ -11,6 +11,8 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   c = a.a ⊗ b.b
+  @test similar(typeof(a), (2, 3)) isa Matrix{elt}
+  @test size(similar(typeof(a), (2, 3))) == (2, 3)
   @test a[1 × 1, 1 × 1] == a.a[1, 1] * a.b[1, 1]
   @test a[1 × 3, 2 × 1] == a.a[1, 2] * a.b[3, 1]
   @test a[1 × (2:3), 2 × 1] == a.a[1, 2] * a.b[2:3, 1]
