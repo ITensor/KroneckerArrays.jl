@@ -1,5 +1,6 @@
+using FillArrays: Eye
 using KroneckerArrays: ⊗
-using LinearAlgebra: Hermitian, I, diag, norm
+using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
 using MatrixAlgebraKit:
   eig_full,
   eig_trunc,
@@ -23,11 +24,18 @@ using MatrixAlgebraKit:
   svd_vals
 using Test: @test, @test_throws, @testset
 
+herm(a) = hermitianpart(a).data
+
 @testset "MatrixAlgebraKit" begin
   elt = Float32
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   d, v = eig_full(a)
+  @test a * v ≈ v * d
+
+  a = randn(elt, 2, 2) ⊗ Eye(3)
+  d, v = eig_full(a)
+  @test d.b == v.b == Eye(3)
   @test a * v ≈ v * d
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
@@ -37,14 +45,14 @@ using Test: @test, @test_throws, @testset
   d = eig_vals(a)
   @test d ≈ diag(eig_full(a)[1])
 
-  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d, v = eigh_full(a)
   @test a * v ≈ v * d
 
-  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   @test_throws MethodError eigh_trunc(a)
 
-  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d = eigh_vals(a)
   @test d ≈ diag(eigh_full(a)[1])
 
@@ -101,6 +109,11 @@ using Test: @test, @test_throws, @testset
   @test u * s * v ≈ a
   @test collect(u'u) ≈ I
   @test collect(v * v') ≈ I
+
+  a = randn(elt, 2, 2) ⊗ Eye(3)
+  u, s, v = svd_compact(a)
+  @test u * s * v ≈ a
+  @test u.b == s.b == v.b == Eye(3)
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   u, s, v = svd_full(a)
