@@ -234,6 +234,62 @@ function Base.:*(a::KroneckerArray, b::Number)
   return a.a ⊗ (a.b * b)
 end
 
+function Base.:-(a::KroneckerArray)
+  return (-a.a) ⊗ a.b
+end
+for op in (:+, :-)
+  @eval begin
+    function Base.$op(a::KroneckerArray, b::KroneckerArray)
+      if a.b == b.b
+        return $op(a.a, b.a) ⊗ a.b
+      elseif a.a == b.a
+        return a.a ⊗ $op(a.b, b.b)
+      end
+      return throw(
+        ArgumentError(
+          "KroneckerArray addition is only supported when the first or secord arguments match.",
+        ),
+      )
+    end
+  end
+end
+
+function Base.map!(::typeof(identity), dest::KroneckerArray, a::KroneckerArray)
+  dest.a .= a.a
+  dest.b .= a.b
+  return dest
+end
+function Base.map!(::typeof(+), dest::KroneckerArray, a::KroneckerArray, b::KroneckerArray)
+  if a.b == b.b
+    map!(+, dest.a, a.a, b.a)
+    dest.b .= a.b
+  elseif a.a == b.a
+    dest.a .= a.a
+    map!(+, dest.b, a.b, b.b)
+  else
+    throw(
+      ArgumentError(
+        "KroneckerArray addition is only supported when the first or second arguments match.",
+      ),
+    )
+  end
+  return dest
+end
+function Base.map!(
+  f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerArray, a::KroneckerArray
+)
+  dest.a .= f.f.(f.x, a.a)
+  dest.b .= a.b
+  return dest
+end
+function Base.map!(
+  f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerArray, a::KroneckerArray
+)
+  dest.a .= a.a
+  dest.b .= f.f.(a.b, f.x)
+  return dest
+end
+
 using LinearAlgebra:
   LinearAlgebra,
   Diagonal,
@@ -346,67 +402,138 @@ function LinearAlgebra.lq(a::KroneckerArray)
   return KroneckerLQ(Fa.L ⊗ Fb.L, Fa.Q ⊗ Fb.Q)
 end
 
-function Base.:-(a::KroneckerArray)
+using DerivableInterfaces: DerivableInterfaces, zero!
+function DerivableInterfaces.zero!(a::KroneckerArray)
+  zero!(a.a)
+  zero!(a.b)
+  return a
+end
+
+using FillArrays: Eye
+const EyeKronecker{T,A<:Eye{T},B<:AbstractMatrix{T}} = KroneckerMatrix{T,A,B}
+const KroneckerEye{T,A<:AbstractMatrix{T},B<:Eye{T}} = KroneckerMatrix{T,A,B}
+const EyeEye{T,A<:Eye{T},B<:Eye{T}} = KroneckerMatrix{T,A,B}
+
+function Base.:*(a::Number, b::EyeKronecker)
+  return b.a ⊗ (a * b.b)
+end
+function Base.:*(a::Number, b::KroneckerEye)
+  return (a * b.a) ⊗ b.b
+end
+function Base.:*(a::Number, b::EyeEye)
+  return (a * b.a) ⊗ b.b
+end
+function Base.:*(a::EyeKronecker, b::Number)
+  return a.a ⊗ (a.b * b)
+end
+function Base.:*(a::KroneckerEye, b::Number)
+  return (a.a * b) ⊗ a.b
+end
+function Base.:*(a::EyeEye, b::Number)
+  return a.a ⊗ (a.b * b)
+end
+
+function Base.:-(a::EyeKronecker)
+  return a.a ⊗ (-a.b)
+end
+function Base.:-(a::KroneckerEye)
+  return (-a.a) ⊗ a.b
+end
+function Base.:-(a::EyeEye)
   return (-a.a) ⊗ a.b
 end
 for op in (:+, :-)
   @eval begin
-    function Base.$op(a::KroneckerArray, b::KroneckerArray)
-      if a.b == b.b
-        return $op(a.a, b.a) ⊗ a.b
-      elseif a.a == b.a
-        return a.a ⊗ $op(a.b, b.b)
+    function Base.$op(a::EyeKronecker, b::EyeKronecker)
+      if a.a ≠ b.a
+        return throw(
+          ArgumentError(
+            "KroneckerArray addition is only supported when the first or secord arguments match.",
+          ),
+        )
       end
-      return throw(
-        ArgumentError(
-          "KroneckerArray addition is only supported when the first or secord arguments match.",
-        ),
-      )
+      return a.a ⊗ $op(a.b, b.b)
+    end
+    function Base.$op(a::KroneckerEye, b::KroneckerEye)
+      if a.b ≠ b.b
+        return throw(
+          ArgumentError(
+            "KroneckerArray addition is only supported when the first or secord arguments match.",
+          ),
+        )
+      end
+      return $op(a.a, b.a) ⊗ a.b
+    end
+    function Base.$op(a::EyeEye, b::EyeEye)
+      if a.b ≠ b.b
+        return throw(
+          ArgumentError(
+            "KroneckerArray addition is only supported when the first or secord arguments match.",
+          ),
+        )
+      end
+      return $op(a.a, b.a) ⊗ a.b
     end
   end
 end
 
-function Base.map!(::typeof(identity), dest::KroneckerArray, a::KroneckerArray)
-  dest.a .= a.a
+function Base.map!(::typeof(identity), dest::EyeKronecker, a::EyeKronecker)
   dest.b .= a.b
   return dest
 end
-function Base.map!(::typeof(+), dest::KroneckerArray, a::KroneckerArray, b::KroneckerArray)
-  if a.b == b.b
-    map!(+, dest.a, a.a, b.a)
-    dest.b .= a.b
-  elseif a.a == b.a
-    dest.a .= a.a
-    map!(+, dest.b, a.b, b.b)
-  else
+function Base.map!(::typeof(identity), dest::KroneckerEye, a::KroneckerEye)
+  dest.a .= a.a
+  return dest
+end
+function Base.map!(::typeof(identity), dest::EyeEye, a::EyeEye)
+  return error("Can't write in-place.")
+end
+function Base.map!(f::typeof(+), dest::EyeKronecker, a::EyeKronecker, b::EyeKronecker)
+  if dest.a ≠ a.a ≠ b.a
     throw(
       ArgumentError(
         "KroneckerArray addition is only supported when the first or second arguments match.",
       ),
     )
   end
+  map!(f, dest.b, a.b, b.b)
   return dest
 end
-function Base.map!(
-  f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerArray, a::KroneckerArray
-)
-  dest.a .= f.x .* a.a
-  dest.b .= a.b
+function Base.map!(f::typeof(+), dest::KroneckerEye, a::KroneckerEye, b::KroneckerEye)
+  if dest.b ≠ a.b ≠ b.b
+    throw(
+      ArgumentError(
+        "KroneckerArray addition is only supported when the first or second arguments match.",
+      ),
+    )
+  end
+  map!(f, dest.a, a.a, b.a)
   return dest
 end
-function Base.map!(
-  f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerArray, a::KroneckerArray
-)
-  dest.a .= a.a
-  dest.b .= a.b .* f.x
+function Base.map!(f::typeof(+), dest::EyeEye, a::EyeEye, b::EyeEye)
+  return error("Can't write in-place.")
+end
+function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
+  dest.b .= f.f.(f.x, a.b)
   return dest
 end
-
-using DerivableInterfaces: DerivableInterfaces, zero!
-function DerivableInterfaces.zero!(a::KroneckerArray)
-  zero!(a.a)
-  zero!(a.b)
-  return a
+function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerEye, a::KroneckerEye)
+  dest.a .= f.f.(f.x, a.a)
+  return dest
+end
+function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
+  return error("Can't write in-place.")
+end
+function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
+  dest.b .= f.f.(a.b, f.x)
+  return dest
+end
+function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerEye, a::KroneckerEye)
+  dest.a .= f.f.(a.a, f.x)
+  return dest
+end
+function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
+  return error("Can't write in-place.")
 end
 
 using MatrixAlgebraKit:
@@ -445,6 +572,38 @@ using MatrixAlgebraKit:
 struct KroneckerAlgorithm{A,B} <: AbstractAlgorithm
   a::A
   b::B
+end
+
+using MatrixAlgebraKit:
+  copy_input,
+  eig_full,
+  eigh_full,
+  qr_compact,
+  qr_full,
+  left_polar,
+  lq_compact,
+  lq_full,
+  right_polar,
+  svd_compact,
+  svd_full
+
+for f in [
+  :eig_full,
+  :eigh_full,
+  :qr_compact,
+  :qr_full,
+  :left_polar,
+  :lq_compact,
+  :lq_full,
+  :right_polar,
+  :svd_compact,
+  :svd_full,
+]
+  @eval begin
+    function MatrixAlgebraKit.copy_input(::typeof($f), a::KroneckerMatrix)
+      return copy_input($f, a.a) ⊗ copy_input($f, a.b)
+    end
+  end
 end
 
 for f in (:eig, :eigh, :lq, :qr, :polar, :svd)
@@ -526,6 +685,77 @@ for f in (:left_null!, :right_null!)
       $f(a.a, F.a; kwargs...)
       $f(a.b, F.b; kwargs...)
       return F
+    end
+  end
+end
+
+# Special case for `FillArrays.Eye` matrices.
+struct EyeAlgorithm <: AbstractAlgorithm end
+
+for f in [
+  :eig_full,
+  :eigh_full,
+  :qr_compact,
+  :qr_full,
+  :left_polar,
+  :lq_compact,
+  :lq_full,
+  :right_polar,
+  :svd_compact,
+  :svd_full,
+]
+  @eval begin
+    MatrixAlgebraKit.copy_input(::typeof($f), a::Eye) = a
+  end
+end
+
+for f in (:eig, :eigh, :lq, :qr, :polar, :svd)
+  ff = Symbol("default_", f, "_algorithm")
+  @eval begin
+    function MatrixAlgebraKit.$ff(a::Eye; kwargs...)
+      return EyeAlgorithm()
+    end
+  end
+end
+
+for f in (
+  :eig_full!,
+  :eigh_full!,
+  :qr_compact!,
+  :qr_full!,
+  :left_polar!,
+  :lq_compact!,
+  :lq_full!,
+  :right_polar!,
+)
+  @eval begin
+    nfactors(::typeof($f)) = 2
+  end
+end
+for f in (:svd_compact!, :svd_full!)
+  @eval begin
+    nfactors(::typeof($f)) = 3
+  end
+end
+
+for f in (
+  :eig_full!,
+  :eigh_full!,
+  :qr_compact!,
+  :qr_full!,
+  :left_polar!,
+  :lq_compact!,
+  :lq_full!,
+  :right_polar!,
+  :svd_compact!,
+  :svd_full!,
+)
+  @eval begin
+    function MatrixAlgebraKit.initialize_output(::typeof($f), a::Eye, alg::EyeAlgorithm)
+      return ntuple(_ -> a, nfactors($f))
+    end
+    function MatrixAlgebraKit.$f(a::Eye, F, alg::EyeAlgorithm; kwargs...)
+      return ntuple(_ -> a, nfactors($f))
     end
   end
 end
