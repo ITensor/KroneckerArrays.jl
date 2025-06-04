@@ -3,5 +3,5 @@ using Aqua: Aqua
 using Test: @testset
 
 @testset "Code quality (Aqua.jl)" begin
-  Aqua.test_all(KroneckerArrays; piracies=false)
+  Aqua.test_all(KroneckerArrays)
 end
