@@ -158,6 +158,8 @@ end
 
 arguments(a::KroneckerArray) = (a.a, a.b)
 arguments(a::KroneckerArray, n::Int) = arguments(a)[n]
+argument_types(a::KroneckerArray) = argument_types(typeof(a))
+argument_types(::Type{<:KroneckerArray{<:Any,<:Any,A,B}}) where {A,B} = (A, B)
 
 function Base.print_array(io::IO, a::KroneckerArray)
   Base.print_array(io, a.a)
@@ -609,10 +611,24 @@ end
 for f in (:eig, :eigh, :lq, :qr, :polar, :svd)
   ff = Symbol("default_", f, "_algorithm")
   @eval begin
-    function MatrixAlgebraKit.$ff(a::KroneckerMatrix; kwargs...)
-      return KroneckerAlgorithm($ff(a.a; kwargs...), $ff(a.b; kwargs...))
+    function MatrixAlgebraKit.$ff(A::Type{<:KroneckerMatrix}; kwargs...)
+      A1, A2 = argument_types(A)
+      return KroneckerAlgorithm($ff(A1; kwargs...), $ff(A2; kwargs...))
     end
   end
+end
+
+# TODO: Delete this once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/32 is merged.
+function MatrixAlgebraKit.default_algorithm(
+  ::typeof(qr_compact!), A::Type{<:KroneckerMatrix}; kwargs...
+)
+  return default_qr_algorithm(A; kwargs...)
+end
+# TODO: Delete this once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/32 is merged.
+function MatrixAlgebraKit.default_algorithm(
+  ::typeof(qr_full!), A::Type{<:KroneckerMatrix}; kwargs...
+)
+  return default_qr_algorithm(A; kwargs...)
 end
 
 for f in (
@@ -685,77 +701,6 @@ for f in (:left_null!, :right_null!)
       $f(a.a, F.a; kwargs...)
       $f(a.b, F.b; kwargs...)
       return F
-    end
-  end
-end
-
-# Special case for `FillArrays.Eye` matrices.
-struct EyeAlgorithm <: AbstractAlgorithm end
-
-for f in [
-  :eig_full,
-  :eigh_full,
-  :qr_compact,
-  :qr_full,
-  :left_polar,
-  :lq_compact,
-  :lq_full,
-  :right_polar,
-  :svd_compact,
-  :svd_full,
-]
-  @eval begin
-    MatrixAlgebraKit.copy_input(::typeof($f), a::Eye) = a
-  end
-end
-
-for f in (:eig, :eigh, :lq, :qr, :polar, :svd)
-  ff = Symbol("default_", f, "_algorithm")
-  @eval begin
-    function MatrixAlgebraKit.$ff(a::Eye; kwargs...)
-      return EyeAlgorithm()
-    end
-  end
-end
-
-for f in (
-  :eig_full!,
-  :eigh_full!,
-  :qr_compact!,
-  :qr_full!,
-  :left_polar!,
-  :lq_compact!,
-  :lq_full!,
-  :right_polar!,
-)
-  @eval begin
-    nfactors(::typeof($f)) = 2
-  end
-end
-for f in (:svd_compact!, :svd_full!)
-  @eval begin
-    nfactors(::typeof($f)) = 3
-  end
-end
-
-for f in (
-  :eig_full!,
-  :eigh_full!,
-  :qr_compact!,
-  :qr_full!,
-  :left_polar!,
-  :lq_compact!,
-  :lq_full!,
-  :right_polar!,
-  :svd_compact!,
-  :svd_full!,
-)
-  @eval begin
-    function MatrixAlgebraKit.initialize_output(::typeof($f), a::Eye, alg::EyeAlgorithm)
-      return ntuple(_ -> a, nfactors($f))
-    end
-    function MatrixAlgebraKit.$f(a::Eye, F, alg::EyeAlgorithm; kwargs...)
-      return ntuple(_ -> a, nfactors($f))
     end
   end
 end

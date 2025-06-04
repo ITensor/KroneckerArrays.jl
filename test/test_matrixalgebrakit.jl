@@ -1,4 +1,3 @@
-using FillArrays: Eye
 using KroneckerArrays: ⊗
 using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
 using MatrixAlgebraKit:
@@ -31,11 +30,6 @@ herm(a) = hermitianpart(a).data
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   d, v = eig_full(a)
-  @test a * v ≈ v * d
-
-  a = randn(elt, 2, 2) ⊗ Eye(3)
-  d, v = eig_full(a)
-  @test d.b == v.b == Eye(3)
   @test a * v ≈ v * d
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
@@ -109,11 +103,6 @@ herm(a) = hermitianpart(a).data
   @test u * s * v ≈ a
   @test collect(u'u) ≈ I
   @test collect(v * v') ≈ I
-
-  a = randn(elt, 2, 2) ⊗ Eye(3)
-  u, s, v = svd_compact(a)
-  @test u * s * v ≈ a
-  @test u.b == s.b == v.b == Eye(3)
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   u, s, v = svd_full(a)

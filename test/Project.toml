@@ -1,6 +1,5 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
 KroneckerArrays = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MatrixAlgebraKit = "6c742aac-3347-4629-af66-fc926824e5e4"
@@ -10,7 +9,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 Aqua = "0.8"
-FillArrays = "1"
 KroneckerArrays = "0.1"
 LinearAlgebra = "1.10"
 MatrixAlgebraKit = "0.2"
