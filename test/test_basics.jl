@@ -1,3 +1,4 @@
+using FillArrays: Eye
 using KroneckerArrays: KroneckerArrays, ⊗, ×, diagonal, kron_nd
 using LinearAlgebra: Diagonal, I, eigen, eigvals, lq, qr, svd, svdvals, tr
 using Test: @test, @testset
@@ -65,4 +66,18 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   Q, R = qr(a)
   @test collect(Q * R) ≈ collect(a)
   @test collect(Q'Q) ≈ I
+end
+
+@testset "FillArrays.Eye" begin
+  a = Eye(2) ⊗ randn(3, 3)
+  @test size(a) == (6, 6)
+  @test a + a == Eye(2) ⊗ (2a.b)
+  @test 2a == Eye(2) ⊗ (2a.b)
+  @test a * a == Eye(2) ⊗ (a.b * a.b)
+
+  a = randn(3, 3) ⊗ Eye(2)
+  @test size(a) == (6, 6)
+  @test a + a == (2a.a) ⊗ Eye(2)
+  @test 2a == (2a.a) ⊗ Eye(2)
+  @test a * a == (a.a * a.a) ⊗ Eye(2)
 end

@@ -1,5 +1,5 @@
 using KroneckerArrays: ⊗
-using LinearAlgebra: Hermitian, I, diag, norm
+using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
 using MatrixAlgebraKit:
   eig_full,
   eig_trunc,
@@ -23,6 +23,8 @@ using MatrixAlgebraKit:
   svd_vals
 using Test: @test, @test_throws, @testset
 
+herm(a) = hermitianpart(a).data
+
 @testset "MatrixAlgebraKit" begin
   elt = Float32
 
@@ -37,14 +39,14 @@ using Test: @test, @test_throws, @testset
   d = eig_vals(a)
   @test d ≈ diag(eig_full(a)[1])
 
-  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d, v = eigh_full(a)
   @test a * v ≈ v * d
 
-  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   @test_throws MethodError eigh_trunc(a)
 
-  a = Hermitian(randn(elt, 2, 2)) ⊗ Hermitian(randn(elt, 3, 3))
+  a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d = eigh_vals(a)
   @test d ≈ diag(eigh_full(a)[1])
 
