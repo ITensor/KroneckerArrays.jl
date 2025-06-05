@@ -584,10 +584,12 @@ using MatrixAlgebraKit:
   eigh_vals,
   qr_compact,
   qr_full,
+  left_null,
   left_orth,
   left_polar,
   lq_compact,
   lq_full,
+  right_null,
   right_orth,
   right_polar,
   svd_compact,
@@ -748,10 +750,12 @@ for f in [
   :eigh_vals,
   :qr_compact,
   :qr_full,
+  :left_null,
   :left_orth,
   :left_polar,
   :lq_compact,
   :lq_full,
+  :right_null,
   :right_orth,
   :right_polar,
   :svd_compact,
@@ -795,6 +799,12 @@ end
 _initialize_output_squareeye(f::F, a) where {F} = initialize_output(f, a)
 _initialize_output_squareeye(f::F, a, alg) where {F} = initialize_output(f, a, alg)
 
+for f in [:left_null!, :right_null!]
+  @eval begin
+    _initialize_output_squareeye(::typeof($f), a::SquareEye) = a
+    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = a
+  end
+end
 for f in [
   :eig_full!,
   :eigh_full!,
@@ -859,6 +869,44 @@ for f in [
       end
     end
   end
+end
+
+for f in [:left_null!, :right_null!]
+  f′ = Symbol("_", f, "_squareeye")
+  @eval begin
+    $f′(a, F; kwargs...) = $f(a, F; kwargs...)
+    $f′(a::SquareEye, F) = F
+  end
+  for T in [:SquareEyeKronecker, :KroneckerSquareEye]
+    @eval begin
+      function MatrixAlgebraKit.initialize_output(::typeof($f), a::$T)
+        return _initialize_output_squareeye($f, a.a) ⊗ _initialize_output_squareeye($f, a.b)
+      end
+      function MatrixAlgebraKit.$f(a::$T, F; kwargs1=(;), kwargs2=(;), kwargs...)
+        $f′(a.a, F.a; kwargs..., kwargs1...)
+        $f′(a.b, F.b; kwargs..., kwargs2...)
+        return F
+      end
+    end
+  end
+end
+
+function MatrixAlgebraKit.initialize_output(f::typeof(left_null!), a::SquareEyeSquareEye)
+  return _initialize_output_squareeye(f, a.a) ⊗ _initialize_output_squareeye(f, a.b)
+end
+function MatrixAlgebraKit.left_null!(
+  a::SquareEyeSquareEye, F; kwargs1=(;), kwargs2=(;), kwargs...
+)
+  return throw(MethodError(left_null!, (a, F)))
+end
+
+function MatrixAlgebraKit.initialize_output(f::typeof(right_null!), a::SquareEyeSquareEye)
+  return _initialize_output_squareeye(f, a.a) ⊗ _initialize_output_squareeye(f, a.b)
+end
+function MatrixAlgebraKit.right_null!(
+  a::SquareEyeSquareEye, F; kwargs1=(;), kwargs2=(;), kwargs...
+)
+  return throw(MethodError(right_null!, (a, F)))
 end
 
 for f in [:eig_vals!, :eigh_vals!, :svd_vals!]

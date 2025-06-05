@@ -126,8 +126,6 @@ end
   # eig_trunc
   # eigh_trunc
   # svd_trunc
-  # left_null
-  # right_null
 
   for f in (eig_full, eigh_full)
     a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
@@ -177,13 +175,13 @@ end
     left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_orth, right_polar
   )
     a = Eye(3) ⊗ randn(3, 3)
-    x, y = f(a)
+    x, y = @constinferred f(a)
     @test x * y ≈ a
     @test arguments(x, 1) isa Eye
     @test arguments(y, 1) isa Eye
 
     a = randn(3, 3) ⊗ Eye(3)
-    x, y = f(a)
+    x, y = @constinferred f(a)
     @test x * y ≈ a
     @test arguments(x, 2) isa Eye
     @test arguments(y, 2) isa Eye
@@ -199,21 +197,21 @@ end
 
   for f in (svd_compact, svd_full)
     a = Eye(3) ⊗ randn(3, 3)
-    u, s, v = f(a)
+    u, s, v = @constinferred f(a)
     @test u * s * v ≈ a
     @test arguments(u, 1) isa Eye
     @test arguments(s, 1) isa Eye
     @test arguments(v, 1) isa Eye
 
     a = randn(3, 3) ⊗ Eye(3)
-    u, s, v = f(a)
+    u, s, v = @constinferred f(a)
     @test u * s * v ≈ a
     @test arguments(u, 2) isa Eye
     @test arguments(s, 2) isa Eye
     @test arguments(v, 2) isa Eye
 
     a = Eye(3) ⊗ Eye(3)
-    u, s, v = f(a)
+    u, s, v = @constinferred f(a)
     @test u * s * v ≈ a
     @test arguments(u, 1) isa Eye
     @test arguments(s, 1) isa Eye
@@ -242,4 +240,33 @@ end
   @test d == Ones(3) ⊗ Ones(3)
   @test arguments(d, 1) isa Ones
   @test arguments(d, 2) isa Ones
+
+  # left_null
+  a = Eye(3) ⊗ randn(3, 3)
+  n = @constinferred left_null(a)
+  @test norm(n' * a) ≈ 0
+  @test arguments(n, 1) isa Eye
+
+  a = randn(3, 3) ⊗ Eye(3)
+  n = @constinferred left_null(a)
+  @test norm(n' * a) ≈ 0
+  @test arguments(n, 2) isa Eye
+
+  a = Eye(3) ⊗ Eye(3)
+  @test_throws MethodError left_null(a)
+
+  # right_null
+  a = Eye(3) ⊗ randn(3, 3)
+  n = @constinferred right_null(a)
+  @test norm(a * n') ≈ 0
+  @test arguments(n, 1) isa Eye
+
+  a = randn(3, 3) ⊗ Eye(3)
+  n = @constinferred right_null(a)
+  @test norm(a * n') ≈ 0
+  @test arguments(n, 2) isa Eye
+
+  a = Eye(3) ⊗ Eye(3)
+  @test_throws MethodError right_null(a)
+
 end
