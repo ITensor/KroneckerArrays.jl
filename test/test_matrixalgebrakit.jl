@@ -156,12 +156,7 @@ end
   end
 
   for f in (
-    #=left_orth,=#left_polar,
-    lq_compact,
-    lq_full,
-    qr_compact,
-    qr_full,
-    #=right_orth,=#right_polar,
+    left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_orth, right_polar
   )
     a = Eye(3) ⊗ randn(3, 3)
     x, y = f(a)
