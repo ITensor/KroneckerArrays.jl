@@ -1,4 +1,4 @@
-using FillArrays: Eye
+using FillArrays: Eye, Ones
 using KroneckerArrays: ⊗, arguments
 using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
 using MatrixAlgebraKit:
@@ -154,6 +154,28 @@ end
     @test arguments(v, 2) isa Eye
   end
 
+  for f in (eig_vals, eigh_vals)
+    a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
+    d = @constinferred f(a)
+    d′ = f(Matrix(a))
+    @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
+    @test arguments(d, 1) isa Ones
+    @test arguments(d, 2) ≈ f(arguments(a, 2))
+
+    a = parent(hermitianpart(randn(3, 3))) ⊗ Eye(3)
+    d = @constinferred f(a)
+    d′ = f(Matrix(a))
+    @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
+    @test arguments(d, 2) isa Ones
+    @test arguments(d, 1) ≈ f(arguments(a, 1))
+
+    a = Eye(3) ⊗ Eye(3)
+    d = @constinferred f(a)
+    @test d == Ones(3) ⊗ Ones(3)
+    @test arguments(d, 1) isa Ones
+    @test arguments(d, 2) isa Ones
+  end
+
   for f in (
     left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_orth, right_polar
   )
@@ -203,4 +225,24 @@ end
     @test arguments(s, 2) isa Eye
     @test arguments(v, 2) isa Eye
   end
+
+  a = Eye(3) ⊗ randn(3, 3)
+  d = @constinferred svd_vals(a)
+  d′ = svd_vals(Matrix(a))
+  @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
+  @test arguments(d, 1) isa Ones
+  @test arguments(d, 2) ≈ svd_vals(arguments(a, 2))
+
+  a = randn(3, 3) ⊗ Eye(3)
+  d = @constinferred svd_vals(a)
+  d′ = svd_vals(Matrix(a))
+  @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
+  @test arguments(d, 2) isa Ones
+  @test arguments(d, 1) ≈ svd_vals(arguments(a, 1))
+
+  a = Eye(3) ⊗ Eye(3)
+  d = @constinferred svd_vals(a)
+  @test d == Ones(3) ⊗ Ones(3)
+  @test arguments(d, 1) isa Ones
+  @test arguments(d, 2) isa Ones
 end
