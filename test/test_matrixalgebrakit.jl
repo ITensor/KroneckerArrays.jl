@@ -124,13 +124,10 @@ end
 
   # TODO:
   # eig_trunc
-  # eig_vals
   # eigh_trunc
-  # eigh_vals
+  # svd_trunc
   # left_null
   # right_null
-  # svd_trunc
-  # svd_vals
 
   for f in (eig_full, eigh_full)
     a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
