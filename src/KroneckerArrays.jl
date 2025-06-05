@@ -582,9 +582,11 @@ using MatrixAlgebraKit:
   eigh_full,
   qr_compact,
   qr_full,
+  left_orth,
   left_polar,
   lq_compact,
   lq_full,
+  right_orth,
   right_polar,
   svd_compact,
   svd_full
@@ -608,12 +610,22 @@ for f in [
   end
 end
 
-for f in (:eig, :eigh, :lq, :qr, :polar, :svd)
-  ff = Symbol("default_", f, "_algorithm")
+for f in [
+  :default_eig_algorithm,
+  :default_eigh_algorithm,
+  :default_lq_algorithm,
+  :default_qr_algorithm,
+  :default_polar_algorithm,
+  :default_svd_algorithm,
+]
   @eval begin
-    function MatrixAlgebraKit.$ff(A::Type{<:KroneckerMatrix}; kwargs...)
+    function MatrixAlgebraKit.$f(
+      A::Type{<:KroneckerMatrix}; kwargs1=(;), kwargs2=(;), kwargs...
+    )
       A1, A2 = argument_types(A)
-      return KroneckerAlgorithm($ff(A1; kwargs...), $ff(A2; kwargs...))
+      return KroneckerAlgorithm(
+        $f(A1; kwargs..., kwargs1...), $f(A2; kwargs..., kwargs2...)
+      )
     end
   end
 end
@@ -631,7 +643,7 @@ function MatrixAlgebraKit.default_algorithm(
   return default_qr_algorithm(A; kwargs...)
 end
 
-for f in (
+for f in [
   :eig_full!,
   :eigh_full!,
   :qr_compact!,
@@ -642,22 +654,24 @@ for f in (
   :right_polar!,
   :svd_compact!,
   :svd_full!,
-)
+]
   @eval begin
     function MatrixAlgebraKit.initialize_output(
       ::typeof($f), a::KroneckerMatrix, alg::KroneckerAlgorithm
     )
       return initialize_output($f, a.a, alg.a) .⊗ initialize_output($f, a.b, alg.b)
     end
-    function MatrixAlgebraKit.$f(a::KroneckerMatrix, F, alg::KroneckerAlgorithm; kwargs...)
-      $f(a.a, Base.Fix2(getfield, :a).(F), alg.a; kwargs...)
-      $f(a.b, Base.Fix2(getfield, :b).(F), alg.b; kwargs...)
+    function MatrixAlgebraKit.$f(
+      a::KroneckerMatrix, F, alg::KroneckerAlgorithm; kwargs1=(;), kwargs2=(;), kwargs...
+    )
+      $f(a.a, Base.Fix2(getfield, :a).(F), alg.a; kwargs..., kwargs1...)
+      $f(a.b, Base.Fix2(getfield, :b).(F), alg.b; kwargs..., kwargs2...)
       return F
     end
   end
 end
 
-for f in (:eig_vals!, :eigh_vals!, :svd_vals!)
+for f in [:eig_vals!, :eigh_vals!, :svd_vals!]
   @eval begin
     function MatrixAlgebraKit.initialize_output(
       ::typeof($f), a::KroneckerMatrix, alg::KroneckerAlgorithm
@@ -672,7 +686,7 @@ for f in (:eig_vals!, :eigh_vals!, :svd_vals!)
   end
 end
 
-for f in (:eig_trunc!, :eigh_trunc!, :svd_trunc!)
+for f in [:eig_trunc!, :eigh_trunc!, :svd_trunc!]
   @eval begin
     function MatrixAlgebraKit.truncate!(
       ::typeof($f),
@@ -684,7 +698,7 @@ for f in (:eig_trunc!, :eigh_trunc!, :svd_trunc!)
   end
 end
 
-for f in (:left_orth!, :right_orth!)
+for f in [:left_orth!, :right_orth!]
   @eval begin
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
       return initialize_output($f, a.a) .⊗ initialize_output($f, a.b)
@@ -692,15 +706,153 @@ for f in (:left_orth!, :right_orth!)
   end
 end
 
-for f in (:left_null!, :right_null!)
+for f in [:left_null!, :right_null!]
   @eval begin
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
       return initialize_output($f, a.a) ⊗ initialize_output($f, a.b)
     end
-    function MatrixAlgebraKit.$f(a::KroneckerMatrix, F; kwargs...)
-      $f(a.a, F.a; kwargs...)
-      $f(a.b, F.b; kwargs...)
+    function MatrixAlgebraKit.$f(a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...)
+      $f(a.a, F.a; kwargs..., kwargs1...)
+      $f(a.b, F.b; kwargs..., kwargs2...)
       return F
+    end
+  end
+end
+
+####################################################################################
+# Special cases for MatrixAlgebraKit factorizations of `Eye(n) ⊗ A` and
+# `A ⊗ Eye(n)` where `A`.
+# TODO: Delete this once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/34
+# is merged.
+
+using FillArrays: SquareEye
+const SquareEyeKronecker{T,A<:SquareEye{T},B<:AbstractMatrix{T}} = KroneckerMatrix{T,A,B}
+const KroneckerSquareEye{T,A<:AbstractMatrix{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
+const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
+
+struct SquareEyeAlgorithm{KWargs<:NamedTuple} <: AbstractAlgorithm
+  kwargs::KWargs
+end
+SquareEyeAlgorithm(; kwargs...) = SquareEyeAlgorithm((; kwargs...))
+
+# Defined to avoid type piracy.
+_copy_input_squareeye(f::F, a) where {F} = copy_input(f, a)
+_copy_input_squareeye(f::F, a::SquareEye) where {F} = a
+
+for f in [
+  :eig_full,
+  :eigh_full,
+  :qr_compact,
+  :qr_full,
+  :left_orth,
+  :left_polar,
+  :lq_compact,
+  :lq_full,
+  :right_orth,
+  :right_polar,
+  :svd_compact,
+  :svd_full,
+]
+  for T in [:SquareEyeKronecker, :KroneckerSquareEye, :SquareEyeSquareEye]
+    @eval begin
+      function MatrixAlgebraKit.copy_input(::typeof($f), a::$T)
+        return _copy_input_squareeye($f, a.a) ⊗ _copy_input_squareeye($f, a.b)
+      end
+    end
+  end
+end
+
+for f in [
+  :default_eig_algorithm,
+  :default_eigh_algorithm,
+  :default_lq_algorithm,
+  :default_qr_algorithm,
+  :default_polar_algorithm,
+  :default_svd_algorithm,
+]
+  f′ = Symbol("_", f, "_squareeye")
+  @eval begin
+    $f′(a; kwargs...) = $f(a; kwargs...)
+    $f′(a::Type{<:SquareEye}; kwargs...) = SquareEyeAlgorithm(; kwargs...)
+  end
+  for T in [:SquareEyeKronecker, :KroneckerSquareEye, :SquareEyeSquareEye]
+    @eval begin
+      function MatrixAlgebraKit.$f(A::Type{<:$T}; kwargs1=(;), kwargs2=(;), kwargs...)
+        A1, A2 = argument_types(A)
+        return KroneckerAlgorithm(
+          $f′(A1; kwargs..., kwargs1...), $f′(A2; kwargs..., kwargs2...)
+        )
+      end
+    end
+  end
+end
+
+# Defined to avoid type piracy.
+_initialize_output_squareeye(f::F, a) where {F} = initialize_output(f, a)
+_initialize_output_squareeye(f::F, a, alg) where {F} = initialize_output(f, a, alg)
+
+for f in [
+  :eig_full!,
+  :eigh_full!,
+  :qr_compact!,
+  :qr_full!,
+  :left_orth!,
+  :left_polar!,
+  :lq_compact!,
+  :lq_full!,
+  :right_orth!,
+  :right_polar!,
+]
+  @eval begin
+    _initialize_output_squareeye(::typeof($f), a::SquareEye) = (a, a)
+    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = (a, a)
+  end
+end
+for f in [:svd_compact!, :svd_full!]
+  @eval begin
+    _initialize_output_squareeye(::typeof($f), a::SquareEye) = (a, a, a)
+    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = (a, a, a)
+  end
+end
+
+for f in [
+  :eig_full!,
+  :eigh_full!,
+  :qr_compact!,
+  :qr_full!,
+  :left_orth!,
+  :left_polar!,
+  :lq_compact!,
+  :lq_full!,
+  :right_orth!,
+  :right_polar!,
+  :svd_compact!,
+  :svd_full!,
+]
+  f′ = Symbol("_", f, "_squareeye")
+  @eval begin
+    $f′(a, F, alg; kwargs...) = $f(a, F, alg; kwargs...)
+    $f′(a, F, alg::SquareEyeAlgorithm) = F
+  end
+  for T in [:SquareEyeKronecker, :KroneckerSquareEye, :SquareEyeSquareEye]
+    @eval begin
+      function MatrixAlgebraKit.initialize_output(::typeof($f), a::$T)
+        return _initialize_output_squareeye($f, a.a) .⊗
+               _initialize_output_squareeye($f, a.b)
+      end
+      function MatrixAlgebraKit.initialize_output(
+        ::typeof($f), a::$T, alg::KroneckerAlgorithm
+      )
+        return _initialize_output_squareeye($f, a.a, alg.a) .⊗
+               _initialize_output_squareeye($f, a.b, alg.b)
+      end
+      function MatrixAlgebraKit.$f(
+        a::$T, F, alg::KroneckerAlgorithm; kwargs1=(;), kwargs2=(;), kwargs...
+      )
+        $f′(a.a, Base.Fix2(getfield, :a).(F), alg.a; kwargs..., kwargs1...)
+        $f′(a.b, Base.Fix2(getfield, :b).(F), alg.b; kwargs..., kwargs2...)
+        return F
+      end
     end
   end
 end

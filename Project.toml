@@ -1,7 +1,7 @@
 name = "KroneckerArrays"
 uuid = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 DerivableInterfaces = "6c5e35bf-e59e-4898-b73c-732dcc4ba65f"

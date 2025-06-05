@@ -1,4 +1,5 @@
-using KroneckerArrays: ⊗
+using FillArrays: Eye
+using KroneckerArrays: ⊗, arguments
 using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
 using MatrixAlgebraKit:
   eig_full,
@@ -22,8 +23,9 @@ using MatrixAlgebraKit:
   svd_trunc,
   svd_vals
 using Test: @test, @test_throws, @testset
+using TestExtras: @constinferred
 
-herm(a) = hermitianpart(a).data
+herm(a) = parent(hermitianpart(a))
 
 @testset "MatrixAlgebraKit" begin
   elt = Float32
@@ -116,4 +118,89 @@ herm(a) = hermitianpart(a).data
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   s = svd_vals(a)
   @test s ≈ diag(svd_compact(a)[2])
+end
+
+@testset "MatrixAlgebraKit + Eye" begin
+
+  # TODO:
+  # eig_trunc
+  # eig_vals
+  # eigh_trunc
+  # eigh_vals
+  # left_null
+  # right_null
+  # svd_trunc
+  # svd_vals
+
+  for f in (eig_full, eigh_full)
+    a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
+    d, v = @constinferred f(a)
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+
+    a = parent(hermitianpart(randn(3, 3))) ⊗ Eye(3)
+    d, v = @constinferred f(a)
+    @test a * v ≈ v * d
+    @test arguments(d, 2) isa Eye
+    @test arguments(v, 2) isa Eye
+
+    a = Eye(3) ⊗ Eye(3)
+    d, v = @constinferred f(a)
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa Eye
+    @test arguments(d, 2) isa Eye
+    @test arguments(v, 1) isa Eye
+    @test arguments(v, 2) isa Eye
+  end
+
+  for f in (
+    left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_orth, right_polar
+  )
+    a = Eye(3) ⊗ randn(3, 3)
+    x, y = f(a)
+    @test x * y ≈ a
+    @test arguments(x, 1) isa Eye
+    @test arguments(y, 1) isa Eye
+
+    a = randn(3, 3) ⊗ Eye(3)
+    x, y = f(a)
+    @test x * y ≈ a
+    @test arguments(x, 2) isa Eye
+    @test arguments(y, 2) isa Eye
+
+    a = Eye(3) ⊗ Eye(3)
+    x, y = f(a)
+    @test x * y ≈ a
+    @test arguments(x, 1) isa Eye
+    @test arguments(y, 1) isa Eye
+    @test arguments(x, 2) isa Eye
+    @test arguments(y, 2) isa Eye
+  end
+
+  for f in (svd_compact, svd_full)
+    a = Eye(3) ⊗ randn(3, 3)
+    u, s, v = f(a)
+    @test u * s * v ≈ a
+    @test arguments(u, 1) isa Eye
+    @test arguments(s, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+
+    a = randn(3, 3) ⊗ Eye(3)
+    u, s, v = f(a)
+    @test u * s * v ≈ a
+    @test arguments(u, 2) isa Eye
+    @test arguments(s, 2) isa Eye
+    @test arguments(v, 2) isa Eye
+
+    a = Eye(3) ⊗ Eye(3)
+    u, s, v = f(a)
+    @test u * s * v ≈ a
+    @test arguments(u, 1) isa Eye
+    @test arguments(s, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+    @test arguments(u, 2) isa Eye
+    @test arguments(s, 2) isa Eye
+    @test arguments(v, 2) isa Eye
+  end
 end
