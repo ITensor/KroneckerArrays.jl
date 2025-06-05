@@ -268,5 +268,4 @@ end
 
   a = Eye(3) ⊗ Eye(3)
   @test_throws MethodError right_null(a)
-
 end
