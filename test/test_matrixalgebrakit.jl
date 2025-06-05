@@ -122,14 +122,13 @@ end
 
 @testset "MatrixAlgebraKit + Eye" begin
 
+  # TODO:
   # eig_trunc
   # eig_vals
   # eigh_trunc
   # eigh_vals
   # left_null
   # right_null
-  # svd_compact
-  # svd_full
   # svd_trunc
   # svd_vals
 
@@ -177,5 +176,31 @@ end
     @test arguments(y, 1) isa Eye
     @test arguments(x, 2) isa Eye
     @test arguments(y, 2) isa Eye
+  end
+
+  for f in (svd_compact, svd_full)
+    a = Eye(3) ⊗ randn(3, 3)
+    u, s, v = f(a)
+    @test u * s * v ≈ a
+    @test arguments(u, 1) isa Eye
+    @test arguments(s, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+
+    a = randn(3, 3) ⊗ Eye(3)
+    u, s, v = f(a)
+    @test u * s * v ≈ a
+    @test arguments(u, 2) isa Eye
+    @test arguments(s, 2) isa Eye
+    @test arguments(v, 2) isa Eye
+
+    a = Eye(3) ⊗ Eye(3)
+    u, s, v = f(a)
+    @test u * s * v ≈ a
+    @test arguments(u, 1) isa Eye
+    @test arguments(s, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+    @test arguments(u, 2) isa Eye
+    @test arguments(s, 2) isa Eye
+    @test arguments(v, 2) isa Eye
   end
 end
