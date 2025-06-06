@@ -11,6 +11,11 @@ end
 arguments(a::CartesianProduct) = (a.a, a.b)
 arguments(a::CartesianProduct, n::Int) = arguments(a)[n]
 
+function Base.show(io::IO, a::CartesianProduct)
+  print(io, a.a, " × ", a.b)
+  return nothing
+end
+
 ×(a, b) = CartesianProduct(a, b)
 Base.length(a::CartesianProduct) = length(a.a) * length(a.b)
 Base.getindex(a::CartesianProduct, i::CartesianProduct) = a.a[i.a] × a.b[i.b]
@@ -130,6 +135,8 @@ function interleave(x::Tuple, y::Tuple)
   xy = ntuple(i -> (x[i], y[i]), length(x))
   return flatten(xy)
 end
+# TODO: Maybe use scalar indexing based on KroneckerProducts.jl logic for cartesian indexing:
+# https://github.com/perrutquist/KroneckerProducts.jl/blob/8c0104caf1f17729eb067259ba1473986121d032/src/KroneckerProducts.jl#L59-L66
 function kron_nd(a::AbstractArray{<:Any,N}, b::AbstractArray{<:Any,N}) where {N}
   a′ = reshape(a, interleave(size(a), ntuple(one, N)))
   b′ = reshape(b, interleave(ntuple(one, N), size(b)))
@@ -183,6 +190,9 @@ function Base.getindex(a::KroneckerArray, i::Integer)
   return a[CartesianIndices(a)[i]]
 end
 
+# TODO: Use this logic from KroneckerProducts.jl for cartesian indexing
+# in the n-dimensional case and use it to replace the matrix and vector cases:
+# https://github.com/perrutquist/KroneckerProducts.jl/blob/8c0104caf1f17729eb067259ba1473986121d032/src/KroneckerProducts.jl#L59-L66
 function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {N}
   return error("Not implemented.")
 end
@@ -221,6 +231,10 @@ function Base.iszero(a::KroneckerArray)
 end
 function Base.inv(a::KroneckerArray)
   return inv(a.a) ⊗ inv(a.b)
+end
+using LinearAlgebra: LinearAlgebra, pinv
+function LinearAlgebra.pinv(a::KroneckerArray; kwargs...)
+  return pinv(a.a; kwargs...) ⊗ pinv(a.b; kwargs...)
 end
 function Base.transpose(a::KroneckerArray)
   return transpose(a.a) ⊗ transpose(a.b)
@@ -297,6 +311,7 @@ using LinearAlgebra:
   Diagonal,
   Eigen,
   SVD,
+  det,
   diag,
   eigen,
   eigvals,
@@ -335,9 +350,63 @@ end
 function LinearAlgebra.norm(a::KroneckerArray, p::Int=2)
   return norm(a.a, p) ⊗ norm(a.b, p)
 end
-function LinearAlgebra.diag(a::KroneckerArray)
-  return diag(a.a) ⊗ diag(a.b)
+
+using MatrixAlgebraKit: MatrixAlgebraKit, diagview
+function MatrixAlgebraKit.diagview(a::KroneckerMatrix)
+  return diagview(a.a) ⊗ diagview(a.b)
 end
+function LinearAlgebra.diag(a::KroneckerArray)
+  return copy(diagview(a.a)) ⊗ copy(diagview(a.b))
+end
+
+# Matrix functions
+const MATRIX_FUNCTIONS = [
+  :exp,
+  :cis,
+  :log,
+  :sqrt,
+  :cbrt,
+  :cos,
+  :sin,
+  :tan,
+  :csc,
+  :sec,
+  :cot,
+  :cosh,
+  :sinh,
+  :tanh,
+  :csch,
+  :sech,
+  :coth,
+  :acos,
+  :asin,
+  :atan,
+  :acsc,
+  :asec,
+  :acot,
+  :acosh,
+  :asinh,
+  :atanh,
+  :acsch,
+  :asech,
+  :acoth,
+]
+
+for f in MATRIX_FUNCTIONS
+  @eval begin
+    function Base.$f(a::KroneckerArray)
+      return throw(ArgumentError("Generic KroneckerArray `$($f)` is not supported."))
+    end
+  end
+end
+
+using LinearAlgebra: checksquare
+function LinearAlgebra.det(a::KroneckerArray)
+  checksquare(a.a)
+  checksquare(a.b)
+  return det(a.a) ^ size(a.b, 1) * det(a.b) ^ size(a.a, 1)
+end
+
 function LinearAlgebra.svd(a::KroneckerArray)
   Fa = svd(a.a)
   Fb = svd(a.b)
@@ -690,18 +759,6 @@ for f in [:eig_vals!, :eigh_vals!, :svd_vals!]
   end
 end
 
-for f in [:eig_trunc!, :eigh_trunc!, :svd_trunc!]
-  @eval begin
-    function MatrixAlgebraKit.truncate!(
-      ::typeof($f),
-      (D, V)::Tuple{KroneckerMatrix,KroneckerMatrix},
-      strategy::TruncationStrategy,
-    )
-      return throw(MethodError(truncate!, ($f, (D, V), strategy)))
-    end
-  end
-end
-
 for f in [:left_orth!, :right_orth!]
   @eval begin
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
@@ -939,6 +996,112 @@ for f in [:eig_vals!, :eigh_vals!, :svd_vals!]
       end
     end
   end
+end
+
+using MatrixAlgebraKit: TruncationStrategy, diagview, findtruncated, truncate!
+
+struct KroneckerTruncationStrategy{T<:TruncationStrategy} <: TruncationStrategy
+  strategy::T
+end
+
+# Avoid instantiating the identity.
+function Base.getindex(a::SquareEyeKronecker, I::Vararg{CartesianProduct{Colon},2})
+  return a.a ⊗ a.b[I[1].b, I[2].b]
+end
+function Base.getindex(a::KroneckerSquareEye, I::Vararg{CartesianProduct{<:Any,Colon},2})
+  return a.a[I[1].a, I[2].a] ⊗ a.b
+end
+function Base.getindex(a::SquareEyeSquareEye, I::Vararg{CartesianProduct{Colon,Colon},2})
+  return a
+end
+
+using FillArrays: OnesVector
+const OnesKroneckerVector{T,A<:OnesVector{T},B<:AbstractVector{T}} = KroneckerVector{T,A,B}
+const KroneckerOnesVector{T,A<:AbstractVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
+const OnesVectorOnesVector{T,A<:OnesVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
+
+function MatrixAlgebraKit.findtruncated(
+  values::OnesKroneckerVector, strategy::KroneckerTruncationStrategy
+)
+  I = findtruncated(Vector(values), strategy.strategy)
+  prods = collect(only(axes(values)).product)[I]
+  I_data = unique(map(x -> x.a, prods))
+  # Drop truncations that occur within the identity.
+  I_data = filter(I_data) do i
+    return count(x -> x.a == i, prods) == length(values.a)
+  end
+  return (:) × I_data
+end
+function MatrixAlgebraKit.findtruncated(
+  values::KroneckerOnesVector, strategy::KroneckerTruncationStrategy
+)
+  I = findtruncated(Vector(values), strategy.strategy)
+  prods = collect(only(axes(values)).product)[I]
+  I_data = unique(map(x -> x.b, prods))
+  # Drop truncations that occur within the identity.
+  I_data = filter(I_data) do i
+    return count(x -> x.b == i, prods) == length(values.b)
+  end
+  return I_data × (:)
+end
+function MatrixAlgebraKit.findtruncated(
+  values::OnesVectorOnesVector, strategy::KroneckerTruncationStrategy
+)
+  return throw(ArgumentError("Can't truncate Eye ⊗ Eye."))
+end
+
+for f in [:eig_trunc!, :eigh_trunc!]
+  @eval begin
+    function MatrixAlgebraKit.truncate!(
+      ::typeof($f), DV::NTuple{2,KroneckerMatrix}, strategy::TruncationStrategy
+    )
+      return truncate!($f, DV, KroneckerTruncationStrategy(strategy))
+    end
+    function MatrixAlgebraKit.truncate!(
+      ::typeof($f), (D, V)::NTuple{2,KroneckerMatrix}, strategy::KroneckerTruncationStrategy
+    )
+      I = findtruncated(diagview(D), strategy)
+      return (D[I, I], V[(:) × (:), I])
+    end
+  end
+end
+
+function MatrixAlgebraKit.truncate!(
+  f::typeof(svd_trunc!), USVᴴ::NTuple{3,KroneckerMatrix}, strategy::TruncationStrategy
+)
+  return truncate!(f, USVᴴ, KroneckerTruncationStrategy(strategy))
+end
+function MatrixAlgebraKit.truncate!(
+  ::typeof(svd_trunc!),
+  (U, S, Vᴴ)::NTuple{3,KroneckerMatrix},
+  strategy::KroneckerTruncationStrategy,
+)
+  I = findtruncated(diagview(S), strategy)
+  return (U[(:) × (:), I], S[I, I], Vᴴ[I, (:) × (:)])
+end
+
+for f in MATRIX_FUNCTIONS
+  @eval begin
+    function Base.$f(a::SquareEyeKronecker)
+      return a.a ⊗ $f(a.b)
+    end
+    function Base.$f(a::KroneckerSquareEye)
+      return $f(a.a) ⊗ a.b
+    end
+    function Base.$f(a::SquareEyeSquareEye)
+      return throw(ArgumentError("`$($f)` on `Eye ⊗ Eye` is not supported."))
+    end
+  end
+end
+
+function LinearAlgebra.pinv(a::SquareEyeKronecker; kwargs...)
+  return a.a ⊗ pinv(a.b; kwargs...)
+end
+function LinearAlgebra.pinv(a::KroneckerSquareEye; kwargs...)
+  return pinv(a.a; kwargs...) ⊗ a.b
+end
+function LinearAlgebra.pinv(a::SquareEyeSquareEye; kwargs...)
+  return a
 end
 
 end
