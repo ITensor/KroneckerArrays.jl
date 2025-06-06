@@ -79,6 +79,12 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
 end
 
 @testset "FillArrays.Eye" begin
+  MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
+  if VERSION < v"1.11-"
+    # `cbrt(::AbstractMatrix{<:Real})` was implemented in Julia 1.11.
+    MATRIX_FUNCTIONS = setdiff(MATRIX_FUNCTIONS, [:cbrt])
+  end
+
   a = Eye(2) ⊗ randn(3, 3)
   @test size(a) == (6, 6)
   @test a + a == Eye(2) ⊗ (2a.b)
@@ -93,7 +99,7 @@ end
 
   # Eye ⊗ A
   a = Eye(2) ⊗ randn(3, 3)
-  for f in KroneckerArrays.MATRIX_FUNCTIONS
+  for f in MATRIX_FUNCTIONS
     @eval begin
       fa = $f($a)
       @test collect(fa) ≈ $f(collect($a))
@@ -113,7 +119,7 @@ end
 
   # A ⊗ Eye
   a = randn(3, 3) ⊗ Eye(2)
-  for f in KroneckerArrays.MATRIX_FUNCTIONS
+  for f in MATRIX_FUNCTIONS
     @eval begin
       fa = $f($a)
       @test collect(fa) ≈ $f(collect($a))
