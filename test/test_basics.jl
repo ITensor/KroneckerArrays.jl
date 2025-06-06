@@ -102,7 +102,7 @@ end
   for f in MATRIX_FUNCTIONS
     @eval begin
       fa = $f($a)
-      @test collect(fa) ≈ $f(collect($a)) rtol = √(eps(eltype($a)))
+      @test collect(fa) ≈ $f(collect($a)) rtol = ∛(eps(real(eltype($a))))
       @test fa.a isa Eye
     end
   end
@@ -122,7 +122,7 @@ end
   for f in MATRIX_FUNCTIONS
     @eval begin
       fa = $f($a)
-      @test collect(fa) ≈ $f(collect($a)) rtol = √(eps(eltype($a)))
+      @test collect(fa) ≈ $f(collect($a)) rtol = ∛(eps(real(eltype($a))))
       @test fa.b isa Eye
     end
   end
