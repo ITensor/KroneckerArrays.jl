@@ -121,12 +121,6 @@ herm(a) = parent(hermitianpart(a))
 end
 
 @testset "MatrixAlgebraKit + Eye" begin
-
-  # TODO:
-  # eig_trunc
-  # eigh_trunc
-  # svd_trunc
-
   for f in (eig_full, eigh_full)
     a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
     d, v = @constinferred f(a)
@@ -147,6 +141,27 @@ end
     @test arguments(d, 2) isa Eye
     @test arguments(v, 1) isa Eye
     @test arguments(v, 2) isa Eye
+  end
+
+  for f in (eig_trunc, eigh_trunc)
+    a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
+    d, v = f(a; trunc=(; maxrank=7))
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+    @test size(d) == (6, 6)
+    @test size(v) == (9, 6)
+
+    a = parent(hermitianpart(randn(3, 3))) ⊗ Eye(3)
+    d, v = f(a; trunc=(; maxrank=7))
+    @test a * v ≈ v * d
+    @test arguments(d, 2) isa Eye
+    @test arguments(v, 2) isa Eye
+    @test size(d) == (6, 6)
+    @test size(v) == (9, 6)
+
+    a = Eye(3) ⊗ Eye(3)
+    @test_throws ArgumentError f(a)
   end
 
   for f in (eig_vals, eigh_vals)
@@ -221,6 +236,33 @@ end
     @test arguments(v, 2) isa Eye
   end
 
+  # svd_trunc
+  a = Eye(3) ⊗ randn(3, 3)
+  u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+  u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+  @test Matrix(u * s * v) ≈ u′ * s′ * v′
+  @test arguments(u, 1) isa Eye
+  @test arguments(s, 1) isa Eye
+  @test arguments(v, 1) isa Eye
+  @test size(u) == (9, 6)
+  @test size(s) == (6, 6)
+  @test size(v) == (6, 9)
+
+  a = randn(3, 3) ⊗ Eye(3)
+  u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+  u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+  @test Matrix(u * s * v) ≈ u′ * s′ * v′
+  @test arguments(u, 2) isa Eye
+  @test arguments(s, 2) isa Eye
+  @test arguments(v, 2) isa Eye
+  @test size(u) == (9, 6)
+  @test size(s) == (6, 6)
+  @test size(v) == (6, 9)
+
+  a = Eye(3) ⊗ Eye(3)
+  @test_throws ArgumentError svd_trunc(a)
+
+  # svd_vals
   a = Eye(3) ⊗ randn(3, 3)
   d = @constinferred svd_vals(a)
   d′ = svd_vals(Matrix(a))

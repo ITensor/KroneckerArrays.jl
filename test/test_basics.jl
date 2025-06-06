@@ -1,7 +1,8 @@
 using FillArrays: Eye
 using KroneckerArrays: KroneckerArrays, ⊗, ×, diagonal, kron_nd
-using LinearAlgebra: Diagonal, I, eigen, eigvals, lq, qr, svd, svdvals, tr
-using Test: @test, @testset
+using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, pinv, qr, svd, svdvals, tr
+using StableRNGs: StableRNG
+using Test: @test, @test_broken, @test_throws, @testset
 
 const elts = (Float32, Float64, ComplexF32, ComplexF64)
 @testset "KroneckerArrays (eltype=$elt)" for elt in elts
@@ -35,7 +36,7 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test iszero(a - a)
   @test collect(a + c) ≈ collect(a) + collect(c)
   @test collect(b + c) ≈ collect(b) + collect(c)
-  for f in (transpose, adjoint, inv)
+  for f in (transpose, adjoint, inv, pinv)
     @test collect(f(a)) ≈ f(collect(a))
   end
   @test tr(a) ≈ tr(collect(a))
@@ -66,9 +67,25 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   Q, R = qr(a)
   @test collect(Q * R) ≈ collect(a)
   @test collect(Q'Q) ≈ I
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  @test det(a) ≈ det(collect(a))
+
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  for f in KroneckerArrays.MATRIX_FUNCTIONS
+    @eval begin
+      @test_throws ArgumentError $f($a)
+    end
+  end
 end
 
 @testset "FillArrays.Eye" begin
+  MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
+  if VERSION < v"1.11-"
+    # `cbrt(::AbstractMatrix{<:Real})` was implemented in Julia 1.11.
+    MATRIX_FUNCTIONS = setdiff(MATRIX_FUNCTIONS, [:cbrt])
+  end
+
   a = Eye(2) ⊗ randn(3, 3)
   @test size(a) == (6, 6)
   @test a + a == Eye(2) ⊗ (2a.b)
@@ -80,4 +97,66 @@ end
   @test a + a == (2a.a) ⊗ Eye(2)
   @test 2a == (2a.a) ⊗ Eye(2)
   @test a * a == (a.a * a.a) ⊗ Eye(2)
+
+  # Eye ⊗ A
+  rng = StableRNG(123)
+  a = Eye(2) ⊗ randn(rng, 3, 3)
+  for f in MATRIX_FUNCTIONS
+    @eval begin
+      fa = $f($a)
+      @test collect(fa) ≈ $f(collect($a)) rtol = ∜(eps(real(eltype($a))))
+      @test fa.a isa Eye
+    end
+  end
+
+  fa = inv(a)
+  @test collect(fa) ≈ inv(collect(a))
+  @test fa.a isa Eye
+
+  fa = pinv(a)
+  @test collect(fa) ≈ pinv(collect(a))
+  @test fa.a isa Eye
+
+  @test det(a) ≈ det(collect(a))
+
+  # A ⊗ Eye
+  rng = StableRNG(123)
+  a = randn(rng, 3, 3) ⊗ Eye(2)
+  for f in setdiff(MATRIX_FUNCTIONS, [:atanh])
+    @eval begin
+      fa = $f($a)
+      @test collect(fa) ≈ $f(collect($a)) rtol = ∜(eps(real(eltype($a))))
+      @test fa.b isa Eye
+    end
+  end
+
+  fa = inv(a)
+  @test collect(fa) ≈ inv(collect(a))
+  @test fa.b isa Eye
+
+  fa = pinv(a)
+  @test collect(fa) ≈ pinv(collect(a))
+  @test fa.b isa Eye
+
+  @test det(a) ≈ det(collect(a))
+
+  # Eye ⊗ Eye
+  a = Eye(2) ⊗ Eye(2)
+  for f in KroneckerArrays.MATRIX_FUNCTIONS
+    @eval begin
+      @test_throws ArgumentError $f($a)
+    end
+  end
+
+  fa = inv(a)
+  @test fa == a
+  @test fa.a isa Eye
+  @test fa.b isa Eye
+
+  fa = pinv(a)
+  @test fa == a
+  @test fa.a isa Eye
+  @test fa.b isa Eye
+
+  @test det(a) ≈ det(collect(a)) ≈ 1
 end
