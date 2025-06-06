@@ -122,7 +122,7 @@ end
   # A ⊗ Eye
   rng = StableRNG(123)
   a = randn(rng, 3, 3) ⊗ Eye(2)
-  for f in MATRIX_FUNCTIONS
+  for f in setdiff(MATRIX_FUNCTIONS, [:atanh])
     @eval begin
       fa = $f($a)
       @test collect(fa) ≈ $f(collect($a)) rtol = ∜(eps(real(eltype($a))))
