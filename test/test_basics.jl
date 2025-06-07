@@ -1,5 +1,14 @@
 using FillArrays: Eye
-using KroneckerArrays: KroneckerArrays, ⊗, ×, diagonal, kron_nd
+using KroneckerArrays:
+  KroneckerArrays,
+  CartesianProductUnitRange,
+  ⊗,
+  ×,
+  cartesianproduct,
+  cartesianrange,
+  diagonal,
+  kron_nd,
+  unproduct
 using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, pinv, qr, svd, svdvals, tr
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
@@ -9,6 +18,25 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   p = [1, 2] × [3, 4, 5]
   @test length(p) == 6
   @test collect(p) == [1 × 3, 2 × 3, 1 × 4, 2 × 4, 1 × 5, 2 × 5]
+
+  r = cartesianrange(2, 3)
+  @test r ===
+    cartesianrange(2 × 3) ===
+    cartesianrange(Base.OneTo(2), Base.OneTo(3)) ===
+    cartesianrange(Base.OneTo(2) × Base.OneTo(3))
+  @test cartesianproduct(r) === Base.OneTo(2) × Base.OneTo(3)
+  @test unproduct(r) === Base.OneTo(6)
+  @test length(r) == 6
+  @test first(r) == 1
+  @test last(r) == 6
+
+  r = cartesianrange(2 × 3, 2:7)
+  @test r === cartesianrange(Base.OneTo(2) × Base.OneTo(3), 2:7)
+  @test cartesianproduct(r) === Base.OneTo(2) × Base.OneTo(3)
+  @test unproduct(r) === 2:7
+  @test length(r) == 6
+  @test first(r) == 2
+  @test last(r) == 7
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)

@@ -35,6 +35,27 @@ end
 Base.first(r::CartesianProductUnitRange) = first(r.range)
 Base.last(r::CartesianProductUnitRange) = last(r.range)
 
+cartesianproduct(r::CartesianProductUnitRange) = getfield(r, :product)
+unproduct(r::CartesianProductUnitRange) = getfield(r, :range)
+
+function CartesianProductUnitRange(p::CartesianProduct)
+  return CartesianProductUnitRange(p, Base.OneTo(length(p)))
+end
+function CartesianProductUnitRange(a, b)
+  return CartesianProductUnitRange(a × b)
+end
+to_range(a::AbstractUnitRange) = a
+to_range(i::Integer) = Base.OneTo(i)
+cartesianrange(a, b) = cartesianrange(to_range(a) × to_range(b))
+function cartesianrange(p::CartesianProduct)
+  p′ = to_range(p.a) × to_range(p.b)
+  return cartesianrange(p′, Base.OneTo(length(p′)))
+end
+function cartesianrange(p::CartesianProduct, range::AbstractUnitRange)
+  p′ = to_range(p.a) × to_range(p.b)
+  return CartesianProductUnitRange(p′, range)
+end
+
 function Base.axes(r::CartesianProductUnitRange)
   return (CartesianProductUnitRange(r.product, only(axes(r.range))),)
 end
