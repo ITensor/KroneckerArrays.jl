@@ -250,6 +250,9 @@ end
 function Base.iszero(a::KroneckerArray)
   return iszero(a.a) || iszero(a.b)
 end
+function Base.isreal(a::KroneckerArray)
+  return isreal(a.a) && isreal(a.b)
+end
 function Base.inv(a::KroneckerArray)
   return inv(a.a) ⊗ inv(a.b)
 end
@@ -269,6 +272,9 @@ function Base.:*(a::Number, b::KroneckerArray)
 end
 function Base.:*(a::KroneckerArray, b::Number)
   return a.a ⊗ (a.b * b)
+end
+function Base.:/(a::KroneckerArray, b::Number)
+  return a * inv(b)
 end
 
 function Base.:-(a::KroneckerArray)
@@ -291,26 +297,79 @@ for op in (:+, :-)
   end
 end
 
+using Base.Broadcast: AbstractArrayStyle, BroadcastStyle, Broadcasted
+struct KroneckerStyle{N,A,B} <: AbstractArrayStyle{N} end
+function KroneckerStyle{N}(a::BroadcastStyle, b::BroadcastStyle) where {N}
+  return KroneckerStyle{N,a,b}()
+end
+function KroneckerStyle{N,A,B}(v::Val{M}) where {N,A,B,M}
+  return KroneckerStyle{M,typeof(A)(v),typeof(B)(v)}()
+end
+function Base.BroadcastStyle(::Type{<:KroneckerArray{<:Any,N,A,B}}) where {N,A,B}
+  return KroneckerStyle{N}(BroadcastStyle(A), BroadcastStyle(B))
+end
+function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N}) where {N}
+  return KroneckerStyle{N}(
+    BroadcastStyle(style1.a, style2.a), BroadcastStyle(style1.b, style2.b)
+  )
+end
+function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type) where {N,A,B}
+  ax_a = map(ax -> ax.product.a, axes(bc))
+  ax_b = map(ax -> ax.product.b, axes(bc))
+  bc_a = Broadcasted(A, ax_a)
+  bc_b = Broadcasted(B, ax_b)
+  a = similar(bc_a, elt)
+  b = similar(bc_b, elt)
+  return a ⊗ b
+end
+function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:KroneckerStyle})
+  return throw(
+    ArgumentError(
+      "Arbitrary broadcasting is not supported for KroneckerArrays since they might not preserve the Kronecker structure.",
+    ),
+  )
+end
+
+function Base.map(f, a1::KroneckerArray, a_rest::KroneckerArray...)
+  return throw(
+    ArgumentError(
+      "Arbitrary mapping is not supported for KroneckerArrays since they might not preserve the Kronecker structure.",
+    ),
+  )
+end
+function Base.map!(f, dest::KroneckerArray, a1::KroneckerArray, a_rest::KroneckerArray...)
+  return throw(
+    ArgumentError(
+      "Arbitrary mapping is not supported for KroneckerArrays since they might not preserve the Kronecker structure.",
+    ),
+  )
+end
 function Base.map!(::typeof(identity), dest::KroneckerArray, a::KroneckerArray)
   dest.a .= a.a
   dest.b .= a.b
   return dest
 end
-function Base.map!(::typeof(+), dest::KroneckerArray, a::KroneckerArray, b::KroneckerArray)
-  if a.b == b.b
-    map!(+, dest.a, a.a, b.a)
-    dest.b .= a.b
-  elseif a.a == b.a
-    dest.a .= a.a
-    map!(+, dest.b, a.b, b.b)
-  else
-    throw(
-      ArgumentError(
-        "KroneckerArray addition is only supported when the first or second arguments match.",
-      ),
+for f in [:+, :-]
+  @eval begin
+    function Base.map!(
+      ::typeof($f), dest::KroneckerArray, a::KroneckerArray, b::KroneckerArray
     )
+      if a.b == b.b
+        map!($f, dest.a, a.a, b.a)
+        dest.b .= a.b
+      elseif a.a == b.a
+        dest.a .= a.a
+        map!($f, dest.b, a.b, b.b)
+      else
+        throw(
+          ArgumentError(
+            "KroneckerArray addition is only supported when the first or second arguments match.",
+          ),
+        )
+      end
+      return dest
+    end
   end
-  return dest
 end
 function Base.map!(
   f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerArray, a::KroneckerArray
@@ -325,6 +384,11 @@ function Base.map!(
   dest.a .= a.a
   dest.b .= f.f.(a.b, f.x)
   return dest
+end
+function Base.map!(
+  f::Base.Fix2{typeof(/),<:Number}, dest::KroneckerArray, a::KroneckerArray
+)
+  return map!(Base.Fix2(*, inv(f.x)), dest, a)
 end
 
 using LinearAlgebra:
@@ -343,9 +407,11 @@ using LinearAlgebra:
   svd,
   svdvals,
   tr
-diagonal(a::AbstractArray) = Diagonal(a)
-function diagonal(a::KroneckerArray)
-  return Diagonal(a.a) ⊗ Diagonal(a.b)
+
+using DiagonalArrays: DiagonalArrays, diagonal
+DiagonalArrays.diagonal(a::AbstractArray) = Diagonal(a)
+function DiagonalArrays.diagonal(a::KroneckerArray)
+  return diagonal(a.a) ⊗ diagonal(a.b)
 end
 
 function Base.:*(a::KroneckerArray, b::KroneckerArray)
@@ -506,6 +572,19 @@ const EyeKronecker{T,A<:Eye{T},B<:AbstractMatrix{T}} = KroneckerMatrix{T,A,B}
 const KroneckerEye{T,A<:AbstractMatrix{T},B<:Eye{T}} = KroneckerMatrix{T,A,B}
 const EyeEye{T,A<:Eye{T},B<:Eye{T}} = KroneckerMatrix{T,A,B}
 
+using DerivableInterfaces: DerivableInterfaces, zero!
+function DerivableInterfaces.zero!(a::EyeKronecker)
+  zero!(a.b)
+  return a
+end
+function DerivableInterfaces.zero!(a::KroneckerEye)
+  zero!(a.a)
+  return a
+end
+function DerivableInterfaces.zero!(a::EyeEye)
+  return throw(ArgumentError("Can't zero out `Eye ⊗ Eye`."))
+end
+
 function Base.:*(a::Number, b::EyeKronecker)
   return b.a ⊗ (a * b.b)
 end
@@ -580,29 +659,44 @@ end
 function Base.map!(::typeof(identity), dest::EyeEye, a::EyeEye)
   return error("Can't write in-place.")
 end
-function Base.map!(f::typeof(+), dest::EyeKronecker, a::EyeKronecker, b::EyeKronecker)
-  if dest.a ≠ a.a ≠ b.a
-    throw(
-      ArgumentError(
-        "KroneckerArray addition is only supported when the first or second arguments match.",
-      ),
-    )
+for f in [:+, :-]
+  @eval begin
+    function Base.map!(::typeof($f), dest::EyeKronecker, a::EyeKronecker, b::EyeKronecker)
+      if dest.a ≠ a.a ≠ b.a
+        throw(
+          ArgumentError(
+            "KroneckerArray addition is only supported when the first or second arguments match.",
+          ),
+        )
+      end
+      map!($f, dest.b, a.b, b.b)
+      return dest
+    end
+    function Base.map!(::typeof($f), dest::KroneckerEye, a::KroneckerEye, b::KroneckerEye)
+      if dest.b ≠ a.b ≠ b.b
+        throw(
+          ArgumentError(
+            "KroneckerArray addition is only supported when the first or second arguments match.",
+          ),
+        )
+      end
+      map!($f, dest.a, a.a, b.a)
+      return dest
+    end
+    function Base.map!(::typeof($f), dest::EyeEye, a::EyeEye, b::EyeEye)
+      return error("Can't write in-place.")
+    end
   end
-  map!(f, dest.b, a.b, b.b)
+end
+function Base.map!(f::typeof(-), dest::EyeKronecker, a::EyeKronecker)
+  map!(f, dest.b, a.b)
   return dest
 end
-function Base.map!(f::typeof(+), dest::KroneckerEye, a::KroneckerEye, b::KroneckerEye)
-  if dest.b ≠ a.b ≠ b.b
-    throw(
-      ArgumentError(
-        "KroneckerArray addition is only supported when the first or second arguments match.",
-      ),
-    )
-  end
+function Base.map!(f::typeof(-), dest::KroneckerEye, a::KroneckerEye)
   map!(f, dest.a, a.a, b.a)
   return dest
 end
-function Base.map!(f::typeof(+), dest::EyeEye, a::EyeEye, b::EyeEye)
+function Base.map!(f::typeof(-), dest::EyeEye, a::EyeEye)
   return error("Can't write in-place.")
 end
 function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
@@ -811,6 +905,39 @@ using FillArrays: SquareEye
 const SquareEyeKronecker{T,A<:SquareEye{T},B<:AbstractMatrix{T}} = KroneckerMatrix{T,A,B}
 const KroneckerSquareEye{T,A<:AbstractMatrix{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
 const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
+
+# Special case of similar for `SquareEye ⊗ A` and `A ⊗ SquareEye`.
+function Base.similar(
+  arrayt::Type{<:SquareEyeKronecker{<:Any,<:Any,A}},
+  elt::Type,
+  axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
+) where {A}
+  ax_a = map(ax -> ax.product.a, axs)
+  ax_b = map(ax -> ax.product.b, axs)
+  eye_ax_a = (only(unique(ax_a)),)
+  return Eye{elt}(eye_ax_a) ⊗ similar(A, elt, ax_b)
+end
+function Base.similar(
+  arrayt::Type{<:KroneckerSquareEye{<:Any,A}},
+  elt::Type,
+  axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
+) where {A}
+  ax_a = map(ax -> ax.product.a, axs)
+  ax_b = map(ax -> ax.product.b, axs)
+  eye_ax_b = (only(unique(ax_b)),)
+  return similar(A, elt, ax_a) ⊗ Eye{elt}(eye_ax_b)
+end
+function Base.similar(
+  arrayt::Type{<:SquareEyeSquareEye},
+  elt::Type,
+  axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
+)
+  ax_a = map(ax -> ax.product.a, axs)
+  ax_b = map(ax -> ax.product.b, axs)
+  eye_ax_a = (only(unique(ax_a)),)
+  eye_ax_b = (only(unique(ax_b)),)
+  return Eye{elt}(eye_ax_a) ⊗ Eye{elt}(eye_ax_b)
+end
 
 struct SquareEyeAlgorithm{KWargs<:NamedTuple} <: AbstractAlgorithm
   kwargs::KWargs
