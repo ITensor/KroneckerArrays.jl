@@ -1,6 +1,10 @@
+using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
+using DerivableInterfaces: zero!
 using FillArrays: Eye
 using KroneckerArrays:
   KroneckerArrays,
+  KroneckerArray,
+  KroneckerStyle,
   CartesianProductUnitRange,
   ⊗,
   ×,
@@ -9,7 +13,7 @@ using KroneckerArrays:
   diagonal,
   kron_nd,
   unproduct
-using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, pinv, qr, svd, svdvals, tr
+using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, svdvals, tr
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
 
@@ -41,8 +45,10 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   c = a.a ⊗ b.b
+  @test a isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
   @test similar(typeof(a), (2, 3)) isa Matrix{elt}
   @test size(similar(typeof(a), (2, 3))) == (2, 3)
+  @test isreal(a) == (elt <: Real)
   @test a[1 × 1, 1 × 1] == a.a[1, 1] * a.b[1, 1]
   @test a[1 × 3, 2 × 1] == a.a[1, 2] * a.b[3, 1]
   @test a[1 × (2:3), 2 × 1] == a.a[1, 2] * a.b[2:3, 1]
@@ -60,6 +66,7 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test collect(-a) == -collect(a)
   @test collect(3 * a) ≈ 3 * collect(a)
   @test collect(a * 3) ≈ collect(a) * 3
+  @test collect(a / 3) ≈ collect(a) / 3
   @test a + a == 2a
   @test iszero(a - a)
   @test collect(a + c) ≈ collect(a) + collect(c)
@@ -68,6 +75,61 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
     @test collect(f(a)) ≈ f(collect(a))
   end
   @test tr(a) ≈ tr(collect(a))
+  @test norm(a) ≈ norm(collect(a))
+
+  # Broadcasting
+  style = KroneckerStyle(BroadcastStyle(typeof(a.a)), BroadcastStyle(typeof(a.b)))
+  @test BroadcastStyle(typeof(a)) === style
+  @test_throws "not supported" sin.(a)
+  a′ = similar(a)
+  @test_throws "not supported" a′ .= sin.(a)
+  a′ = similar(a)
+  @test_broken a′ .= 2 .* a
+  bc = broadcasted(+, a, a)
+  @test bc.style === style
+  @test similar(bc, elt) isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
+  @test_broken copy(bc)
+  bc = broadcasted(*, 2, a)
+  @test bc.style === style
+  @test_broken copy(bc)
+
+  # Mapping
+  @test_throws "not supported" map(sin, a)
+  @test_broken map(Base.Fix1(*, 2), a)
+  a′ = similar(a)
+  @test_throws "not supported" map!(sin, a′, a)
+  a′ = similar(a)
+  map!(identity, a′, a)
+  @test collect(a′) ≈ collect(a)
+  a′ = similar(a)
+  map!(+, a′, a, a)
+  @test collect(a′) ≈ 2 * collect(a)
+  a′ = similar(a)
+  map!(-, a′, a, a)
+  @test norm(collect(a′)) ≈ 0
+  a′ = similar(a)
+  map!(Base.Fix1(*, 2), a′, a)
+  @test collect(a′) ≈ 2 * collect(a)
+  a′ = similar(a)
+  map!(Base.Fix2(*, 2), a′, a)
+  @test collect(a′) ≈ 2 * collect(a)
+  a′ = similar(a)
+  map!(Base.Fix2(/, 2), a′, a)
+  @test collect(a′) ≈ collect(a) / 2
+  a′ = similar(a)
+  map!(conj, a′, a)
+  @test collect(a′) ≈ conj(collect(a))
+
+  if elt <: Real
+    @test real(a) == a
+  else
+    @test_throws ArgumentError real(a)
+  end
+  if elt <: Real
+    @test iszero(imag(a))
+  else
+    @test_throws ArgumentError imag(a)
+  end
 
   a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
   @test collect(a) ≈ kron_nd(a.a, a.b)
@@ -125,6 +187,110 @@ end
   @test a + a == (2a.a) ⊗ Eye(2)
   @test 2a == (2a.a) ⊗ Eye(2)
   @test a * a == (a.a * a.a) ⊗ Eye(2)
+
+  # similar
+  a = Eye(2) ⊗ randn(3, 3)
+  for a′ in (
+    similar(a),
+    similar(a, eltype(a)),
+    similar(a, axes(a)),
+    similar(a, eltype(a), axes(a)),
+    similar(typeof(a), axes(a)),
+  )
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
+    @test a′.a === a.a
+  end
+
+  a = Eye(2) ⊗ randn(3, 3)
+  for args in ((Float32,), (Float32, axes(a)))
+    a′ = similar(a, args...)
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{Float32,ndims(a)}
+    @test a′.a === Eye{Float32}(2)
+  end
+
+  a = randn(3, 3) ⊗ Eye(2)
+  for a′ in (
+    similar(a),
+    similar(a, eltype(a)),
+    similar(a, axes(a)),
+    similar(a, eltype(a), axes(a)),
+    similar(typeof(a), axes(a)),
+  )
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
+    @test a′.b === a.b
+  end
+
+  a = randn(3, 3) ⊗ Eye(2)
+  for args in ((Float32,), (Float32, axes(a)))
+    a′ = similar(a, args...)
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{Float32,ndims(a)}
+    @test a′.b === Eye{Float32}(2)
+  end
+
+  a = Eye(3) ⊗ Eye(2)
+  for a′ in (
+    similar(a),
+    similar(a, eltype(a)),
+    similar(a, axes(a)),
+    similar(a, eltype(a), axes(a)),
+    similar(typeof(a), axes(a)),
+  )
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
+    @test a′.a === a.a
+    @test a′.b === a.b
+  end
+
+  a = Eye(3) ⊗ Eye(2)
+  for args in ((Float32,), (Float32, axes(a)))
+    a′ = similar(a, args...)
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{Float32,ndims(a)}
+    @test a′.a === Eye{Float32}(3)
+    @test a′.b === Eye{Float32}(2)
+  end
+
+  # DerivableInterfaces.zero!
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    zero!(a)
+    @test iszero(a)
+  end
+  a = Eye(3) ⊗ Eye(2)
+  @test_throws ArgumentError zero!(a)
+
+  # map!(+, ...)
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    a′ = similar(a)
+    map!(+, a′, a, a)
+    @test collect(a′) ≈ 2 * collect(a)
+  end
+  a = Eye(3) ⊗ Eye(2)
+  a′ = similar(a)
+  @test_throws ErrorException map!(+, a′, a, a)
+
+  # map!(-, ...)
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    a′ = similar(a)
+    map!(-, a′, a, a)
+    @test norm(collect(a′)) ≈ 0
+  end
+  a = Eye(3) ⊗ Eye(2)
+  a′ = similar(a)
+  @test_throws ErrorException map!(-, a′, a, a)
+
+  # map!(-, b, a)
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    a′ = similar(a)
+    map!(-, a′, a)
+    @test collect(a′) ≈ -collect(a)
+  end
+  a = Eye(3) ⊗ Eye(2)
+  a′ = similar(a)
+  @test_throws ErrorException map!(-, a′, a)
 
   # Eye ⊗ A
   rng = StableRNG(123)

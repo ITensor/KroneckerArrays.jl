@@ -1,10 +1,11 @@
 name = "KroneckerArrays"
 uuid = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.1.8"
+version = "0.1.9"
 
 [deps]
 DerivableInterfaces = "6c5e35bf-e59e-4898-b73c-732dcc4ba65f"
+DiagonalArrays = "74fd4be6-21e2-4f6f-823a-4360d37c7a77"
 FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
 GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -12,6 +13,7 @@ MatrixAlgebraKit = "6c742aac-3347-4629-af66-fc926824e5e4"
 
 [compat]
 DerivableInterfaces = "0.4.5"
+DiagonalArrays = "0.3.5"
 FillArrays = "1.13.0"
 GPUArraysCore = "0.2.0"
 LinearAlgebra = "1.10"
