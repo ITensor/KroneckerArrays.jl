@@ -390,6 +390,11 @@ function Base.map!(
 )
   return map!(Base.Fix2(*, inv(f.x)), dest, a)
 end
+function Base.map!(::typeof(conj), dest::KroneckerArray, a::KroneckerArray)
+  dest.a .= conj.(a.a)
+  dest.b .= conj.(a.b)
+  return dest
+end
 
 using LinearAlgebra:
   LinearAlgebra,
@@ -409,7 +414,6 @@ using LinearAlgebra:
   tr
 
 using DiagonalArrays: DiagonalArrays, diagonal
-DiagonalArrays.diagonal(a::AbstractArray) = Diagonal(a)
 function DiagonalArrays.diagonal(a::KroneckerArray)
   return diagonal(a.a) ⊗ diagonal(a.b)
 end
@@ -436,6 +440,23 @@ function LinearAlgebra.tr(a::KroneckerArray)
 end
 function LinearAlgebra.norm(a::KroneckerArray, p::Int=2)
   return norm(a.a, p) ⊗ norm(a.b, p)
+end
+
+function Base.real(a::KroneckerArray)
+  if iszero(imag(a.a)) || iszero(imag(a.b))
+    return real(a.a) ⊗ real(a.b)
+  elseif iszero(real(a.a)) || iszero(real(a.b))
+    return -imag(a.a) ⊗ imag(a.b)
+  end
+  return real(a.a) ⊗ real(a.b) - imag(a.a) ⊗ imag(a.b)
+end
+function Base.imag(a::KroneckerArray)
+  if iszero(imag(a.a)) || iszero(real(a.b))
+    return real(a.a) ⊗ imag(a.b)
+  elseif iszero(real(a.a)) || iszero(imag(a.b))
+    return imag(a.a) ⊗ real(a.b)
+  end
+  return real(a.a) ⊗ imag(a.b) + imag(a.a) ⊗ real(a.b)
 end
 
 using MatrixAlgebraKit: MatrixAlgebraKit, diagview
