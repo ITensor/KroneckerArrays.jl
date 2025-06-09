@@ -302,6 +302,9 @@ struct KroneckerStyle{N,A,B} <: AbstractArrayStyle{N} end
 function KroneckerStyle{N}(a::BroadcastStyle, b::BroadcastStyle) where {N}
   return KroneckerStyle{N,a,b}()
 end
+function KroneckerStyle(a::AbstractArrayStyle{N}, b::AbstractArrayStyle{N}) where {N}
+  return KroneckerStyle{N}(a, b)
+end
 function KroneckerStyle{N,A,B}(v::Val{M}) where {N,A,B,M}
   return KroneckerStyle{M,typeof(A)(v),typeof(B)(v)}()
 end
@@ -316,8 +319,8 @@ end
 function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type) where {N,A,B}
   ax_a = map(ax -> ax.product.a, axes(bc))
   ax_b = map(ax -> ax.product.b, axes(bc))
-  bc_a = Broadcasted(A, ax_a)
-  bc_b = Broadcasted(B, ax_b)
+  bc_a = Broadcasted(A, nothing, (), ax_a)
+  bc_b = Broadcasted(B, nothing, (), ax_b)
   a = similar(bc_a, elt)
   b = similar(bc_b, elt)
   return a ⊗ b
