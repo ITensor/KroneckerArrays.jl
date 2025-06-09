@@ -717,7 +717,7 @@ function Base.map!(f::typeof(-), dest::EyeKronecker, a::EyeKronecker)
   return dest
 end
 function Base.map!(f::typeof(-), dest::KroneckerEye, a::KroneckerEye)
-  map!(f, dest.a, a.a, b.a)
+  map!(f, dest.a, a.a)
   return dest
 end
 function Base.map!(f::typeof(-), dest::EyeEye, a::EyeEye)
@@ -932,30 +932,65 @@ const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,
 
 # Special case of similar for `SquareEye ⊗ A` and `A ⊗ SquareEye`.
 function Base.similar(
-  arrayt::Type{<:SquareEyeKronecker{<:Any,<:Any,A}},
+  a::SquareEyeKronecker,
   elt::Type,
+  axs::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+)
+  ax_a = map(ax -> ax.product.a, axs)
+  ax_b = map(ax -> ax.product.b, axs)
+  eye_ax_a = (only(unique(ax_a)),)
+  return Eye{elt}(eye_ax_a) ⊗ similar(a.b, elt, ax_b)
+end
+function Base.similar(
+  a::KroneckerSquareEye,
+  elt::Type,
+  axs::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+)
+  ax_a = map(ax -> ax.product.a, axs)
+  ax_b = map(ax -> ax.product.b, axs)
+  eye_ax_b = (only(unique(ax_b)),)
+  return similar(a.a, elt, ax_a) ⊗ Eye{elt}(eye_ax_b)
+end
+function Base.similar(
+  a::SquareEyeSquareEye,
+  elt::Type,
+  axs::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+)
+  ax_a = map(ax -> ax.product.a, axs)
+  ax_b = map(ax -> ax.product.b, axs)
+  eye_ax_a = (only(unique(ax_a)),)
+  eye_ax_b = (only(unique(ax_b)),)
+  return Eye{elt}(eye_ax_a) ⊗ Eye{elt}(eye_ax_b)
+end
+
+function Base.similar(
+  arrayt::Type{<:SquareEyeKronecker{<:Any,<:Any,A}},
   axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
 ) where {A}
   ax_a = map(ax -> ax.product.a, axs)
   ax_b = map(ax -> ax.product.b, axs)
   eye_ax_a = (only(unique(ax_a)),)
-  return Eye{elt}(eye_ax_a) ⊗ similar(A, elt, ax_b)
+  return Eye{eltype(arrayt)}(eye_ax_a) ⊗ similar(A, ax_b)
 end
 function Base.similar(
   arrayt::Type{<:KroneckerSquareEye{<:Any,A}},
-  elt::Type,
   axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
 ) where {A}
   ax_a = map(ax -> ax.product.a, axs)
   ax_b = map(ax -> ax.product.b, axs)
   eye_ax_b = (only(unique(ax_b)),)
-  return similar(A, elt, ax_a) ⊗ Eye{elt}(eye_ax_b)
+  return similar(A, ax_a) ⊗ Eye{eltype(arrayt)}(eye_ax_b)
 end
 function Base.similar(
-  arrayt::Type{<:SquareEyeSquareEye},
-  elt::Type,
-  axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
+  arrayt::Type{<:SquareEyeSquareEye}, axs::NTuple{2,CartesianProductUnitRange{<:Integer}}
 )
+  elt = eltype(arrayt)
   ax_a = map(ax -> ax.product.a, axs)
   ax_b = map(ax -> ax.product.b, axs)
   eye_ax_a = (only(unique(ax_a)),)

@@ -1,4 +1,5 @@
 using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
+using DerivableInterfaces: zero!
 using FillArrays: Eye
 using KroneckerArrays:
   KroneckerArrays,
@@ -186,6 +187,110 @@ end
   @test a + a == (2a.a) ⊗ Eye(2)
   @test 2a == (2a.a) ⊗ Eye(2)
   @test a * a == (a.a * a.a) ⊗ Eye(2)
+
+  # similar
+  a = Eye(2) ⊗ randn(3, 3)
+  for a′ in (
+    similar(a),
+    similar(a, eltype(a)),
+    similar(a, axes(a)),
+    similar(a, eltype(a), axes(a)),
+    similar(typeof(a), axes(a)),
+  )
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
+    @test a′.a === a.a
+  end
+
+  a = Eye(2) ⊗ randn(3, 3)
+  for args in ((Float32,), (Float32, axes(a)))
+    a′ = similar(a, args...)
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{Float32,ndims(a)}
+    @test a′.a === Eye{Float32}(2)
+  end
+
+  a = randn(3, 3) ⊗ Eye(2)
+  for a′ in (
+    similar(a),
+    similar(a, eltype(a)),
+    similar(a, axes(a)),
+    similar(a, eltype(a), axes(a)),
+    similar(typeof(a), axes(a)),
+  )
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
+    @test a′.b === a.b
+  end
+
+  a = randn(3, 3) ⊗ Eye(2)
+  for args in ((Float32,), (Float32, axes(a)))
+    a′ = similar(a, args...)
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{Float32,ndims(a)}
+    @test a′.b === Eye{Float32}(2)
+  end
+
+  a = Eye(3) ⊗ Eye(2)
+  for a′ in (
+    similar(a),
+    similar(a, eltype(a)),
+    similar(a, axes(a)),
+    similar(a, eltype(a), axes(a)),
+    similar(typeof(a), axes(a)),
+  )
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
+    @test a′.a === a.a
+    @test a′.b === a.b
+  end
+
+  a = Eye(3) ⊗ Eye(2)
+  for args in ((Float32,), (Float32, axes(a)))
+    a′ = similar(a, args...)
+    @test size(a′) == (6, 6)
+    @test a′ isa KroneckerArray{Float32,ndims(a)}
+    @test a′.a === Eye{Float32}(3)
+    @test a′.b === Eye{Float32}(2)
+  end
+
+  # DerivableInterfaces.zero!
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    zero!(a)
+    @test iszero(a)
+  end
+  a = Eye(3) ⊗ Eye(2)
+  @test_throws ArgumentError zero!(a)
+
+  # map!(+, ...)
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    a′ = similar(a)
+    map!(+, a′, a, a)
+    @test collect(a′) ≈ 2 * collect(a)
+  end
+  a = Eye(3) ⊗ Eye(2)
+  a′ = similar(a)
+  @test_throws ErrorException map!(+, a′, a, a)
+
+  # map!(-, ...)
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    a′ = similar(a)
+    map!(-, a′, a, a)
+    @test norm(collect(a′)) ≈ 0
+  end
+  a = Eye(3) ⊗ Eye(2)
+  a′ = similar(a)
+  @test_throws ErrorException map!(-, a′, a, a)
+
+  # map!(-, b, a)
+  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
+    a′ = similar(a)
+    map!(-, a′, a)
+    @test collect(a′) ≈ -collect(a)
+  end
+  a = Eye(3) ⊗ Eye(2)
+  a′ = similar(a)
+  @test_throws ErrorException map!(-, a′, a)
 
   # Eye ⊗ A
   rng = StableRNG(123)
