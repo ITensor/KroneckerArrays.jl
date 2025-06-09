@@ -44,6 +44,8 @@ herm(a) = parent(hermitianpart(a))
   a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d, v = eigh_full(a)
   @test a * v ≈ v * d
+  @test eltype(d) === real(elt)
+  @test eltype(v) === elt
 
   a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   @test_throws MethodError eigh_trunc(a)
@@ -51,6 +53,7 @@ herm(a) = parent(hermitianpart(a))
   a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d = eigh_vals(a)
   @test d ≈ diag(eigh_full(a)[1])
+  @test eltype(d) === real(elt)
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   u, c = qr_compact(a)
@@ -103,12 +106,18 @@ herm(a) = parent(hermitianpart(a))
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   u, s, v = svd_compact(a)
   @test u * s * v ≈ a
+  @test eltype(u) === elt
+  @test eltype(s) === real(elt)
+  @test eltype(v) === elt
   @test collect(u'u) ≈ I
   @test collect(v * v') ≈ I
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   u, s, v = svd_full(a)
   @test u * s * v ≈ a
+  @test eltype(u) === elt
+  @test eltype(s) === real(elt)
+  @test eltype(v) === elt
   @test collect(u'u) ≈ I
   @test collect(v * v') ≈ I
 
@@ -121,26 +130,48 @@ herm(a) = parent(hermitianpart(a))
 end
 
 @testset "MatrixAlgebraKit + Eye" begin
-  for f in (eig_full, eigh_full)
-    a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
-    d, v = @constinferred f(a)
+  for elt in (Float32, ComplexF32)
+    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    d, v = @constinferred eig_full(a)
     @test a * v ≈ v * d
-    @test arguments(d, 1) isa Eye
-    @test arguments(v, 1) isa Eye
+    @test arguments(d, 1) isa Eye{complex(elt)}
+    @test arguments(v, 1) isa Eye{complex(elt)}
 
-    a = parent(hermitianpart(randn(3, 3))) ⊗ Eye(3)
-    d, v = @constinferred f(a)
+    a = parent(hermitianpart(randn(elt, 3, 3))) ⊗ Eye{elt}(3)
+    d, v = @constinferred eig_full(a)
     @test a * v ≈ v * d
-    @test arguments(d, 2) isa Eye
-    @test arguments(v, 2) isa Eye
+    @test arguments(d, 2) isa Eye{complex(elt)}
+    @test arguments(v, 2) isa Eye{complex(elt)}
 
-    a = Eye(3) ⊗ Eye(3)
-    d, v = @constinferred f(a)
+    a = Eye{elt}(3) ⊗ Eye{elt}(3)
+    d, v = @constinferred eig_full(a)
     @test a * v ≈ v * d
-    @test arguments(d, 1) isa Eye
-    @test arguments(d, 2) isa Eye
-    @test arguments(v, 1) isa Eye
-    @test arguments(v, 2) isa Eye
+    @test arguments(d, 1) isa Eye{complex(elt)}
+    @test arguments(d, 2) isa Eye{complex(elt)}
+    @test arguments(v, 1) isa Eye{complex(elt)}
+    @test arguments(v, 2) isa Eye{complex(elt)}
+  end
+
+  for elt in (Float32, ComplexF32)
+    a = Eye{elt}(3) ⊗ parent(hermitianpart(randn(elt, 3, 3)))
+    d, v = @constinferred eigh_full(a)
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa Eye{real(elt)}
+    @test arguments(v, 1) isa Eye{elt}
+
+    a = parent(hermitianpart(randn(elt, 3, 3))) ⊗ Eye{elt}(3)
+    d, v = @constinferred eigh_full(a)
+    @test a * v ≈ v * d
+    @test arguments(d, 2) isa Eye{real(elt)}
+    @test arguments(v, 2) isa Eye{elt}
+
+    a = Eye{elt}(3) ⊗ Eye{elt}(3)
+    d, v = @constinferred eigh_full(a)
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa Eye{real(elt)}
+    @test arguments(d, 2) isa Eye{real(elt)}
+    @test arguments(v, 1) isa Eye{elt}
+    @test arguments(v, 2) isa Eye{elt}
   end
 
   for f in (eig_trunc, eigh_trunc)
@@ -211,77 +242,110 @@ end
   end
 
   for f in (svd_compact, svd_full)
-    a = Eye(3) ⊗ randn(3, 3)
-    u, s, v = @constinferred f(a)
-    @test u * s * v ≈ a
-    @test arguments(u, 1) isa Eye
-    @test arguments(s, 1) isa Eye
-    @test arguments(v, 1) isa Eye
+    for elt in (Float32, ComplexF32)
+      a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+      u, s, v = @constinferred f(a)
+      @test u * s * v ≈ a
+      @test eltype(u) === elt
+      @test eltype(s) === real(elt)
+      @test eltype(v) === elt
+      @test arguments(u, 1) isa Eye{elt}
+      @test arguments(s, 1) isa Eye{real(elt)}
+      @test arguments(v, 1) isa Eye{elt}
 
-    a = randn(3, 3) ⊗ Eye(3)
-    u, s, v = @constinferred f(a)
-    @test u * s * v ≈ a
-    @test arguments(u, 2) isa Eye
-    @test arguments(s, 2) isa Eye
-    @test arguments(v, 2) isa Eye
+      a = randn(elt, 3, 3) ⊗ Eye{elt}(3)
+      u, s, v = @constinferred f(a)
+      @test u * s * v ≈ a
+      @test eltype(u) === elt
+      @test eltype(s) === real(elt)
+      @test eltype(v) === elt
+      @test arguments(u, 2) isa Eye{elt}
+      @test arguments(s, 2) isa Eye{real(elt)}
+      @test arguments(v, 2) isa Eye{elt}
 
-    a = Eye(3) ⊗ Eye(3)
-    u, s, v = @constinferred f(a)
-    @test u * s * v ≈ a
-    @test arguments(u, 1) isa Eye
-    @test arguments(s, 1) isa Eye
-    @test arguments(v, 1) isa Eye
-    @test arguments(u, 2) isa Eye
-    @test arguments(s, 2) isa Eye
-    @test arguments(v, 2) isa Eye
+      a = Eye{elt}(3) ⊗ Eye{elt}(3)
+      u, s, v = @constinferred f(a)
+      @test u * s * v ≈ a
+      @test eltype(u) === elt
+      @test eltype(s) === real(elt)
+      @test eltype(v) === elt
+      @test arguments(u, 1) isa Eye{elt}
+      @test arguments(s, 1) isa Eye{real(elt)}
+      @test arguments(v, 1) isa Eye{elt}
+      @test arguments(u, 2) isa Eye{elt}
+      @test arguments(s, 2) isa Eye{real(elt)}
+      @test arguments(v, 2) isa Eye{elt}
+    end
   end
 
   # svd_trunc
-  a = Eye(3) ⊗ randn(3, 3)
-  u, s, v = svd_trunc(a; trunc=(; maxrank=7))
-  u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
-  @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  @test arguments(u, 1) isa Eye
-  @test arguments(s, 1) isa Eye
-  @test arguments(v, 1) isa Eye
-  @test size(u) == (9, 6)
-  @test size(s) == (6, 6)
-  @test size(v) == (6, 9)
+  for elt in (Float32, ComplexF32)
+    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    # TODO: Type inference is broken for `svd_trunc`,
+    # look into fixing it.
+    # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
+    u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+    @test eltype(u) === elt
+    @test eltype(s) === real(elt)
+    @test eltype(v) === elt
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+    @test arguments(u, 1) isa Eye{elt}
+    @test arguments(s, 1) isa Eye{real(elt)}
+    @test arguments(v, 1) isa Eye{elt}
+    @test size(u) == (9, 6)
+    @test size(s) == (6, 6)
+    @test size(v) == (6, 9)
+  end
 
-  a = randn(3, 3) ⊗ Eye(3)
-  u, s, v = svd_trunc(a; trunc=(; maxrank=7))
-  u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
-  @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  @test arguments(u, 2) isa Eye
-  @test arguments(s, 2) isa Eye
-  @test arguments(v, 2) isa Eye
-  @test size(u) == (9, 6)
-  @test size(s) == (6, 6)
-  @test size(v) == (6, 9)
+  for elt in (Float32, ComplexF32)
+    a = randn(elt, 3, 3) ⊗ Eye{elt}(3)
+    # TODO: Type inference is broken for `svd_trunc`,
+    # look into fixing it.
+    # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
+    u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+    @test eltype(u) === elt
+    @test eltype(s) === real(elt)
+    @test eltype(v) === elt
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+    @test arguments(u, 2) isa Eye{elt}
+    @test arguments(s, 2) isa Eye{real(elt)}
+    @test arguments(v, 2) isa Eye{elt}
+    @test size(u) == (9, 6)
+    @test size(s) == (6, 6)
+    @test size(v) == (6, 9)
+  end
 
   a = Eye(3) ⊗ Eye(3)
   @test_throws ArgumentError svd_trunc(a)
 
   # svd_vals
-  a = Eye(3) ⊗ randn(3, 3)
-  d = @constinferred svd_vals(a)
-  d′ = svd_vals(Matrix(a))
-  @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
-  @test arguments(d, 1) isa Ones
-  @test arguments(d, 2) ≈ svd_vals(arguments(a, 2))
+  for elt in (Float32, ComplexF32)
+    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    d = @constinferred svd_vals(a)
+    d′ = svd_vals(Matrix(a))
+    @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
+    @test arguments(d, 1) isa Ones{real(elt)}
+    @test arguments(d, 2) ≈ svd_vals(arguments(a, 2))
+  end
 
-  a = randn(3, 3) ⊗ Eye(3)
-  d = @constinferred svd_vals(a)
-  d′ = svd_vals(Matrix(a))
-  @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
-  @test arguments(d, 2) isa Ones
-  @test arguments(d, 1) ≈ svd_vals(arguments(a, 1))
+  for elt in (Float32, ComplexF32)
+    a = randn(elt, 3, 3) ⊗ Eye{elt}(3)
+    d = @constinferred svd_vals(a)
+    d′ = svd_vals(Matrix(a))
+    @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
+    @test arguments(d, 2) isa Ones{real(elt)}
+    @test arguments(d, 1) ≈ svd_vals(arguments(a, 1))
+  end
 
-  a = Eye(3) ⊗ Eye(3)
-  d = @constinferred svd_vals(a)
-  @test d == Ones(3) ⊗ Ones(3)
-  @test arguments(d, 1) isa Ones
-  @test arguments(d, 2) isa Ones
+  for elt in (Float32, ComplexF32)
+    a = Eye{elt}(3) ⊗ Eye{elt}(3)
+    d = @constinferred svd_vals(a)
+    @test d == Ones(3) ⊗ Ones(3)
+    @test arguments(d, 1) isa Ones{real(elt)}
+    @test arguments(d, 2) isa Ones{real(elt)}
+  end
 
   # left_null
   a = Eye(3) ⊗ randn(3, 3)

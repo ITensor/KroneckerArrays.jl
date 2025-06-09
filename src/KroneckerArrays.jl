@@ -1070,8 +1070,6 @@ for f in [:left_null!, :right_null!]
   end
 end
 for f in [
-  :eig_full!,
-  :eigh_full!,
   :qr_compact!,
   :qr_full!,
   :left_orth!,
@@ -1086,10 +1084,14 @@ for f in [
     _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = (a, a)
   end
 end
+_initialize_output_squareeye(::typeof(eig_full!), a::SquareEye) = complex.((a, a))
+_initialize_output_squareeye(::typeof(eig_full!), a::SquareEye, alg) = complex.((a, a))
+_initialize_output_squareeye(::typeof(eigh_full!), a::SquareEye) = (real(a), a)
+_initialize_output_squareeye(::typeof(eigh_full!), a::SquareEye, alg) = (real(a), a)
 for f in [:svd_compact!, :svd_full!]
   @eval begin
-    _initialize_output_squareeye(::typeof($f), a::SquareEye) = (a, a, a)
-    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = (a, a, a)
+    _initialize_output_squareeye(::typeof($f), a::SquareEye) = (a, real(a), a)
+    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = (a, real(a), a)
   end
 end
 
@@ -1173,10 +1175,12 @@ function MatrixAlgebraKit.right_null!(
   return throw(MethodError(right_null!, (a, F)))
 end
 
-for f in [:eig_vals!, :eigh_vals!, :svd_vals!]
+_initialize_output_squareeye(::typeof(eig_vals!), a::SquareEye) = parent(a)
+_initialize_output_squareeye(::typeof(eig_vals!), a::SquareEye, alg) = parent(a)
+for f in [:eigh_vals!, svd_vals!]
   @eval begin
-    _initialize_output_squareeye(::typeof($f), a::SquareEye) = parent(a)
-    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = parent(a)
+    _initialize_output_squareeye(::typeof($f), a::SquareEye) = real(parent(a))
+    _initialize_output_squareeye(::typeof($f), a::SquareEye, alg) = real(parent(a))
   end
 end
 
