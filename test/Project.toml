@@ -13,6 +13,7 @@ TestExtras = "5ed8adda-3752-4e41-b88a-e8b09835ee3a"
 
 [compat]
 Aqua = "0.8"
+DerivableInterfaces = "0.5"
 FillArrays = "1"
 KroneckerArrays = "0.1"
 LinearAlgebra = "1.10"
