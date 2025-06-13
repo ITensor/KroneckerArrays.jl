@@ -92,6 +92,9 @@ end
 const KroneckerMatrix{T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}} = KroneckerArray{T,2,A,B}
 const KroneckerVector{T,A<:AbstractVector{T},B<:AbstractVector{T}} = KroneckerArray{T,1,A,B}
 
+using Adapt: Adapt, adapt
+Adapt.adapt_structure(to, a::KroneckerArray) = adapt(to, a.a) ⊗ adapt(to, a.b)
+
 function Base.copy(a::KroneckerArray)
   return copy(a.a) ⊗ copy(a.b)
 end
@@ -930,6 +933,11 @@ const SquareEyeKronecker{T,A<:SquareEye{T},B<:AbstractMatrix{T}} = KroneckerMatr
 const KroneckerSquareEye{T,A<:AbstractMatrix{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
 const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
 
+using Adapt: Adapt, adapt
+Adapt.adapt_structure(to, a::SquareEyeKronecker) = a.a ⊗ adapt(to, a.b)
+Adapt.adapt_structure(to, a::KroneckerSquareEye) = adapt(to, a.a) ⊗ a.b
+Adapt.adapt_structure(to, a::SquareEyeSquareEye) = adapt(to, a.a) ⊗ a.b
+
 # Special case of similar for `SquareEye ⊗ A` and `A ⊗ SquareEye`.
 function Base.similar(
   a::SquareEyeKronecker,
@@ -970,22 +978,22 @@ function Base.similar(
 end
 
 function Base.similar(
-  arrayt::Type{<:SquareEyeKronecker{<:Any,<:Any,A}},
+  arrayt::Type{<:SquareEyeKronecker{T,A,B}},
   axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
-) where {A}
+) where {T,A<:SquareEye{T},B}
   ax_a = map(ax -> ax.product.a, axs)
   ax_b = map(ax -> ax.product.b, axs)
   eye_ax_a = (only(unique(ax_a)),)
-  return Eye{eltype(arrayt)}(eye_ax_a) ⊗ similar(A, ax_b)
+  return Eye{T}(eye_ax_a) ⊗ similar(B, ax_b)
 end
 function Base.similar(
-  arrayt::Type{<:KroneckerSquareEye{<:Any,A}},
+  arrayt::Type{<:KroneckerSquareEye{T,A,B}},
   axs::NTuple{2,CartesianProductUnitRange{<:Integer}},
-) where {A}
+) where {T,A,B<:SquareEye{T}}
   ax_a = map(ax -> ax.product.a, axs)
   ax_b = map(ax -> ax.product.b, axs)
   eye_ax_b = (only(unique(ax_b)),)
-  return similar(A, ax_a) ⊗ Eye{eltype(arrayt)}(eye_ax_b)
+  return similar(A, ax_a) ⊗ Eye{T}(eye_ax_b)
 end
 function Base.similar(
   arrayt::Type{<:SquareEyeSquareEye}, axs::NTuple{2,CartesianProductUnitRange{<:Integer}}
