@@ -1,6 +1,8 @@
+using Adapt: adapt
 using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
 using DerivableInterfaces: zero!
 using FillArrays: Eye
+using JLArrays: JLArray
 using KroneckerArrays:
   KroneckerArrays,
   KroneckerArray,
@@ -17,7 +19,7 @@ using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, 
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
 
-const elts = (Float32, Float64, ComplexF32, ComplexF64)
+elts = (Float32, Float64, ComplexF32, ComplexF64)
 @testset "KroneckerArrays (eltype=$elt)" for elt in elts
   p = [1, 2] × [3, 4, 5]
   @test length(p) == 6
@@ -78,6 +80,7 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test norm(a) ≈ norm(collect(a))
 
   # Broadcasting
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   style = KroneckerStyle(BroadcastStyle(typeof(a.a)), BroadcastStyle(typeof(a.b)))
   @test BroadcastStyle(typeof(a)) === style
   @test_throws "not supported" sin.(a)
@@ -94,6 +97,7 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test_broken copy(bc)
 
   # Mapping
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   @test_throws "not supported" map(sin, a)
   @test_broken map(Base.Fix1(*, 2), a)
   a′ = similar(a)
@@ -120,6 +124,7 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   map!(conj, a′, a)
   @test collect(a′) ≈ conj(collect(a))
 
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   if elt <: Real
     @test real(a) == a
   else
@@ -130,6 +135,15 @@ const elts = (Float32, Float64, ComplexF32, ComplexF64)
   else
     @test_throws ArgumentError imag(a)
   end
+
+  # Adapt
+  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  a′ = adapt(JLArray, a)
+  @test a′ isa KroneckerArray{elt,2,JLArray{elt,2},JLArray{elt,2}}
+  @test a′.a isa JLArray{elt,2}
+  @test a′.b isa JLArray{elt,2}
+  @test Array(a′.a) == a.a
+  @test Array(a′.b) == a.b
 
   a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
   @test collect(a) ≈ kron_nd(a.a, a.b)
