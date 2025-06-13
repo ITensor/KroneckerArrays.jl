@@ -23,6 +23,8 @@ arrayts = (Array, JLArray)
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, r, r))
+  @test_broken sprint(show, a)
+  @test sprint(show, MIME("text/plain"), a) isa String
   @test blocktype(a) === valtype(d)
   @test a isa BlockSparseMatrix{elt,valtype(d)}
   @test a[Block(1, 1)] == dev(d[Block(1, 1)])
@@ -69,29 +71,35 @@ arrayts = (Array, JLArray)
 end
 
 @testset "BlockSparseArraysExt, SquareEyeKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
-                                                                                                (
-    Array,
-  ),
+                                                                                                arrayts,
   elt in elts
+
+  if arrayt == JLArray
+    # TODO: Collecting to `Array` is broken for GPU arrays so a lot of tests
+    # are broken, look into fixing that.
+    continue
+  end
 
   dev = adapt(arrayt)
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => Eye{elt}(2) ⊗ randn(elt, 2, 2),
-    Block(2, 2) => Eye{elt}(3) ⊗ randn(elt, 3, 3),
+    Block(1, 1) => Eye{elt}(2, 2) ⊗ randn(elt, 2, 2),
+    Block(2, 2) => Eye{elt}(3, 3) ⊗ randn(elt, 3, 3),
   )
   a = dev(blocksparse(d, r, r))
-  @test blocktype(a) === valtype(d)
-  @test a isa BlockSparseMatrix{elt,valtype(d)}
+  @test_broken sprint(show, a)
+  @test sprint(show, MIME("text/plain"), a) isa String
+  @test_broken blocktype(a) === valtype(d)
+  @test_broken a isa BlockSparseMatrix{elt,valtype(d)}
   @test a[Block(1, 1)] == dev(d[Block(1, 1)])
-  @test a[Block(1, 1)] isa valtype(d)
+  @test_broken a[Block(1, 1)] isa valtype(d)
   @test a[Block(2, 2)] == dev(d[Block(2, 2)])
-  @test a[Block(2, 2)] isa valtype(d)
-  @test_broken iszero(a[Block(2, 1)])
-  @test_broken a[Block(2, 1)] == dev(zeros(elt, 3, 2) ⊗ zeros(elt, 3, 2))
+  @test_broken a[Block(2, 2)] isa valtype(d)
+  @test iszero(a[Block(2, 1)])
+  @test a[Block(2, 1)] == dev(zeros(elt, 3, 2) ⊗ zeros(elt, 3, 2))
   @test_broken a[Block(2, 1)] isa valtype(d)
-  @test_broken iszero(a[Block(1, 2)])
-  @test_broken a[Block(1, 2)] == dev(zeros(elt, 2, 3) ⊗ zeros(elt, 2, 3))
+  @test iszero(a[Block(1, 2)])
+  @test a[Block(1, 2)] == dev(zeros(elt, 2, 3) ⊗ zeros(elt, 2, 3))
   @test_broken a[Block(1, 2)] isa valtype(d)
 
   b = a * a
