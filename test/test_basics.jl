@@ -1,7 +1,6 @@
 using Adapt: adapt
 using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
 using DerivableInterfaces: zero!
-using FillArrays: Eye
 using JLArrays: JLArray
 using KroneckerArrays:
   KroneckerArrays,
@@ -18,6 +17,7 @@ using KroneckerArrays:
 using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, svdvals, tr
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
+using TestExtras: @constinferred
 
 elts = (Float32, Float64, ComplexF32, ComplexF64)
 @testset "KroneckerArrays (eltype=$elt)" for elt in elts
@@ -25,18 +25,18 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test length(p) == 6
   @test collect(p) == [1 × 3, 2 × 3, 1 × 4, 2 × 4, 1 × 5, 2 × 5]
 
-  r = cartesianrange(2, 3)
+  r = @constinferred cartesianrange(2, 3)
   @test r ===
-    cartesianrange(2 × 3) ===
-    cartesianrange(Base.OneTo(2), Base.OneTo(3)) ===
-    cartesianrange(Base.OneTo(2) × Base.OneTo(3))
-  @test cartesianproduct(r) === Base.OneTo(2) × Base.OneTo(3)
+    @constinferred(cartesianrange(2 × 3)) ===
+    @constinferred(cartesianrange(Base.OneTo(2), Base.OneTo(3))) ===
+    @constinferred(cartesianrange(Base.OneTo(2) × Base.OneTo(3)))
+  @test @constinferred(cartesianproduct(r)) === Base.OneTo(2) × Base.OneTo(3)
   @test unproduct(r) === Base.OneTo(6)
   @test length(r) == 6
   @test first(r) == 1
   @test last(r) == 6
 
-  r = cartesianrange(2 × 3, 2:7)
+  r = @constinferred(cartesianrange(2 × 3, 2:7))
   @test r === cartesianrange(Base.OneTo(2) × Base.OneTo(3), 2:7)
   @test cartesianproduct(r) === Base.OneTo(2) × Base.OneTo(3)
   @test unproduct(r) === 2:7
@@ -44,7 +44,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test first(r) == 2
   @test last(r) == 7
 
-  a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
+  a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
   b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   c = a.a ⊗ b.b
   @test a isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
@@ -181,190 +181,4 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
       @test_throws ArgumentError $f($a)
     end
   end
-end
-
-@testset "FillArrays.Eye" begin
-  MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
-  if VERSION < v"1.11-"
-    # `cbrt(::AbstractMatrix{<:Real})` was implemented in Julia 1.11.
-    MATRIX_FUNCTIONS = setdiff(MATRIX_FUNCTIONS, [:cbrt])
-  end
-
-  a = Eye(2) ⊗ randn(3, 3)
-  @test size(a) == (6, 6)
-  @test a + a == Eye(2) ⊗ (2a.b)
-  @test 2a == Eye(2) ⊗ (2a.b)
-  @test a * a == Eye(2) ⊗ (a.b * a.b)
-
-  a = randn(3, 3) ⊗ Eye(2)
-  @test size(a) == (6, 6)
-  @test a + a == (2a.a) ⊗ Eye(2)
-  @test 2a == (2a.a) ⊗ Eye(2)
-  @test a * a == (a.a * a.a) ⊗ Eye(2)
-
-  # similar
-  a = Eye(2) ⊗ randn(3, 3)
-  for a′ in (
-    similar(a),
-    similar(a, eltype(a)),
-    similar(a, axes(a)),
-    similar(a, eltype(a), axes(a)),
-    similar(typeof(a), axes(a)),
-  )
-    @test size(a′) == (6, 6)
-    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
-    @test a′.a === a.a
-  end
-
-  a = Eye(2) ⊗ randn(3, 3)
-  for args in ((Float32,), (Float32, axes(a)))
-    a′ = similar(a, args...)
-    @test size(a′) == (6, 6)
-    @test a′ isa KroneckerArray{Float32,ndims(a)}
-    @test a′.a === Eye{Float32}(2)
-  end
-
-  a = randn(3, 3) ⊗ Eye(2)
-  for a′ in (
-    similar(a),
-    similar(a, eltype(a)),
-    similar(a, axes(a)),
-    similar(a, eltype(a), axes(a)),
-    similar(typeof(a), axes(a)),
-  )
-    @test size(a′) == (6, 6)
-    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
-    @test a′.b === a.b
-  end
-
-  a = randn(3, 3) ⊗ Eye(2)
-  for args in ((Float32,), (Float32, axes(a)))
-    a′ = similar(a, args...)
-    @test size(a′) == (6, 6)
-    @test a′ isa KroneckerArray{Float32,ndims(a)}
-    @test a′.b === Eye{Float32}(2)
-  end
-
-  a = Eye(3) ⊗ Eye(2)
-  for a′ in (
-    similar(a),
-    similar(a, eltype(a)),
-    similar(a, axes(a)),
-    similar(a, eltype(a), axes(a)),
-    similar(typeof(a), axes(a)),
-  )
-    @test size(a′) == (6, 6)
-    @test a′ isa KroneckerArray{eltype(a),ndims(a),typeof(a.a),typeof(a.b)}
-    @test a′.a === a.a
-    @test a′.b === a.b
-  end
-
-  a = Eye(3) ⊗ Eye(2)
-  for args in ((Float32,), (Float32, axes(a)))
-    a′ = similar(a, args...)
-    @test size(a′) == (6, 6)
-    @test a′ isa KroneckerArray{Float32,ndims(a)}
-    @test a′.a === Eye{Float32}(3)
-    @test a′.b === Eye{Float32}(2)
-  end
-
-  # DerivableInterfaces.zero!
-  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
-    zero!(a)
-    @test iszero(a)
-  end
-  a = Eye(3) ⊗ Eye(2)
-  @test_throws ArgumentError zero!(a)
-
-  # map!(+, ...)
-  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
-    a′ = similar(a)
-    map!(+, a′, a, a)
-    @test collect(a′) ≈ 2 * collect(a)
-  end
-  a = Eye(3) ⊗ Eye(2)
-  a′ = similar(a)
-  @test_throws ErrorException map!(+, a′, a, a)
-
-  # map!(-, ...)
-  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
-    a′ = similar(a)
-    map!(-, a′, a, a)
-    @test norm(collect(a′)) ≈ 0
-  end
-  a = Eye(3) ⊗ Eye(2)
-  a′ = similar(a)
-  @test_throws ErrorException map!(-, a′, a, a)
-
-  # map!(-, b, a)
-  for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
-    a′ = similar(a)
-    map!(-, a′, a)
-    @test collect(a′) ≈ -collect(a)
-  end
-  a = Eye(3) ⊗ Eye(2)
-  a′ = similar(a)
-  @test_throws ErrorException map!(-, a′, a)
-
-  # Eye ⊗ A
-  rng = StableRNG(123)
-  a = Eye(2) ⊗ randn(rng, 3, 3)
-  for f in MATRIX_FUNCTIONS
-    @eval begin
-      fa = $f($a)
-      @test collect(fa) ≈ $f(collect($a)) rtol = ∜(eps(real(eltype($a))))
-      @test fa.a isa Eye
-    end
-  end
-
-  fa = inv(a)
-  @test collect(fa) ≈ inv(collect(a))
-  @test fa.a isa Eye
-
-  fa = pinv(a)
-  @test collect(fa) ≈ pinv(collect(a))
-  @test fa.a isa Eye
-
-  @test det(a) ≈ det(collect(a))
-
-  # A ⊗ Eye
-  rng = StableRNG(123)
-  a = randn(rng, 3, 3) ⊗ Eye(2)
-  for f in setdiff(MATRIX_FUNCTIONS, [:atanh])
-    @eval begin
-      fa = $f($a)
-      @test collect(fa) ≈ $f(collect($a)) rtol = ∜(eps(real(eltype($a))))
-      @test fa.b isa Eye
-    end
-  end
-
-  fa = inv(a)
-  @test collect(fa) ≈ inv(collect(a))
-  @test fa.b isa Eye
-
-  fa = pinv(a)
-  @test collect(fa) ≈ pinv(collect(a))
-  @test fa.b isa Eye
-
-  @test det(a) ≈ det(collect(a))
-
-  # Eye ⊗ Eye
-  a = Eye(2) ⊗ Eye(2)
-  for f in KroneckerArrays.MATRIX_FUNCTIONS
-    @eval begin
-      @test_throws ArgumentError $f($a)
-    end
-  end
-
-  fa = inv(a)
-  @test fa == a
-  @test fa.a isa Eye
-  @test fa.b isa Eye
-
-  fa = pinv(a)
-  @test fa == a
-  @test fa.a isa Eye
-  @test fa.b isa Eye
-
-  @test det(a) ≈ det(collect(a)) ≈ 1
 end

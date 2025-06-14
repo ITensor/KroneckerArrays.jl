@@ -23,7 +23,7 @@ arrayts = (Array, JLArray)
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, r, r))
-  @test_broken sprint(show, a)
+  @test sprint(show, a) isa String
   @test sprint(show, MIME("text/plain"), a) isa String
   @test blocktype(a) === valtype(d)
   @test a isa BlockSparseMatrix{elt,valtype(d)}
@@ -70,8 +70,8 @@ arrayts = (Array, JLArray)
   @test_broken a[Block.(1:2), Block(2)]
 end
 
-@testset "BlockSparseArraysExt, SquareEyeKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
-                                                                                                arrayts,
+@testset "BlockSparseArraysExt, EyeKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
+                                                                                          arrayts,
   elt in elts
 
   if arrayt == JLArray
@@ -87,10 +87,10 @@ end
     Block(2, 2) => Eye{elt}(3, 3) ⊗ randn(elt, 3, 3),
   )
   a = dev(blocksparse(d, r, r))
-  @test_broken sprint(show, a)
+  @test sprint(show, a) == sprint(show, Array(a))
   @test sprint(show, MIME("text/plain"), a) isa String
   @test_broken blocktype(a) === valtype(d)
-  @test_broken a isa BlockSparseMatrix{elt,valtype(d)}
+  @test a isa BlockSparseMatrix{elt,valtype(d)}
   @test a[Block(1, 1)] == dev(d[Block(1, 1)])
   @test_broken a[Block(1, 1)] isa valtype(d)
   @test a[Block(2, 2)] == dev(d[Block(2, 2)])
