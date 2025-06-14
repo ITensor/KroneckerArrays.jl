@@ -1,7 +1,7 @@
 using DerivableInterfaces: zero!
 using FillArrays: Eye
-using KroneckerArrays: KroneckerArrays, KroneckerArray
-using LinearAlgebra: det, pinv
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗
+using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
 using Test: @test, @testset
 
