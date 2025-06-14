@@ -102,10 +102,9 @@ end
   @test a[Block(1, 2)] == dev(Eye(2, 3) ⊗ zeros(elt, 2, 3))
   @test a[Block(1, 2)] isa valtype(d)
 
-  @test_broken b = a * a
-  ## b = a * a
-  ## @test typeof(b) === typeof(a)
-  ## @test Array(b) ≈ Array(a) * Array(a)
+  b = @constinferred a * a
+  @test typeof(b) === typeof(a)
+  @test Array(b) ≈ Array(a) * Array(a)
 
   # Type inference is broken for this operation.
   # b = @constinferred a + a
@@ -127,9 +126,11 @@ end
 
   @test @constinferred(norm(a)) ≈ norm(Array(a))
 
+  b = @constinferred exp(a)
+  @test Array(b) ≈ exp(Array(a))
+
   # Broken operations
   @test_broken inv(a)
-  @test_broken exp(a)
   @test_broken svd_compact(a)
   @test_broken a[Block.(1:2), Block(2)]
 end

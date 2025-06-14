@@ -24,19 +24,14 @@ function LinearAlgebra.diag(a::KroneckerArray)
   return copy(diagview(a))
 end
 
+# Allows customizing multiplication for specific types
+# such as `Eye * Eye`, which doesn't return `Eye`.
 function _mul(a::AbstractArray, b::AbstractArray)
   return a * b
 end
 
 function Base.:*(a::KroneckerArray, b::KroneckerArray)
   return _mul(a.a, b.a) ⊗ _mul(a.b, b.b)
-end
-
-function _mul!!(c::AbstractArray, a::AbstractArray, b::AbstractArray)
-  return _mul!!(c, a, b, true, false)
-end
-function _mul!!(c::AbstractArray, a::AbstractArray, b::AbstractArray, α::Number, β::Number)
-  return mul!(c, a, b, true, false)
 end
 
 function LinearAlgebra.mul!(
@@ -49,13 +44,15 @@ function LinearAlgebra.mul!(
         "Can't multiple KroneckerArrays with nonzero β and nonzero destination."
       ),
     )
-  _mul!!(c.a, a.a, b.a)
-  _mul!!(c.b, a.b, b.b, α, β)
+  mul!(c.a, a.a, b.a)
+  mul!(c.b, a.b, b.b, α, β)
   return c
 end
+
 function LinearAlgebra.tr(a::KroneckerArray)
   return tr(a.a) ⊗ tr(a.b)
 end
+
 function LinearAlgebra.norm(a::KroneckerArray, p::Int=2)
   return norm(a.a, p) ⊗ norm(a.b, p)
 end
