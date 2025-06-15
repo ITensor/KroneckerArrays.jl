@@ -60,6 +60,10 @@ using MatrixAlgebraKit:
   svd_compact,
   svd_full
 
+function _copy_input(f::F, a::AbstractMatrix) where {F}
+  return copy_input(f, a)
+end
+
 for f in [
   :eig_full,
   :eigh_full,
@@ -74,7 +78,7 @@ for f in [
 ]
   @eval begin
     function MatrixAlgebraKit.copy_input(::typeof($f), a::KroneckerMatrix)
-      return copy_input($f, a.a) ⊗ copy_input($f, a.b)
+      return _copy_input($f, a.a) ⊗ _copy_input($f, a.b)
     end
   end
 end
@@ -87,13 +91,17 @@ for f in [
   :default_polar_algorithm,
   :default_svd_algorithm,
 ]
+  _f = Symbol(:_, f)
   @eval begin
+    function $_f(A::Type{<:AbstractMatrix}; kwargs...)
+      return $f(A; kwargs...)
+    end
     function MatrixAlgebraKit.$f(
       A::Type{<:KroneckerMatrix}; kwargs1=(;), kwargs2=(;), kwargs...
     )
       A1, A2 = argument_types(A)
       return KroneckerAlgorithm(
-        $f(A1; kwargs..., kwargs1...), $f(A2; kwargs..., kwargs2...)
+        $_f(A1; kwargs..., kwargs1...), $_f(A2; kwargs..., kwargs2...)
       )
     end
   end
@@ -112,6 +120,12 @@ function MatrixAlgebraKit.default_algorithm(
   return default_qr_algorithm(A; kwargs...)
 end
 
+# Allows overloading while avoiding type piracy.
+function _initialize_output(f::F, a::AbstractMatrix, alg::AbstractAlgorithm) where {F}
+  return initialize_output(f, a, alg)
+end
+_initialize_output(f::F, a::AbstractMatrix) where {F} = initialize_output(f, a)
+
 for f in [
   :eig_full!,
   :eigh_full!,
@@ -128,7 +142,7 @@ for f in [
     function MatrixAlgebraKit.initialize_output(
       ::typeof($f), a::KroneckerMatrix, alg::KroneckerAlgorithm
     )
-      return initialize_output($f, a.a, alg.a) .⊗ initialize_output($f, a.b, alg.b)
+      return _initialize_output($f, a.a, alg.a) .⊗ _initialize_output($f, a.b, alg.b)
     end
     function MatrixAlgebraKit.$f(
       a::KroneckerMatrix, F, alg::KroneckerAlgorithm; kwargs1=(;), kwargs2=(;), kwargs...
@@ -145,7 +159,7 @@ for f in [:eig_vals!, :eigh_vals!, :svd_vals!]
     function MatrixAlgebraKit.initialize_output(
       ::typeof($f), a::KroneckerMatrix, alg::KroneckerAlgorithm
     )
-      return initialize_output($f, a.a, alg.a) ⊗ initialize_output($f, a.b, alg.b)
+      return _initialize_output($f, a.a, alg.a) ⊗ _initialize_output($f, a.b, alg.b)
     end
     function MatrixAlgebraKit.$f(a::KroneckerMatrix, F, alg::KroneckerAlgorithm)
       $f(a.a, F.a, alg.a)
@@ -158,7 +172,7 @@ end
 for f in [:left_orth!, :right_orth!]
   @eval begin
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
-      return initialize_output($f, a.a) .⊗ initialize_output($f, a.b)
+      return _initialize_output($f, a.a) .⊗ _initialize_output($f, a.b)
     end
   end
 end
@@ -166,7 +180,7 @@ end
 for f in [:left_null!, :right_null!]
   @eval begin
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
-      return initialize_output($f, a.a) ⊗ initialize_output($f, a.b)
+      return _initialize_output($f, a.a) ⊗ _initialize_output($f, a.b)
     end
     function MatrixAlgebraKit.$f(a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...)
       $f(a.a, F.a; kwargs..., kwargs1...)

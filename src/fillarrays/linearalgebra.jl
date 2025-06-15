@@ -7,6 +7,9 @@ end
 
 function _mul(a::Eye, b::Eye)
   check_mul_axes(a, b)
+  (size(a, 1) > size(a, 2)) &&
+    (size(b, 1) < size(b, 2)) &&
+    error("This multiplication leads to a projector.")
   T = promote_type(eltype(a), eltype(b))
   return Eye{T}((axes(a, 1), axes(b, 2)))
 end
