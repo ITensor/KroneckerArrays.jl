@@ -12,6 +12,23 @@ const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,
 _adapt(to, a::Eye) = a
 
 # Like `similar` but preserves `Eye`.
+function _similar(a::AbstractArray, elt::Type, ax::Tuple)
+  return similar(a, elt, ax)
+end
+function _similar(A::Type{<:AbstractArray}, ax::Tuple)
+  return similar(A, ax)
+end
+function _similar(a::AbstractArray, ax::Tuple)
+  return _similar(a, eltype(a), ax)
+end
+function _similar(a::AbstractArray, elt::Type)
+  return _similar(a, elt, axes(a))
+end
+function _similar(a::AbstractArray)
+  return _similar(a, eltype(a), axes(a))
+end
+
+# Like `similar` but preserves `Eye`.
 function _similar(a::Eye, elt::Type, axs::NTuple{2,AbstractUnitRange})
   return Eye{elt}(axs)
 end

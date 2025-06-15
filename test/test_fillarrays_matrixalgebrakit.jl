@@ -29,19 +29,19 @@ herm(a) = parent(hermitianpart(a))
 
 @testset "MatrixAlgebraKit + Eye" begin
   for elt in (Float32, ComplexF32)
-    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    a = Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)
     d, v = @constinferred eig_full(a)
     @test a * v ≈ v * d
     @test arguments(d, 1) isa Eye{complex(elt)}
     @test arguments(v, 1) isa Eye{complex(elt)}
 
-    a = parent(hermitianpart(randn(elt, 3, 3))) ⊗ Eye{elt}(3)
+    a = parent(hermitianpart(randn(elt, 3, 3))) ⊗ Eye{elt}(3, 3)
     d, v = @constinferred eig_full(a)
     @test a * v ≈ v * d
     @test arguments(d, 2) isa Eye{complex(elt)}
     @test arguments(v, 2) isa Eye{complex(elt)}
 
-    a = Eye{elt}(3) ⊗ Eye{elt}(3)
+    a = Eye{elt}(3, 3) ⊗ Eye{elt}(3, 3)
     d, v = @constinferred eig_full(a)
     @test a * v ≈ v * d
     @test arguments(d, 1) isa Eye{complex(elt)}
@@ -51,20 +51,20 @@ herm(a) = parent(hermitianpart(a))
   end
 
   for elt in (Float32, ComplexF32)
-    a = Eye{elt}(3) ⊗ parent(hermitianpart(randn(elt, 3, 3)))
-    d, v = @constinferred eigh_full(a)
+    a = Eye{elt}(3, 3) ⊗ parent(hermitianpart(randn(elt, 3, 3)))
+    d, v = @constinferred eigh_full($a)
     @test a * v ≈ v * d
     @test arguments(d, 1) isa Eye{real(elt)}
     @test arguments(v, 1) isa Eye{elt}
 
-    a = parent(hermitianpart(randn(elt, 3, 3))) ⊗ Eye{elt}(3)
-    d, v = @constinferred eigh_full(a)
+    a = parent(hermitianpart(randn(elt, 3, 3))) ⊗ Eye{elt}(3, 3)
+    d, v = @constinferred eigh_full($a)
     @test a * v ≈ v * d
     @test arguments(d, 2) isa Eye{real(elt)}
     @test arguments(v, 2) isa Eye{elt}
 
-    a = Eye{elt}(3) ⊗ Eye{elt}(3)
-    d, v = @constinferred eigh_full(a)
+    a = Eye{elt}(3, 3) ⊗ Eye{elt}(3, 3)
+    d, v = @constinferred eigh_full($a)
     @test a * v ≈ v * d
     @test arguments(d, 1) isa Eye{real(elt)}
     @test arguments(d, 2) isa Eye{real(elt)}
@@ -116,22 +116,22 @@ herm(a) = parent(hermitianpart(a))
   end
 
   for f in (
-    left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_orth, right_polar
+    left_orth, right_orth, left_polar, right_polar, qr_compact, lq_compact, qr_full, lq_full
   )
-    a = Eye(3) ⊗ randn(3, 3)
-    x, y = @constinferred f(a)
+    a = Eye(3, 3) ⊗ randn(3, 3)
+    x, y = @constinferred f($a)
     @test x * y ≈ a
     @test arguments(x, 1) isa Eye
     @test arguments(y, 1) isa Eye
 
-    a = randn(3, 3) ⊗ Eye(3)
-    x, y = @constinferred f(a)
+    a = randn(3, 3) ⊗ Eye(3, 3)
+    x, y = @constinferred f($a)
     @test x * y ≈ a
     @test arguments(x, 2) isa Eye
     @test arguments(y, 2) isa Eye
 
-    a = Eye(3) ⊗ Eye(3)
-    x, y = f(a)
+    a = Eye(3, 3) ⊗ Eye(3, 3)
+    x, y = @constinferred f($a)
     @test x * y ≈ a
     @test arguments(x, 1) isa Eye
     @test arguments(y, 1) isa Eye
@@ -141,8 +141,8 @@ herm(a) = parent(hermitianpart(a))
 
   for f in (svd_compact, svd_full)
     for elt in (Float32, ComplexF32)
-      a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
-      u, s, v = @constinferred f(a)
+      a = Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)
+      u, s, v = @constinferred f($a)
       @test u * s * v ≈ a
       @test eltype(u) === elt
       @test eltype(s) === real(elt)
@@ -151,8 +151,8 @@ herm(a) = parent(hermitianpart(a))
       @test arguments(s, 1) isa Eye{real(elt)}
       @test arguments(v, 1) isa Eye{elt}
 
-      a = randn(elt, 3, 3) ⊗ Eye{elt}(3)
-      u, s, v = @constinferred f(a)
+      a = randn(elt, 3, 3) ⊗ Eye{elt}(3, 3)
+      u, s, v = @constinferred f($a)
       @test u * s * v ≈ a
       @test eltype(u) === elt
       @test eltype(s) === real(elt)
@@ -161,8 +161,8 @@ herm(a) = parent(hermitianpart(a))
       @test arguments(s, 2) isa Eye{real(elt)}
       @test arguments(v, 2) isa Eye{elt}
 
-      a = Eye{elt}(3) ⊗ Eye{elt}(3)
-      u, s, v = @constinferred f(a)
+      a = Eye{elt}(3, 3) ⊗ Eye{elt}(3, 3)
+      u, s, v = @constinferred f($a)
       @test u * s * v ≈ a
       @test eltype(u) === elt
       @test eltype(s) === real(elt)
@@ -178,7 +178,7 @@ herm(a) = parent(hermitianpart(a))
 
   # svd_trunc
   for elt in (Float32, ComplexF32)
-    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    a = Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)
     # TODO: Type inference is broken for `svd_trunc`,
     # look into fixing it.
     # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
@@ -197,7 +197,7 @@ herm(a) = parent(hermitianpart(a))
   end
 
   for elt in (Float32, ComplexF32)
-    a = randn(elt, 3, 3) ⊗ Eye{elt}(3)
+    a = randn(elt, 3, 3) ⊗ Eye{elt}(3, 3)
     # TODO: Type inference is broken for `svd_trunc`,
     # look into fixing it.
     # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
@@ -215,12 +215,12 @@ herm(a) = parent(hermitianpart(a))
     @test size(v) == (6, 9)
   end
 
-  a = Eye(3) ⊗ Eye(3)
+  a = Eye(3, 3) ⊗ Eye(3, 3)
   @test_throws ArgumentError svd_trunc(a)
 
   # svd_vals
   for elt in (Float32, ComplexF32)
-    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    a = Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)
     d = @constinferred svd_vals(a)
     d′ = svd_vals(Matrix(a))
     @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
@@ -246,12 +246,12 @@ herm(a) = parent(hermitianpart(a))
   end
 
   # left_null
-  a = Eye(3) ⊗ randn(3, 3)
+  a = Eye(3, 3) ⊗ randn(3, 3)
   n = @constinferred left_null(a)
   @test norm(n' * a) ≈ 0
   @test arguments(n, 1) isa Eye
 
-  a = randn(3, 3) ⊗ Eye(3)
+  a = randn(3, 3) ⊗ Eye(3, 3)
   n = @constinferred left_null(a)
   @test norm(n' * a) ≈ 0
   @test arguments(n, 2) isa Eye
