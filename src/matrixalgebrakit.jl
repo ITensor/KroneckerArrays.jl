@@ -32,8 +32,10 @@ using MatrixAlgebraKit:
   truncate!
 
 using MatrixAlgebraKit: MatrixAlgebraKit, diagview
+# Allow customization for `Eye`.
+_diagview(a::AbstractMatrix) = diagview(a)
 function MatrixAlgebraKit.diagview(a::KroneckerMatrix)
-  return diagview(a.a) ⊗ diagview(a.b)
+  return _diagview(a.a) ⊗ _diagview(a.b)
 end
 
 struct KroneckerAlgorithm{A,B} <: AbstractAlgorithm

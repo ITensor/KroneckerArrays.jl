@@ -15,6 +15,9 @@ function supremum(r1::AbstractRange, r2::AbstractUnitRange)
   end
 end
 
+# Allow customization for `Eye`.
+_diagview(a::Eye) = parent(a)
+
 function _copy_input(f::F, a::Eye) where {F}
   return a
 end

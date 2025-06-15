@@ -176,51 +176,51 @@ herm(a) = parent(hermitianpart(a))
     end
   end
 
-  ## # svd_trunc
-  ## for elt in (Float32, ComplexF32)
-  ##   a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
-  ##   # TODO: Type inference is broken for `svd_trunc`,
-  ##   # look into fixing it.
-  ##   # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
-  ##   u, s, v = svd_trunc(a; trunc=(; maxrank=7))
-  ##   @test eltype(u) === elt
-  ##   @test eltype(s) === real(elt)
-  ##   @test eltype(v) === elt
-  ##   u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
-  ##   @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  ##   @test arguments(u, 1) isa Eye{elt}
-  ##   @test arguments(s, 1) isa Eye{real(elt)}
-  ##   @test arguments(v, 1) isa Eye{elt}
-  ##   @test size(u) == (9, 6)
-  ##   @test size(s) == (6, 6)
-  ##   @test size(v) == (6, 9)
-  ## end
+  # svd_trunc
+  for elt in (Float32, ComplexF32)
+    a = Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)
+    # TODO: Type inference is broken for `svd_trunc`,
+    # look into fixing it.
+    # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
+    u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+    @test eltype(u) === elt
+    @test eltype(s) === real(elt)
+    @test eltype(v) === elt
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+    @test arguments(u, 1) isa Eye{elt}
+    @test arguments(s, 1) isa Eye{real(elt)}
+    @test arguments(v, 1) isa Eye{elt}
+    @test size(u) == (9, 6)
+    @test size(s) == (6, 6)
+    @test size(v) == (6, 9)
+  end
 
-  ## for elt in (Float32, ComplexF32)
-  ##   a = randn(elt, 3, 3) ⊗ Eye{elt}(3)
-  ##   # TODO: Type inference is broken for `svd_trunc`,
-  ##   # look into fixing it.
-  ##   # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
-  ##   u, s, v = svd_trunc(a; trunc=(; maxrank=7))
-  ##   @test eltype(u) === elt
-  ##   @test eltype(s) === real(elt)
-  ##   @test eltype(v) === elt
-  ##   u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
-  ##   @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  ##   @test arguments(u, 2) isa Eye{elt}
-  ##   @test arguments(s, 2) isa Eye{real(elt)}
-  ##   @test arguments(v, 2) isa Eye{elt}
-  ##   @test size(u) == (9, 6)
-  ##   @test size(s) == (6, 6)
-  ##   @test size(v) == (6, 9)
-  ## end
+  for elt in (Float32, ComplexF32)
+    a = randn(elt, 3, 3) ⊗ Eye{elt}(3, 3)
+    # TODO: Type inference is broken for `svd_trunc`,
+    # look into fixing it.
+    # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
+    u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+    @test eltype(u) === elt
+    @test eltype(s) === real(elt)
+    @test eltype(v) === elt
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+    @test arguments(u, 2) isa Eye{elt}
+    @test arguments(s, 2) isa Eye{real(elt)}
+    @test arguments(v, 2) isa Eye{elt}
+    @test size(u) == (9, 6)
+    @test size(s) == (6, 6)
+    @test size(v) == (6, 9)
+  end
 
-  ## a = Eye(3) ⊗ Eye(3)
-  ## @test_throws ArgumentError svd_trunc(a)
+  a = Eye(3, 3) ⊗ Eye(3, 3)
+  @test_throws ArgumentError svd_trunc(a)
 
   # svd_vals
   for elt in (Float32, ComplexF32)
-    a = Eye{elt}(3) ⊗ randn(elt, 3, 3)
+    a = Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)
     d = @constinferred svd_vals(a)
     d′ = svd_vals(Matrix(a))
     @test sort(Vector(d); by=abs) ≈ sort(d′; by=abs)
@@ -246,12 +246,12 @@ herm(a) = parent(hermitianpart(a))
   end
 
   ## # left_null
-  ## a = Eye(3) ⊗ randn(3, 3)
+  ## a = Eye(3, 3) ⊗ randn(3, 3)
   ## n = @constinferred left_null(a)
   ## @test norm(n' * a) ≈ 0
   ## @test arguments(n, 1) isa Eye
 
-  ## a = randn(3, 3) ⊗ Eye(3)
+  ## a = randn(3, 3) ⊗ Eye(3, 3)
   ## n = @constinferred left_null(a)
   ## @test norm(n' * a) ≈ 0
   ## @test arguments(n, 2) isa Eye
