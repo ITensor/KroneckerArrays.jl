@@ -180,13 +180,17 @@ for f in [:left_orth!, :right_orth!]
 end
 
 for f in [:left_null!, :right_null!]
+  _f = Symbol(:_, f)
   @eval begin
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
       return _initialize_output($f, a.a) ⊗ _initialize_output($f, a.b)
     end
+    function $_f(a::AbstractMatrix, F; kwargs...)
+      return $f(a, F; kwargs...)
+    end
     function MatrixAlgebraKit.$f(a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...)
-      $f(a.a, F.a; kwargs..., kwargs1...)
-      $f(a.b, F.b; kwargs..., kwargs2...)
+      $_f(a.a, F.a; kwargs..., kwargs1...)
+      $_f(a.b, F.b; kwargs..., kwargs2...)
       return F
     end
   end

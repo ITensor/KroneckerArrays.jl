@@ -148,3 +148,19 @@ for f in [:left_orth!, :right_orth!]
     end
   end
 end
+
+for f in [:left_null!, :right_null!]
+  _f = Symbol(:_, f)
+  @eval begin
+    function _initialize_output(::typeof($f), a::Eye)
+      return a
+    end
+    function $_f(a::Eye, F)
+      return F
+    end
+
+    function MatrixAlgebraKit.$f(a::EyeEye, F; kwargs...)
+      return throw(MethodError($f, (a, F)))
+    end
+  end
+end

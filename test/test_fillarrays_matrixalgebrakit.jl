@@ -245,31 +245,31 @@ herm(a) = parent(hermitianpart(a))
     @test arguments(d, 2) isa Ones{real(elt)}
   end
 
-  ## # left_null
-  ## a = Eye(3, 3) ⊗ randn(3, 3)
-  ## n = @constinferred left_null(a)
-  ## @test norm(n' * a) ≈ 0
-  ## @test arguments(n, 1) isa Eye
+  # left_null
+  a = Eye(3, 3) ⊗ randn(3, 3)
+  n = @constinferred left_null(a)
+  @test norm(n' * a) ≈ 0
+  @test arguments(n, 1) isa Eye
 
-  ## a = randn(3, 3) ⊗ Eye(3, 3)
-  ## n = @constinferred left_null(a)
-  ## @test norm(n' * a) ≈ 0
-  ## @test arguments(n, 2) isa Eye
+  a = randn(3, 3) ⊗ Eye(3, 3)
+  n = @constinferred left_null(a)
+  @test norm(n' * a) ≈ 0
+  @test arguments(n, 2) isa Eye
 
-  ## a = Eye(3) ⊗ Eye(3)
-  ## @test_throws MethodError left_null(a)
+  a = Eye(3) ⊗ Eye(3)
+  @test_throws MethodError left_null(a)
 
-  ## # right_null
-  ## a = Eye(3) ⊗ randn(3, 3)
-  ## n = @constinferred right_null(a)
-  ## @test norm(a * n') ≈ 0
-  ## @test arguments(n, 1) isa Eye
+  # right_null
+  a = Eye(3) ⊗ randn(3, 3)
+  n = @constinferred right_null(a)
+  @test norm(a * n') ≈ 0
+  @test arguments(n, 1) isa Eye
 
-  ## a = randn(3, 3) ⊗ Eye(3)
-  ## n = @constinferred right_null(a)
-  ## @test norm(a * n') ≈ 0
-  ## @test arguments(n, 2) isa Eye
+  a = randn(3, 3) ⊗ Eye(3)
+  n = @constinferred right_null(a)
+  @test norm(a * n') ≈ 0
+  @test arguments(n, 2) isa Eye
 
-  ## a = Eye(3) ⊗ Eye(3)
-  ## @test_throws MethodError right_null(a)
+  a = Eye(3) ⊗ Eye(3)
+  @test_throws MethodError right_null(a)
 end
