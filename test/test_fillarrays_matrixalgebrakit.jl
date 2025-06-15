@@ -72,26 +72,26 @@ herm(a) = parent(hermitianpart(a))
     @test arguments(v, 2) isa Eye{elt}
   end
 
-  ## for f in (eig_trunc, eigh_trunc)
-  ##   a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
-  ##   d, v = f(a; trunc=(; maxrank=7))
-  ##   @test a * v ≈ v * d
-  ##   @test arguments(d, 1) isa Eye
-  ##   @test arguments(v, 1) isa Eye
-  ##   @test size(d) == (6, 6)
-  ##   @test size(v) == (9, 6)
+  for f in (eig_trunc, eigh_trunc)
+    a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
+    d, v = f(a; trunc=(; maxrank=7))
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa Eye
+    @test arguments(v, 1) isa Eye
+    @test size(d) == (6, 6)
+    @test size(v) == (9, 6)
 
-  ##   a = parent(hermitianpart(randn(3, 3))) ⊗ Eye(3)
-  ##   d, v = f(a; trunc=(; maxrank=7))
-  ##   @test a * v ≈ v * d
-  ##   @test arguments(d, 2) isa Eye
-  ##   @test arguments(v, 2) isa Eye
-  ##   @test size(d) == (6, 6)
-  ##   @test size(v) == (9, 6)
+    a = parent(hermitianpart(randn(3, 3))) ⊗ Eye(3)
+    d, v = f(a; trunc=(; maxrank=7))
+    @test a * v ≈ v * d
+    @test arguments(d, 2) isa Eye
+    @test arguments(v, 2) isa Eye
+    @test size(d) == (6, 6)
+    @test size(v) == (9, 6)
 
-  ##   a = Eye(3) ⊗ Eye(3)
-  ##   @test_throws ArgumentError f(a)
-  ## end
+    a = Eye(3) ⊗ Eye(3)
+    @test_throws ArgumentError f(a)
+  end
 
   for f in (eig_vals, eigh_vals)
     a = Eye(3) ⊗ parent(hermitianpart(randn(3, 3)))
