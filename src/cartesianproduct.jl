@@ -5,6 +5,9 @@ end
 arguments(a::CartesianProduct) = (a.a, a.b)
 arguments(a::CartesianProduct, n::Int) = arguments(a)[n]
 
+arg1(a::CartesianProduct) = a.a
+arg2(a::CartesianProduct) = a.b
+
 function Base.show(io::IO, a::CartesianProduct)
   print(io, a.a, " × ", a.b)
   return nothing
@@ -31,6 +34,9 @@ Base.last(r::CartesianProductUnitRange) = last(r.range)
 
 cartesianproduct(r::CartesianProductUnitRange) = getfield(r, :product)
 unproduct(r::CartesianProductUnitRange) = getfield(r, :range)
+
+arg1(a::CartesianProductUnitRange) = arg1(cartesianproduct(a))
+arg2(a::CartesianProductUnitRange) = arg2(cartesianproduct(a))
 
 function CartesianProductUnitRange(p::CartesianProduct)
   return CartesianProductUnitRange(p, Base.OneTo(length(p)))

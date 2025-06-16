@@ -13,13 +13,15 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MatrixAlgebraKit = "6c742aac-3347-4629-af66-fc926824e5e4"
 
 [weakdeps]
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 BlockSparseArrays = "2c9a651f-6452-4ace-a6ac-809f4280fbb4"
 
 [extensions]
-KroneckerArraysBlockSparseArraysExt = "BlockSparseArrays"
+KroneckerArraysBlockSparseArraysExt = ["BlockArrays", "BlockSparseArrays"]
 
 [compat]
 Adapt = "4.3.0"
+BlockArrays = "1.6"
 BlockSparseArrays = "0.7.9"
 DerivableInterfaces = "0.5.0"
 DiagonalArrays = "0.3.5"

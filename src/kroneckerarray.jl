@@ -1,3 +1,8 @@
+# Allows customizing for `FillArrays.Eye`.
+function _convert(A::Type{<:AbstractArray}, a::AbstractArray)
+  return convert(A, a)
+end
+
 struct KroneckerArray{T,N,A<:AbstractArray{T,N},B<:AbstractArray{T,N}} <: AbstractArray{T,N}
   a::A
   b::B
@@ -9,10 +14,13 @@ function KroneckerArray(a::AbstractArray, b::AbstractArray)
     )
   end
   elt = promote_type(eltype(a), eltype(b))
-  return KroneckerArray(convert(AbstractArray{elt}, a), convert(AbstractArray{elt}, b))
+  return KroneckerArray(_convert(AbstractArray{elt}, a), _convert(AbstractArray{elt}, b))
 end
 const KroneckerMatrix{T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}} = KroneckerArray{T,2,A,B}
 const KroneckerVector{T,A<:AbstractVector{T},B<:AbstractVector{T}} = KroneckerArray{T,1,A,B}
+
+arg1(a::KroneckerArray) = a.a
+arg2(a::KroneckerArray) = a.b
 
 using Adapt: Adapt, adapt
 _adapt(to, a::AbstractArray) = adapt(to, a)
