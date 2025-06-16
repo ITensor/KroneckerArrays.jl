@@ -22,7 +22,7 @@ KroneckerArraysBlockSparseArraysExt = ["BlockArrays", "BlockSparseArrays"]
 [compat]
 Adapt = "4.3.0"
 BlockArrays = "1.6"
-BlockSparseArrays = "0.7.9"
+BlockSparseArrays = "0.7.13"
 DerivableInterfaces = "0.5.0"
 DiagonalArrays = "0.3.5"
 FillArrays = "1.13.0"
