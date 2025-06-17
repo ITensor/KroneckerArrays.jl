@@ -64,9 +64,16 @@ arrayts = (Array, JLArray)
     @test_broken inv(a)
   end
 
+  if arrayt === Array && elt <: Real
+    u, s, v = svd_compact(a)
+    @test Array(u * s * v) ≈ Array(a)
+  else
+    # Broken on GPU and for complex, investigate.
+    @test_broken svd_compact(a)
+  end
+
   # Broken operations
   @test_broken exp(a)
-  @test_broken svd_compact(a)
   @test_broken a[Block.(1:2), Block(2)]
 end
 
@@ -129,8 +136,12 @@ end
   b = @constinferred exp(a)
   @test Array(b) ≈ exp(Array(a))
 
+  u, s, v = svd_compact(a)
+  @test u * s * v ≈ a
+  @test blocktype(u) === blocktype(a)
+  @test blocktype(v) === blocktype(a)
+
   # Broken operations
   @test_broken inv(a)
-  @test_broken svd_compact(a)
   @test_broken a[Block.(1:2), Block(2)]
 end
