@@ -114,7 +114,8 @@ end
 kron_nd(a::AbstractMatrix, b::AbstractMatrix) = kron(a, b)
 kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
 
-Base.collect(a::KroneckerArray) = kron_nd(a.a, a.b)
+# Eagerly collect arguments to make more general on GPU.
+Base.collect(a::KroneckerArray) = kron_nd(collect(a.a), collect(a.b))
 
 function Base.Array{T,N}(a::KroneckerArray{S,N}) where {T,S,N}
   return convert(Array{T,N}, collect(a))

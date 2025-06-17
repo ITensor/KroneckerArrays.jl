@@ -81,17 +81,11 @@ end
                                                                                           arrayts,
   elt in elts
 
-  if arrayt == JLArray
-    # TODO: Collecting to `Array` is broken for GPU arrays so a lot of tests
-    # are broken, look into fixing that.
-    continue
-  end
-
   dev = adapt(arrayt)
   r = @constinferred blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => Eye{elt}(2, 2) ⊗ randn(elt, 2, 2),
-    Block(2, 2) => Eye{elt}(3, 3) ⊗ randn(elt, 3, 3),
+    Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)),
+    Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)),
   )
   a = @constinferred dev(blocksparse(d, r, r))
   @test sprint(show, a) == sprint(show, Array(a))
@@ -133,13 +127,21 @@ end
 
   @test @constinferred(norm(a)) ≈ norm(Array(a))
 
-  b = @constinferred exp(a)
-  @test Array(b) ≈ exp(Array(a))
+  if arrayt === Array
+    b = @constinferred exp(a)
+    @test Array(b) ≈ exp(Array(a))
+  else
+    @test_broken exp(a)
+  end
 
-  u, s, v = svd_compact(a)
-  @test u * s * v ≈ a
-  @test blocktype(u) === blocktype(a)
-  @test blocktype(v) === blocktype(a)
+  if arrayt === Array
+    u, s, v = svd_compact(a)
+    @test u * s * v ≈ a
+    @test blocktype(u) === blocktype(a)
+    @test blocktype(v) === blocktype(a)
+  else
+    @test_broken svd_compact(a)
+  end
 
   # Broken operations
   @test_broken inv(a)
