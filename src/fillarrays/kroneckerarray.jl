@@ -1,3 +1,6 @@
+using FillArrays: RectDiagonal, OnesVector
+const RectEye{T,V<:OnesVector{T},Axes} = RectDiagonal{T,V,Axes}
+
 using FillArrays: Eye
 const EyeKronecker{T,A<:Eye{T},B<:AbstractMatrix{T}} = KroneckerMatrix{T,A,B}
 const KroneckerEye{T,A<:AbstractMatrix{T},B<:Eye{T}} = KroneckerMatrix{T,A,B}
@@ -10,6 +13,14 @@ const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,
 
 # Like `adapt` but preserves `Eye`.
 _adapt(to, a::Eye) = a
+
+# Allows customizing for `FillArrays.Eye`.
+function _convert(::Type{AbstractArray{T}}, a::RectDiagonal) where {T}
+  _convert(AbstractMatrix{T}, a)
+end
+function _convert(::Type{AbstractMatrix{T}}, a::RectDiagonal) where {T}
+  RectDiagonal(convert(AbstractVector{T}, _diagview(a)), axes(a))
+end
 
 # Like `similar` but preserves `Eye`.
 function _similar(a::AbstractArray, elt::Type, ax::Tuple)
@@ -124,15 +135,15 @@ for op in (:+, :-)
   end
 end
 
-function Base.map!(f::typeof(identity), dest::EyeKronecker, a::EyeKronecker)
+function Base.map!(f::typeof(identity), dest::EyeKronecker, src::EyeKronecker)
   map!(f, dest.b, src.b)
   return dest
 end
-function Base.map!(f::typeof(identity), dest::KroneckerEye, a::KroneckerEye)
+function Base.map!(f::typeof(identity), dest::KroneckerEye, src::KroneckerEye)
   map!(f, dest.a, src.a)
   return dest
 end
-function Base.map!(::typeof(identity), dest::EyeEye, a::EyeEye)
+function Base.map!(::typeof(identity), dest::EyeEye, src::EyeEye)
   return error("Can't write in-place.")
 end
 for f in [:+, :-]
