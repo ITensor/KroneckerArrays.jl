@@ -64,7 +64,8 @@ arrayts = (Array, JLArray)
     @test_broken inv(a)
   end
 
-  if arrayt === Array && elt <: Real
+  if (VERSION ≤ v"1.11-" && arrayt === Array && elt <: Complex) ||
+    (arrayt === Array && elt <: Real)
     u, s, v = svd_compact(a)
     @test Array(u * s * v) ≈ Array(a)
   else
@@ -134,7 +135,10 @@ end
     @test_broken exp(a)
   end
 
-  if arrayt === Array
+  if VERSION < v"1.11-" && elt <: Complex
+    # Broken because of type stability issue in Julia v1.10.
+    @test_broken svd_compact(a)
+  elseif arrayt === Array
     u, s, v = svd_compact(a)
     @test u * s * v ≈ a
     @test blocktype(u) === blocktype(a)
