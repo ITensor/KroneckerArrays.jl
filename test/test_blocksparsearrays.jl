@@ -64,12 +64,11 @@ arrayts = (Array, JLArray)
     @test_broken inv(a)
   end
 
-  if (VERSION ≤ v"1.11-" && arrayt === Array && elt <: Complex) ||
-    (arrayt === Array && elt <: Real)
+  if arrayt === Array
     u, s, v = svd_compact(a)
     @test Array(u * s * v) ≈ Array(a)
   else
-    # Broken on GPU and for complex, investigate.
+    # Broken on GPU.
     @test_broken svd_compact(a)
   end
 
@@ -135,14 +134,17 @@ end
     @test_broken exp(a)
   end
 
-  if VERSION < v"1.11-" && elt <: Complex
-    # Broken because of type stability issue in Julia v1.10.
-    @test_broken svd_compact(a)
-  elseif arrayt === Array
+  ## if VERSION < v"1.11-" && elt <: Complex
+  ##   # Broken because of type stability issue in Julia v1.10.
+  ##   @test_broken svd_compact(a)
+  if arrayt === Array
     u, s, v = svd_compact(a)
     @test u * s * v ≈ a
-    @test blocktype(u) === blocktype(a)
-    @test blocktype(v) === blocktype(a)
+    @test blocktype(u) >: blocktype(u)
+    @test eltype(u) === eltype(a)
+    @test blocktype(v) >: blocktype(a)
+    @test eltype(v) === eltype(a)
+    @test eltype(s) === real(eltype(a))
   else
     @test_broken svd_compact(a)
   end
@@ -150,4 +152,16 @@ end
   # Broken operations
   @test_broken inv(a)
   @test_broken a[Block.(1:2), Block(2)]
+
+  @testset "Block deficient" begin
+    d = Dict(Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)))
+    a = @constinferred dev(blocksparse(d, r, r))
+
+    d = Dict(Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)))
+    b = @constinferred dev(blocksparse(d, r, r))
+
+    @test_broken a + b
+    # @test Array(a + b) ≈ Array(a) + Array(b)
+    # @test Array(2a) ≈ 2Array(a)
+  end
 end

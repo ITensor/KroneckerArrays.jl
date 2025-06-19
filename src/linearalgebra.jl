@@ -15,6 +15,15 @@ using LinearAlgebra:
   svdvals,
   tr
 
+using LinearAlgebra: LinearAlgebra
+function KroneckerArray(J::LinearAlgebra.UniformScaling, ax::Tuple)
+  return Eye{eltype(J)}(arg1.(ax)) ⊗ Eye{eltype(J)}(arg2.(ax))
+end
+function Base.copyto!(a::KroneckerArray, J::LinearAlgebra.UniformScaling)
+  copyto!(a, KroneckerArray(J, axes(a)))
+  return a
+end
+
 using LinearAlgebra: LinearAlgebra, pinv
 function LinearAlgebra.pinv(a::KroneckerArray; kwargs...)
   return pinv(a.a; kwargs...) ⊗ pinv(a.b; kwargs...)

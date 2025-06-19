@@ -1,3 +1,13 @@
+using FillArrays: FillArrays, Zeros
+function FillArrays.fillsimilar(
+  a::Zeros{T},
+  ax::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+) where {T}
+  return Zeros{T}(arg1.(ax)) ⊗ Zeros{T}(arg2.(ax))
+end
+
 using FillArrays: RectDiagonal, OnesVector
 const RectEye{T,V<:OnesVector{T},Axes} = RectDiagonal{T,V,Axes}
 
@@ -207,4 +217,72 @@ function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerEye, a::Kron
 end
 function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
   return error("Can't write in-place.")
+end
+
+using Base.Broadcast:
+  AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
+
+struct EyeStyle <: AbstractArrayStyle{2} end
+EyeStyle(::Val{2}) = EyeStyle()
+function _BroadcastStyle(::Type{<:Eye})
+  return EyeStyle()
+end
+Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
+
+function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
+  return Eye{elt}(axes(bc))
+end
+
+function Base.similar(bc::Broadcasted{<:KroneckerStyle{EyeStyle,A}}, elt::Type) where {A}
+  ax = axes(bc)
+  bc_a = Broadcasted(A, nothing, (), arg2.(ax))
+  return Eye{elt}(arg1.(ax)) ⊗ similar(bc_a, elt)
+end
+function Base.copyto!(
+  dest::EyeKronecker,
+  bc::Broadcasted{<:KroneckerStyle{EyeStyle},<:Any,typeof(identity),<:Tuple{EyeKronecker}},
+)
+  map!(identity, dest, only(bc.args))
+  return dest
+end
+function Base.copyto!(
+  dest::EyeKronecker,
+  bc::Broadcasted{
+    <:KroneckerStyle{EyeStyle},<:Any,typeof(+),<:Tuple{EyeKronecker,EyeKronecker}
+  },
+)
+  map!(+, dest, bc.args...)
+  return dest
+end
+
+# Implement eagerly, like FillArrays.jl broadcasting:
+# https://github.com/JuliaArrays/FillArrays.jl/blob/v1.13.0/src/fillbroadcast.jl.
+function Base.broadcasted(
+  ::KroneckerStyle{EyeStyle}, ::typeof(+), a::EyeKronecker, b::EyeKronecker
+)
+  axes(a) == axes(b) ||
+    throw(DimensionMismatch("Broadcasting `EyeKronecker` requires matching axes."))
+  return a.a ⊗ (a.b + b.b)
+end
+function Base.broadcasted(
+  ::KroneckerStyle{EyeStyle}, ::typeof(-), a::EyeKronecker, b::EyeKronecker
+)
+  axes(a) == axes(b) ||
+    throw(DimensionMismatch("Broadcasting `EyeKronecker` requires matching axes."))
+  return a.a ⊗ (a.b - b.b)
+end
+function Base.broadcasted(
+  ::KroneckerStyle{EyeStyle}, f::Base.Fix1{typeof(*),<:Number}, a::EyeKronecker
+)
+  return a.a ⊗ (f.x * a.b)
+end
+function Base.broadcasted(
+  ::KroneckerStyle{EyeStyle}, f::Base.Fix2{typeof(*),<:Number}, a::EyeKronecker
+)
+  return a.a ⊗ (a.b * f.x)
+end
+function Base.broadcasted(
+  ::KroneckerStyle{EyeStyle}, f::Base.Fix1{typeof(/),<:Number}, a::EyeKronecker
+)
+  return a.a ⊗ (a.b / f.x)
 end
