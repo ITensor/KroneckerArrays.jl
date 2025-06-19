@@ -87,14 +87,15 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   a′ = similar(a)
   @test_throws "not supported" a′ .= sin.(a)
   a′ = similar(a)
-  @test_broken a′ .= 2 .* a
+  a′ .= 2 .* a
+  @test collect(a′) ≈ 2 * collect(a)
   bc = broadcasted(+, a, a)
   @test bc.style === style
   @test similar(bc, elt) isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
-  @test_broken copy(bc)
+  @test collect(copy(bc)) ≈ 2 * collect(a)
   bc = broadcasted(*, 2, a)
   @test bc.style === style
-  @test_broken copy(bc)
+  @test collect(copy(bc)) ≈ 2 * collect(a)
 
   # Mapping
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)

@@ -75,3 +75,12 @@ for f in (:+, :-)
     end
   end
 end
+
+using Base.Broadcast: axistype
+function Base.Broadcast.axistype(
+  r1::CartesianProductUnitRange, r2::CartesianProductUnitRange
+)
+  prod = axistype(arg1(r1), arg1(r2)) × axistype(arg2(r1), arg2(r2))
+  range = axistype(unproduct(r1), unproduct(r2))
+  return cartesianrange(prod, range)
+end

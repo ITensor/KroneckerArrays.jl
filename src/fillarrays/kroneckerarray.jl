@@ -1,3 +1,13 @@
+using FillArrays: FillArrays, Zeros
+function FillArrays.fillsimilar(
+  a::Zeros{T},
+  ax::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+) where {T}
+  return Zeros{T}(arg1.(ax)) ⊗ Zeros{T}(arg2.(ax))
+end
+
 using FillArrays: RectDiagonal, OnesVector
 const RectEye{T,V<:OnesVector{T},Axes} = RectDiagonal{T,V,Axes}
 
@@ -207,4 +217,18 @@ function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerEye, a::Kron
 end
 function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
   return error("Can't write in-place.")
+end
+
+using Base.Broadcast:
+  AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
+
+struct EyeStyle <: AbstractArrayStyle{2} end
+EyeStyle(::Val{2}) = EyeStyle()
+function _BroadcastStyle(::Type{<:Eye})
+  return EyeStyle()
+end
+Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
+
+function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
+  return Eye{elt}(axes(bc))
 end

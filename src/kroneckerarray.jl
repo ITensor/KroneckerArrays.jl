@@ -226,6 +226,8 @@ end
 for op in (:+, :-)
   @eval begin
     function Base.$op(a::KroneckerArray, b::KroneckerArray)
+      iszero(a) && return $op(b)
+      iszero(b) && return a
       if a.b == b.b
         return $op(a.a, b.a) ⊗ a.b
       elseif a.a == b.a
@@ -241,8 +243,15 @@ for op in (:+, :-)
   end
 end
 
-using Base.Broadcast: AbstractArrayStyle, BroadcastStyle, Broadcasted
+# Allows for customizations for FillArrays.
+_BroadcastStyle(x) = BroadcastStyle(x)
+
+using Base.Broadcast: Broadcast, AbstractArrayStyle, BroadcastStyle, Broadcasted
 struct KroneckerStyle{N,A,B} <: AbstractArrayStyle{N} end
+arg1(::Type{<:KroneckerStyle{<:Any,A}}) where {A} = A
+arg1(style::KroneckerStyle) = arg1(typeof(style))
+arg2(::Type{<:KroneckerStyle{<:Any,B}}) where {B} = B
+arg2(style::KroneckerStyle) = arg2(typeof(style))
 function KroneckerStyle{N}(a::BroadcastStyle, b::BroadcastStyle) where {N}
   return KroneckerStyle{N,a,b}()
 end
@@ -253,30 +262,69 @@ function KroneckerStyle{N,A,B}(v::Val{M}) where {N,A,B,M}
   return KroneckerStyle{M,typeof(A)(v),typeof(B)(v)}()
 end
 function Base.BroadcastStyle(::Type{<:KroneckerArray{<:Any,N,A,B}}) where {N,A,B}
-  return KroneckerStyle{N}(BroadcastStyle(A), BroadcastStyle(B))
+  return KroneckerStyle{N}(_BroadcastStyle(A), _BroadcastStyle(B))
 end
 function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N}) where {N}
-  return KroneckerStyle{N}(
-    BroadcastStyle(style1.a, style2.a), BroadcastStyle(style1.b, style2.b)
-  )
+  style_a = BroadcastStyle(arg1(style1), arg1(style2))
+  (style_a isa Broadcast.Unknown) && return Broadcast.Unknown()
+  style_b = BroadcastStyle(arg2(style1), arg2(style2))
+  (style_b isa Broadcast.Unknown) && return Broadcast.Unknown()
+  return KroneckerStyle{N}(style_a, style_b)
 end
 function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type) where {N,A,B}
-  ax_a = map(ax -> ax.product.a, axes(bc))
-  ax_b = map(ax -> ax.product.b, axes(bc))
+  ax_a = arg1.(axes(bc))
+  ax_b = arg2.(axes(bc))
   bc_a = Broadcasted(A, nothing, (), ax_a)
   bc_b = Broadcasted(B, nothing, (), ax_b)
   a = similar(bc_a, elt)
   b = similar(bc_b, elt)
   return a ⊗ b
 end
+# Fallback definition of broadcasting falls back to `map` but assumes
+# inputs have been canonicalized to a map-compatible expression already,
+# for example by absorbing scalar arguments into the function.
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:KroneckerStyle})
-  return throw(
-    ArgumentError(
-      "Arbitrary broadcasting is not supported for KroneckerArrays since they might not preserve the Kronecker structure.",
-    ),
-  )
+  allequal(axes, bc.args) || throw(ArgumentError("Broadcasted axes must be equal."))
+  map!(bc.f, dest, bc.args...)
+  return dest
 end
 
+# Broadcast rewrite rules. Canonicalize inputs to absorb scalar inputs into the
+# function.
+function Base.broadcasted(style::KroneckerStyle, ::typeof(*), a::Number, b::KroneckerArray)
+  return broadcasted(style, Base.Fix1(*, a), b)
+end
+function Base.broadcasted(style::KroneckerStyle, ::typeof(*), a::KroneckerArray, b::Number)
+  return broadcasted(style, Base.Fix2(*, b), a)
+end
+function Base.broadcasted(style::KroneckerStyle, ::typeof(/), a::KroneckerArray, b::Number)
+  return broadcasted(style, Base.Fix2(/, b), a)
+end
+using MapBroadcast: MapBroadcast, MapFunction
+function Base.broadcasted(
+  style::KroneckerStyle,
+  f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}},
+  a::KroneckerArray,
+)
+  return broadcasted(style, Base.Fix1(*, f.args[1]), a)
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}},
+  a::KroneckerArray,
+)
+  return broadcasted(style, Base.Fix2(*, f.args[2]), a)
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}},
+  a::KroneckerArray,
+)
+  return broadcasted(style, Base.Fix2(/, f.args[2]), a)
+end
+
+# TODO: Define by converting to a broadcast expession (with MapBroadcast.jl)
+# and then constructing the output with `similar`.
 function Base.map(f, a1::KroneckerArray, a_rest::KroneckerArray...)
   return throw(
     ArgumentError(
@@ -312,6 +360,8 @@ for f in [:+, :-]
     function Base.map!(
       ::typeof($f), dest::KroneckerArray, a::KroneckerArray, b::KroneckerArray
     )
+      iszero(b) && return map!(identity, dest, a)
+      iszero(a) && return map!($f, dest, b)
       if a.b == b.b
         map!($f, dest.a, a.a, b.a)
         map!(identity, dest.b, a.b)
@@ -346,6 +396,15 @@ for op in [:*, :/]
     )
       map!(identity, dest.a, src.a)
       map!(f, dest.b, src.b)
+      return dest
+    end
+  end
+end
+for f in [:+, :-]
+  @eval begin
+    function Base.map!(::typeof($f), dest::KroneckerArray, src::KroneckerArray)
+      map!($f, dest.a, src.a)
+      map!(identity, dest.b, src.b)
       return dest
     end
   end
