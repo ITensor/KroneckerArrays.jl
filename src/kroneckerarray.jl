@@ -280,6 +280,9 @@ function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type) where
   b = similar(bc_b, elt)
   return a ⊗ b
 end
+# Fallback definition of broadcasting falls back to `map` but assumes
+# inputs have been canonicalized to a map-compatible expression already,
+# for example by absorbing scalar arguments into the function.
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:KroneckerStyle})
   allequal(axes, bc.args) || throw(ArgumentError("Broadcasted axes must be equal."))
   map!(bc.f, dest, bc.args...)
@@ -320,6 +323,8 @@ function Base.broadcasted(
   return broadcasted(style, Base.Fix2(/, f.args[2]), a)
 end
 
+# TODO: Define by converting to a broadcast expession (with MapBroadcast.jl)
+# and then constructing the output with `similar`.
 function Base.map(f, a1::KroneckerArray, a_rest::KroneckerArray...)
   return throw(
     ArgumentError(
