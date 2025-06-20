@@ -56,11 +56,10 @@ arrayts = (Array, JLArray)
 
   @test norm(a) ≈ norm(Array(a))
 
-  if arrayt == Array
+  if arrayt === Array
     @test Array(inv(a)) ≈ inv(Array(a))
   else
-    # Broken for JLArray, it seems like `inv` isn't
-    # type stable.
+    # Broken on GPU.
     @test_broken inv(a)
   end
 
@@ -149,8 +148,14 @@ end
     @test_broken svd_compact(a)
   end
 
+  if arrayt === Array
+    @test Array(inv(a)) ≈ inv(Array(a))
+  else
+    # Broken on GPU.
+    @test_broken inv(a)
+  end
+
   # Broken operations
-  @test_broken inv(a)
   @test_broken a[Block.(1:2), Block(2)]
 
   @testset "Block deficient" begin
