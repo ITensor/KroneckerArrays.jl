@@ -1,9 +1,9 @@
 using DerivableInterfaces: zero!
-using FillArrays: Eye
+using FillArrays: Eye, Zeros
 using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗
 using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 
 @testset "FillArrays.Eye" begin
   MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
@@ -189,4 +189,30 @@ using Test: @test, @testset
   @test fa.b isa Eye
 
   @test det(a) ≈ det(collect(a)) ≈ 1
+end
+
+@testset "FillArrays.Zeros" begin
+  a = randn(2, 2) ⊗ randn(2, 2)
+  b = Zeros(2, 2) ⊗ Zeros(2, 2)
+  for (x, y) in ((a, b), (b, a))
+    @test x + y == a
+    @test x .+ y == a
+    @test map!(+, similar(a), x, y) == a
+    @test (similar(a) .= x .+ y) == a
+  end
+
+  @test a - b == a
+  @test a .- b == a
+  @test map!(-, similar(a), a, b) == a
+  @test (similar(a) .= a .- b) == a
+
+  @test b - a == -a
+  @test b .- a == -a
+  @test map!(-, similar(a), b, a) == -a
+  @test (similar(a) .= b .- a) == -a
+
+  @test b + b == b
+  @test b .+ b == b
+  @test b - b == b
+  @test b .- b == b
 end

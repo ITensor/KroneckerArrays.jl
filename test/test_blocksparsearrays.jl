@@ -159,14 +159,13 @@ end
   @test_broken a[Block.(1:2), Block(2)]
 
   @testset "Block deficient" begin
-    d = Dict(Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)))
-    a = @constinferred dev(blocksparse(d, r, r))
+    da = Dict(Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)))
+    a = @constinferred dev(blocksparse(da, r, r))
 
-    d = Dict(Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)))
-    b = @constinferred dev(blocksparse(d, r, r))
+    db = Dict(Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)))
+    b = @constinferred dev(blocksparse(db, r, r))
 
-    @test_broken a + b
-    # @test Array(a + b) ≈ Array(a) + Array(b)
-    # @test Array(2a) ≈ 2Array(a)
+    @test Array(a + b) ≈ Array(a) + Array(b)
+    @test Array(2a) ≈ 2Array(a)
   end
 end

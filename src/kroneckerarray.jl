@@ -323,6 +323,65 @@ function Base.broadcasted(
   return broadcasted(style, Base.Fix2(/, f.args[2]), a)
 end
 
+# Simplification rules similar to those for FillArrays.jl:
+# https://github.com/JuliaArrays/FillArrays.jl/blob/v1.13.0/src/fillbroadcast.jl
+using FillArrays: Zeros
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(+),
+  a::KroneckerArray,
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types.
+  return a
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(+),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray,
+)
+  # TODO: Promote the element types.
+  return b
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(+),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types and axes.
+  return b
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(-),
+  a::KroneckerArray,
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types.
+  return a
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(-),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray,
+)
+  # TODO: Promote the element types.
+  # TODO: Return `broadcasted(-, b)`.
+  return -b
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(-),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types and axes.
+  return b
+end
+
 # TODO: Define by converting to a broadcast expession (with MapBroadcast.jl)
 # and then constructing the output with `similar`.
 function Base.map(f, a1::KroneckerArray, a_rest::KroneckerArray...)
