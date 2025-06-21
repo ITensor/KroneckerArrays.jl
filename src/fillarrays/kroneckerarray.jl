@@ -81,155 +81,155 @@ function DerivableInterfaces.zero!(a::EyeEye)
   return throw(ArgumentError("Can't zero out `Eye ⊗ Eye`."))
 end
 
-function Base.:*(a::Number, b::EyeKronecker)
-  return b.a ⊗ (a * b.b)
-end
-function Base.:*(a::Number, b::KroneckerEye)
-  return (a * b.a) ⊗ b.b
-end
-function Base.:*(a::Number, b::EyeEye)
-  return error("Can't multiply `Eye ⊗ Eye` by a number.")
-end
-function Base.:*(a::EyeKronecker, b::Number)
-  return a.a ⊗ (a.b * b)
-end
-function Base.:*(a::KroneckerEye, b::Number)
-  return (a.a * b) ⊗ a.b
-end
-function Base.:*(a::EyeEye, b::Number)
-  return error("Can't multiply `Eye ⊗ Eye` by a number.")
-end
-
-function Base.:-(a::EyeKronecker)
-  return a.a ⊗ (-a.b)
-end
-function Base.:-(a::KroneckerEye)
-  return (-a.a) ⊗ a.b
-end
-function Base.:-(a::EyeEye)
-  return error("Can't multiply `Eye ⊗ Eye` by a number.")
-end
-
-for op in (:+, :-)
-  @eval begin
-    function Base.$op(a::EyeKronecker, b::EyeKronecker)
-      if a.a ≠ b.a
-        return throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or secord arguments match.",
-          ),
-        )
-      end
-      return a.a ⊗ $op(a.b, b.b)
-    end
-    function Base.$op(a::KroneckerEye, b::KroneckerEye)
-      if a.b ≠ b.b
-        return throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or secord arguments match.",
-          ),
-        )
-      end
-      return $op(a.a, b.a) ⊗ a.b
-    end
-    function Base.$op(a::EyeEye, b::EyeEye)
-      if a.b ≠ b.b
-        return throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or secord arguments match.",
-          ),
-        )
-      end
-      return $op(a.a, b.a) ⊗ a.b
-    end
-  end
-end
-
-function Base.map!(f::typeof(identity), dest::EyeKronecker, src::EyeKronecker)
-  map!(f, dest.b, src.b)
-  return dest
-end
-function Base.map!(f::typeof(identity), dest::KroneckerEye, src::KroneckerEye)
-  map!(f, dest.a, src.a)
-  return dest
-end
-function Base.map!(::typeof(identity), dest::EyeEye, src::EyeEye)
-  return error("Can't write in-place.")
-end
-for f in [:+, :-]
-  @eval begin
-    function Base.map!(::typeof($f), dest::EyeKronecker, a::EyeKronecker, b::EyeKronecker)
-      if dest.a ≠ a.a ≠ b.a
-        throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or second arguments match.",
-          ),
-        )
-      end
-      map!($f, dest.b, a.b, b.b)
-      return dest
-    end
-    function Base.map!(::typeof($f), dest::KroneckerEye, a::KroneckerEye, b::KroneckerEye)
-      if dest.b ≠ a.b ≠ b.b
-        throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or second arguments match.",
-          ),
-        )
-      end
-      map!($f, dest.a, a.a, b.a)
-      return dest
-    end
-    function Base.map!(::typeof($f), dest::EyeEye, a::EyeEye, b::EyeEye)
-      return error("Can't write in-place.")
-    end
-  end
-end
-function Base.map!(f::typeof(-), dest::EyeKronecker, a::EyeKronecker)
-  map!(f, dest.b, a.b)
-  return dest
-end
-function Base.map!(f::typeof(-), dest::KroneckerEye, a::KroneckerEye)
-  map!(f, dest.a, a.a)
-  return dest
-end
-function Base.map!(f::typeof(-), dest::EyeEye, a::EyeEye)
-  return error("Can't write in-place.")
-end
-function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
-  map!(f, dest.b, a.b)
-  return dest
-end
-function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerEye, a::KroneckerEye)
-  map!(f, dest.a, a.a)
-  return dest
-end
-function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
-  return error("Can't write in-place.")
-end
-function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
-  map!(f, dest.b, a.b)
-  return dest
-end
-function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerEye, a::KroneckerEye)
-  map!(f, dest.a, a.a)
-  return dest
-end
-function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
-  return error("Can't write in-place.")
-end
-
-using Base.Broadcast:
-  AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
-
-struct EyeStyle <: AbstractArrayStyle{2} end
-EyeStyle(::Val{2}) = EyeStyle()
-function _BroadcastStyle(::Type{<:Eye})
-  return EyeStyle()
-end
-Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
-Base.BroadcastStyle(style1::EyeStyle, style2::DefaultArrayStyle) = style2
-
-function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
-  return Eye{elt}(axes(bc))
-end
+## function Base.:*(a::Number, b::EyeKronecker)
+##   return b.a ⊗ (a * b.b)
+## end
+## function Base.:*(a::Number, b::KroneckerEye)
+##   return (a * b.a) ⊗ b.b
+## end
+## function Base.:*(a::Number, b::EyeEye)
+##   return error("Can't multiply `Eye ⊗ Eye` by a number.")
+## end
+## function Base.:*(a::EyeKronecker, b::Number)
+##   return a.a ⊗ (a.b * b)
+## end
+## function Base.:*(a::KroneckerEye, b::Number)
+##   return (a.a * b) ⊗ a.b
+## end
+## function Base.:*(a::EyeEye, b::Number)
+##   return error("Can't multiply `Eye ⊗ Eye` by a number.")
+## end
+## 
+## function Base.:-(a::EyeKronecker)
+##   return a.a ⊗ (-a.b)
+## end
+## function Base.:-(a::KroneckerEye)
+##   return (-a.a) ⊗ a.b
+## end
+## function Base.:-(a::EyeEye)
+##   return error("Can't multiply `Eye ⊗ Eye` by a number.")
+## end
+## 
+## for op in (:+, :-)
+##   @eval begin
+##     function Base.$op(a::EyeKronecker, b::EyeKronecker)
+##       if a.a ≠ b.a
+##         return throw(
+##           ArgumentError(
+##             "KroneckerArray addition is only supported when the first or secord arguments match.",
+##           ),
+##         )
+##       end
+##       return a.a ⊗ $op(a.b, b.b)
+##     end
+##     function Base.$op(a::KroneckerEye, b::KroneckerEye)
+##       if a.b ≠ b.b
+##         return throw(
+##           ArgumentError(
+##             "KroneckerArray addition is only supported when the first or secord arguments match.",
+##           ),
+##         )
+##       end
+##       return $op(a.a, b.a) ⊗ a.b
+##     end
+##     function Base.$op(a::EyeEye, b::EyeEye)
+##       if a.b ≠ b.b
+##         return throw(
+##           ArgumentError(
+##             "KroneckerArray addition is only supported when the first or secord arguments match.",
+##           ),
+##         )
+##       end
+##       return $op(a.a, b.a) ⊗ a.b
+##     end
+##   end
+## end
+## 
+## function Base.map!(f::typeof(identity), dest::EyeKronecker, src::EyeKronecker)
+##   map!(f, dest.b, src.b)
+##   return dest
+## end
+## function Base.map!(f::typeof(identity), dest::KroneckerEye, src::KroneckerEye)
+##   map!(f, dest.a, src.a)
+##   return dest
+## end
+## function Base.map!(::typeof(identity), dest::EyeEye, src::EyeEye)
+##   return error("Can't write in-place.")
+## end
+## for f in [:+, :-]
+##   @eval begin
+##     function Base.map!(::typeof($f), dest::EyeKronecker, a::EyeKronecker, b::EyeKronecker)
+##       if dest.a ≠ a.a ≠ b.a
+##         throw(
+##           ArgumentError(
+##             "KroneckerArray addition is only supported when the first or second arguments match.",
+##           ),
+##         )
+##       end
+##       map!($f, dest.b, a.b, b.b)
+##       return dest
+##     end
+##     function Base.map!(::typeof($f), dest::KroneckerEye, a::KroneckerEye, b::KroneckerEye)
+##       if dest.b ≠ a.b ≠ b.b
+##         throw(
+##           ArgumentError(
+##             "KroneckerArray addition is only supported when the first or second arguments match.",
+##           ),
+##         )
+##       end
+##       map!($f, dest.a, a.a, b.a)
+##       return dest
+##     end
+##     function Base.map!(::typeof($f), dest::EyeEye, a::EyeEye, b::EyeEye)
+##       return error("Can't write in-place.")
+##     end
+##   end
+## end
+## function Base.map!(f::typeof(-), dest::EyeKronecker, a::EyeKronecker)
+##   map!(f, dest.b, a.b)
+##   return dest
+## end
+## function Base.map!(f::typeof(-), dest::KroneckerEye, a::KroneckerEye)
+##   map!(f, dest.a, a.a)
+##   return dest
+## end
+## function Base.map!(f::typeof(-), dest::EyeEye, a::EyeEye)
+##   return error("Can't write in-place.")
+## end
+## function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
+##   map!(f, dest.b, a.b)
+##   return dest
+## end
+## function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerEye, a::KroneckerEye)
+##   map!(f, dest.a, a.a)
+##   return dest
+## end
+## function Base.map!(f::Base.Fix1{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
+##   return error("Can't write in-place.")
+## end
+## function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeKronecker, a::EyeKronecker)
+##   map!(f, dest.b, a.b)
+##   return dest
+## end
+## function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::KroneckerEye, a::KroneckerEye)
+##   map!(f, dest.a, a.a)
+##   return dest
+## end
+## function Base.map!(f::Base.Fix2{typeof(*),<:Number}, dest::EyeEye, a::EyeEye)
+##   return error("Can't write in-place.")
+## end
+## 
+## using Base.Broadcast:
+##   AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
+## 
+## struct EyeStyle <: AbstractArrayStyle{2} end
+## EyeStyle(::Val{2}) = EyeStyle()
+## function _BroadcastStyle(::Type{<:Eye})
+##   return EyeStyle()
+## end
+## Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
+## Base.BroadcastStyle(style1::EyeStyle, style2::DefaultArrayStyle) = style2
+## 
+## function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
+##   return Eye{elt}(axes(bc))
+## end

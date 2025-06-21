@@ -2,6 +2,7 @@ module KroneckerArrays
 
 export ⊗, ×
 
+include("linearcombination.jl")
 include("cartesianproduct.jl")
 include("kroneckerarray.jl")
 include("linearalgebra.jl")

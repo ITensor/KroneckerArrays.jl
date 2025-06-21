@@ -117,6 +117,8 @@ kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
 # Eagerly collect arguments to make more general on GPU.
 Base.collect(a::KroneckerArray) = kron_nd(collect(a.a), collect(a.b))
 
+Base.zero(a::KroneckerArray) = zero(arg1(a)) ⊗ zero(arg2(a))
+
 function Base.Array{T,N}(a::KroneckerArray{S,N}) where {T,S,N}
   return convert(Array{T,N}, collect(a))
 end
@@ -202,43 +204,34 @@ function Base.isreal(a::KroneckerArray)
   return isreal(a.a) && isreal(a.b)
 end
 
+using DiagonalArrays: DiagonalArrays, diagonal
+function DiagonalArrays.diagonal(a::KroneckerArray)
+  return diagonal(a.a) ⊗ diagonal(a.b)
+end
+
+Base.real(a::KroneckerArray{<:Real}) = a
+function Base.real(a::KroneckerArray)
+  if iszero(imag(a.a)) || iszero(imag(a.b))
+    return real(a.a) ⊗ real(a.b)
+  elseif iszero(real(a.a)) || iszero(real(a.b))
+    return -imag(a.a) ⊗ imag(a.b)
+  end
+  return real(a.a) ⊗ real(a.b) - imag(a.a) ⊗ imag(a.b)
+end
+Base.imag(a::KroneckerArray{<:Real}) = zero(a)
+function Base.imag(a::KroneckerArray)
+  if iszero(imag(a.a)) || iszero(real(a.b))
+    return real(a.a) ⊗ imag(a.b)
+  elseif iszero(real(a.a)) || iszero(imag(a.b))
+    return imag(a.a) ⊗ real(a.b)
+  end
+  return real(a.a) ⊗ imag(a.b) + imag(a.a) ⊗ real(a.b)
+end
+
 for f in [:transpose, :adjoint, :inv]
   @eval begin
     function Base.$f(a::KroneckerArray)
       return $f(a.a) ⊗ $f(a.b)
-    end
-  end
-end
-
-function Base.:*(a::Number, b::KroneckerArray)
-  return (a * b.a) ⊗ b.b
-end
-function Base.:*(a::KroneckerArray, b::Number)
-  return a.a ⊗ (a.b * b)
-end
-function Base.:/(a::KroneckerArray, b::Number)
-  return a.a ⊗ (a.b / b)
-end
-function Base.:-(a::KroneckerArray)
-  return (-a.a) ⊗ a.b
-end
-
-for op in (:+, :-)
-  @eval begin
-    function Base.$op(a::KroneckerArray, b::KroneckerArray)
-      iszero(a) && return $op(b)
-      iszero(b) && return a
-      if a.b == b.b
-        return $op(a.a, b.a) ⊗ a.b
-      elseif a.a == b.a
-        return a.a ⊗ $op(a.b, b.b)
-      else
-        throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or secord arguments match.",
-          ),
-        )
-      end
     end
   end
 end
@@ -271,222 +264,205 @@ function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N
   (style_b isa Broadcast.Unknown) && return Broadcast.Unknown()
   return KroneckerStyle{N}(style_a, style_b)
 end
-function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type) where {N,A,B}
-  ax_a = arg1.(axes(bc))
-  ax_b = arg2.(axes(bc))
+function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type, ax) where {N,A,B}
+  ax_a = arg1.(ax)
+  ax_b = arg2.(ax)
   bc_a = Broadcasted(A, nothing, (), ax_a)
   bc_b = Broadcasted(B, nothing, (), ax_b)
   a = similar(bc_a, elt)
   b = similar(bc_b, elt)
   return a ⊗ b
 end
-# Fallback definition of broadcasting falls back to `map` but assumes
-# inputs have been canonicalized to a map-compatible expression already,
-# for example by absorbing scalar arguments into the function.
-function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:KroneckerStyle})
-  allequal(axes, bc.args) || throw(ArgumentError("Broadcasted axes must be equal."))
-  map!(bc.f, dest, bc.args...)
-  return dest
-end
 
-# Broadcast rewrite rules. Canonicalize inputs to absorb scalar inputs into the
-# function.
-function Base.broadcasted(style::KroneckerStyle, ::typeof(*), a::Number, b::KroneckerArray)
-  return broadcasted(style, Base.Fix1(*, a), b)
-end
-function Base.broadcasted(style::KroneckerStyle, ::typeof(*), a::KroneckerArray, b::Number)
-  return broadcasted(style, Base.Fix2(*, b), a)
-end
-function Base.broadcasted(style::KroneckerStyle, ::typeof(/), a::KroneckerArray, b::Number)
-  return broadcasted(style, Base.Fix2(/, b), a)
-end
-using MapBroadcast: MapBroadcast, MapFunction
-function Base.broadcasted(
-  style::KroneckerStyle,
-  f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}},
-  a::KroneckerArray,
-)
-  return broadcasted(style, Base.Fix1(*, f.args[1]), a)
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}},
-  a::KroneckerArray,
-)
-  return broadcasted(style, Base.Fix2(*, f.args[2]), a)
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}},
-  a::KroneckerArray,
-)
-  return broadcasted(style, Base.Fix2(/, f.args[2]), a)
-end
-
-# Simplification rules similar to those for FillArrays.jl:
-# https://github.com/JuliaArrays/FillArrays.jl/blob/v1.13.0/src/fillbroadcast.jl
-using FillArrays: Zeros
-function Base.broadcasted(
-  style::KroneckerStyle,
-  ::typeof(+),
-  a::KroneckerArray,
-  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-)
-  # TODO: Promote the element types.
-  return a
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  ::typeof(+),
-  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-  b::KroneckerArray,
-)
-  # TODO: Promote the element types.
-  return b
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  ::typeof(+),
-  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-)
-  # TODO: Promote the element types and axes.
-  return b
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  ::typeof(-),
-  a::KroneckerArray,
-  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-)
-  # TODO: Promote the element types.
-  return a
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  ::typeof(-),
-  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-  b::KroneckerArray,
-)
-  # TODO: Promote the element types.
-  # TODO: Return `broadcasted(-, b)`.
-  return -b
-end
-function Base.broadcasted(
-  style::KroneckerStyle,
-  ::typeof(-),
-  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
-)
-  # TODO: Promote the element types and axes.
-  return b
-end
-
-# TODO: Define by converting to a broadcast expession (with MapBroadcast.jl)
-# and then constructing the output with `similar`.
 function Base.map(f, a1::KroneckerArray, a_rest::KroneckerArray...)
-  return throw(
-    ArgumentError(
-      "Arbitrary mapping is not supported for KroneckerArrays since they might not preserve the Kronecker structure.",
-    ),
-  )
+  return Broadcast.broadcast_preserving_zero_d(f, a1, a_rest...)
 end
 function Base.map!(f, dest::KroneckerArray, a1::KroneckerArray, a_rest::KroneckerArray...)
-  return throw(
-    ArgumentError(
-      "Arbitrary mapping is not supported for KroneckerArrays since they might not preserve the Kronecker structure.",
-    ),
-  )
-end
-
-function _map!!(f::F, dest::AbstractArray, srcs::AbstractArray...) where {F}
-  map!(f, dest, srcs...)
+  dest .= f.(a1, a_rest...)
   return dest
 end
 
+function Base.copyto!(dest::KroneckerArray, a::Sum{<:KroneckerStyle})
+  f = LinearCombination(a)
+  args = arguments(a)
+  arg1s = arg1.(args)
+  arg2s = arg2.(args)
+  dest1 = arg1(dest)
+  dest2 = arg2(dest)
+  if allequal(arg2s)
+    copyto!(dest2, first(arg2s))
+    dest1 .= f.(arg1s...)
+  elseif allequal(arg1s)
+    copyto!(dest1, first(arg1s))
+    dest2 .= f.(arg2s...)
+  else
+    error("This operation doesn't preserve the Kronecker structure.")
+  end
+  return dest
+end
+
+function Broadcast.broadcasted(::KroneckerStyle, f, as...)
+  return error("Arbitrary broadcasting not supported for KroneckerArray.")
+end
+
+# Linear operations.
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(+), a, b)
+  return Sum(a) + Sum(b)
+end
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(-), a, b)
+  return Sum(a) - Sum(b)
+end
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), c::Number, a)
+  return c * Sum(a)
+end
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), a, c::Number)
+  return Sum(a) * c
+end
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(/), a, c::Number)
+  return Sum(a) / c
+end
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(-), a)
+  return -Sum(a)
+end
+
+# Rewrite rules to canonicalize broadcast expressions.
+function Broadcast.broadcasted(style::KroneckerStyle, f::Base.Fix1{typeof(*),<:Number}, a)
+  return broadcasted(style, *, f.x, a)
+end
+function Broadcast.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(*),<:Number}, a)
+  return broadcasted(style, *, a, f.x)
+end
+function Broadcast.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(/),<:Number}, a)
+  return broadcasted(style, /, a, f.x)
+end
+
+# Use to determine the element type of KroneckerBroadcasted.
+_eltype(x) = eltype(x)
+_eltype(x::Broadcasted) = Base.promote_op(x.f, _eltype.(x.args)...)
+
+using Base.Broadcast: broadcasted
+struct KroneckerBroadcasted{A<:Broadcasted,B<:Broadcasted}
+  a::A
+  b::B
+end
+arg1(a::KroneckerBroadcasted) = a.a
+arg2(a::KroneckerBroadcasted) = a.b
+⊗(a::Broadcasted, b::Broadcasted) = KroneckerBroadcasted(a, b)
+Broadcast.materialize(a::KroneckerBroadcasted) = copy(a)
+Broadcast.materialize!(dest, a::KroneckerBroadcasted) = copyto!(dest, a)
+Broadcast.broadcastable(a::KroneckerBroadcasted) = a
+Base.copy(a::KroneckerBroadcasted) = copy(arg1(a)) ⊗ copy(arg2(a))
+function Base.copyto!(dest::KroneckerArray, a::KroneckerBroadcasted)
+  copyto!(arg1(dest), copy(arg1(a)))
+  copyto!(arg2(dest), copy(arg2(a)))
+  return dest
+end
+function Base.eltype(a::KroneckerBroadcasted)
+  a1 = arg1(a)
+  a2 = arg2(a)
+  return Base.promote_op(*, _eltype(a1), _eltype(a2))
+end
+function Base.axes(a::KroneckerBroadcasted)
+  ax1 = axes(arg1(a))
+  ax2 = axes(arg2(a))
+  return cartesianrange.(ax1 .× ax2)
+end
+
+function Base.BroadcastStyle(
+  ::Type{<:KroneckerBroadcasted{A,B}}
+) where {StyleA,StyleB,A<:Broadcasted{StyleA},B<:Broadcasted{StyleB}}
+  @assert ndims(A) == ndims(B)
+  N = ndims(A)
+  return KroneckerStyle{N}(StyleA(), StyleB())
+end
+
+# Operations that preserve the Kronecker structure.
 for f in [:identity, :conj]
   @eval begin
-    function Base.map!(::typeof($f), dest::KroneckerArray, src::KroneckerArray)
-      _map!!($f, dest.a, src.a)
-      _map!!($f, dest.b, src.b)
-      return dest
+    function Broadcast.broadcasted(::KroneckerStyle, ::typeof($f), a)
+      return broadcasted($f, arg1(a)) ⊗ broadcasted($f, arg2(a))
     end
   end
 end
 
-for f in [:+, :-]
-  @eval begin
-    function Base.map!(
-      ::typeof($f), dest::KroneckerArray, a::KroneckerArray, b::KroneckerArray
-    )
-      iszero(b) && return map!(identity, dest, a)
-      iszero(a) && return map!($f, dest, b)
-      if a.b == b.b
-        map!($f, dest.a, a.a, b.a)
-        map!(identity, dest.b, a.b)
-        return dest
-      elseif a.a == b.a
-        map!(identity, dest.a, a.a)
-        map!($f, dest.b, a.b, b.b)
-        return dest
-      else
-        throw(
-          ArgumentError(
-            "KroneckerArray addition is only supported when the first or second arguments match.",
-          ),
-        )
-      end
-    end
-  end
-end
-
-function Base.map!(
-  f::Base.Fix1{typeof(*),<:Number}, dest::KroneckerArray, src::KroneckerArray
-)
-  map!(f, dest.a, src.a)
-  map!(identity, dest.b, src.b)
-  return dest
-end
-
-for op in [:*, :/]
-  @eval begin
-    function Base.map!(
-      f::Base.Fix2{typeof($op),<:Number}, dest::KroneckerArray, src::KroneckerArray
-    )
-      map!(identity, dest.a, src.a)
-      map!(f, dest.b, src.b)
-      return dest
-    end
-  end
-end
-for f in [:+, :-]
-  @eval begin
-    function Base.map!(::typeof($f), dest::KroneckerArray, src::KroneckerArray)
-      map!($f, dest.a, src.a)
-      map!(identity, dest.b, src.b)
-      return dest
-    end
-  end
-end
-
-using DiagonalArrays: DiagonalArrays, diagonal
-function DiagonalArrays.diagonal(a::KroneckerArray)
-  return diagonal(a.a) ⊗ diagonal(a.b)
-end
-
-function Base.real(a::KroneckerArray)
-  if iszero(imag(a.a)) || iszero(imag(a.b))
-    return real(a.a) ⊗ real(a.b)
-  elseif iszero(real(a.a)) || iszero(real(a.b))
-    return -imag(a.a) ⊗ imag(a.b)
-  end
-  return real(a.a) ⊗ real(a.b) - imag(a.a) ⊗ imag(a.b)
-end
-function Base.imag(a::KroneckerArray)
-  if iszero(imag(a.a)) || iszero(real(a.b))
-    return real(a.a) ⊗ imag(a.b)
-  elseif iszero(real(a.a)) || iszero(imag(a.b))
-    return imag(a.a) ⊗ real(a.b)
-  end
-  return real(a.a) ⊗ imag(a.b) + imag(a.a) ⊗ real(a.b)
-end
+## using MapBroadcast: MapBroadcast, MapFunction
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}},
+##   a::KroneckerArray,
+## )
+##   return broadcasted(style, Base.Fix1(*, f.args[1]), a)
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}},
+##   a::KroneckerArray,
+## )
+##   return broadcasted(style, Base.Fix2(*, f.args[2]), a)
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}},
+##   a::KroneckerArray,
+## )
+##   return broadcasted(style, Base.Fix2(/, f.args[2]), a)
+## end
+## 
+## # Simplification rules similar to those for FillArrays.jl:
+## # https://github.com/JuliaArrays/FillArrays.jl/blob/v1.13.0/src/fillbroadcast.jl
+## using FillArrays: Zeros
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   ::typeof(+),
+##   a::KroneckerArray,
+##   b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+## )
+##   # TODO: Promote the element types.
+##   return a
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   ::typeof(+),
+##   a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+##   b::KroneckerArray,
+## )
+##   # TODO: Promote the element types.
+##   return b
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   ::typeof(+),
+##   a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+##   b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+## )
+##   # TODO: Promote the element types and axes.
+##   return b
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   ::typeof(-),
+##   a::KroneckerArray,
+##   b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+## )
+##   # TODO: Promote the element types.
+##   return a
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   ::typeof(-),
+##   a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+##   b::KroneckerArray,
+## )
+##   # TODO: Promote the element types.
+##   # TODO: Return `broadcasted(-, b)`.
+##   return -b
+## end
+## function Base.broadcasted(
+##   style::KroneckerStyle,
+##   ::typeof(-),
+##   a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+##   b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+## )
+##   # TODO: Promote the element types and axes.
+##   return b
+## end
