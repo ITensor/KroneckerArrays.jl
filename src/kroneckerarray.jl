@@ -318,6 +318,10 @@ end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), a, c::Number)
   return Sum(a) * c
 end
+# Fix ambiguity error.
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), a::Number, b::Number)
+  return a * b
+end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(/), a, c::Number)
   return Sum(a) / c
 end
