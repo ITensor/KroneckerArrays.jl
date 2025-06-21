@@ -1,6 +1,7 @@
 using Adapt: adapt
 using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
 using DerivableInterfaces: zero!
+using DiagonalArrays: diagonal
 using JLArrays: JLArray
 using KroneckerArrays:
   KroneckerArrays,
@@ -11,7 +12,6 @@ using KroneckerArrays:
   ×,
   cartesianproduct,
   cartesianrange,
-  diagonal,
   kron_nd,
   unproduct
 using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, svdvals, tr
@@ -100,7 +100,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   # Mapping
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   @test_throws "not supported" map(sin, a)
-  @test_broken map(Base.Fix1(*, 2), a)
+  @test collect(map(Base.Fix1(*, 2), a)) ≈ 2 * collect(a)
   a′ = similar(a)
   @test_throws "not supported" map!(sin, a′, a)
   a′ = similar(a)
@@ -129,12 +129,12 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   if elt <: Real
     @test real(a) == a
   else
-    @test_throws ArgumentError real(a)
+    @test_throws ErrorException real(a)
   end
   if elt <: Real
     @test iszero(imag(a))
   else
-    @test_throws ArgumentError imag(a)
+    @test_throws ErrorException imag(a)
   end
 
   # Adapt
