@@ -389,25 +389,20 @@ for f in [:identity, :conj]
   end
 end
 
-## using MapBroadcast: MapBroadcast, MapFunction
-## function Base.broadcasted(
-##   style::KroneckerStyle,
-##   f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}},
-##   a::KroneckerArray,
-## )
-##   return broadcasted(style, Base.Fix1(*, f.args[1]), a)
-## end
-## function Base.broadcasted(
-##   style::KroneckerStyle,
-##   f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}},
-##   a::KroneckerArray,
-## )
-##   return broadcasted(style, Base.Fix2(*, f.args[2]), a)
-## end
-## function Base.broadcasted(
-##   style::KroneckerStyle,
-##   f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}},
-##   a::KroneckerArray,
-## )
-##   return broadcasted(style, Base.Fix2(/, f.args[2]), a)
-## end
+# Compatibility with MapBroadcast.jl.
+using MapBroadcast: MapBroadcast, MapFunction
+function Base.broadcasted(
+  style::KroneckerStyle, f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}}, a
+)
+  return broadcasted(style, *, f.args[1], a)
+end
+function Base.broadcasted(
+  style::KroneckerStyle, f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}}, a
+)
+  return broadcasted(style, *, a, f.args[2])
+end
+function Base.broadcasted(
+  style::KroneckerStyle, f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}}, a
+)
+  return broadcasted(style, /, a, f.args[2])
+end
