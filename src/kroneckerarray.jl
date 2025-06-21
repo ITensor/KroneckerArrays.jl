@@ -383,8 +383,8 @@ end
 # Operations that preserve the Kronecker structure.
 for f in [:identity, :conj]
   @eval begin
-    function Broadcast.broadcasted(::KroneckerStyle, ::typeof($f), a)
-      return broadcasted($f, arg1(a)) ⊗ broadcasted($f, arg2(a))
+    function Broadcast.broadcasted(::KroneckerStyle{<:Any,A,B}, ::typeof($f), a) where {A,B}
+      return broadcasted(A, $f, arg1(a)) ⊗ broadcasted(B, $f, arg2(a))
     end
   end
 end
