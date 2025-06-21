@@ -81,6 +81,100 @@ function DerivableInterfaces.zero!(a::EyeEye)
   return throw(ArgumentError("Can't zero out `Eye ⊗ Eye`."))
 end
 
+using Base.Broadcast:
+  AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
+
+struct EyeStyle <: AbstractArrayStyle{2} end
+EyeStyle(::Val{2}) = EyeStyle()
+function _BroadcastStyle(::Type{<:Eye})
+  return EyeStyle()
+end
+Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
+Base.BroadcastStyle(style1::EyeStyle, style2::DefaultArrayStyle) = style2
+
+function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
+  return Eye{elt}(axes(bc))
+end
+
+function Base.copyto!(dest::EyeKronecker, a::Sum{<:KroneckerStyle{<:Any,EyeStyle()}})
+  dest2 = arg2(dest)
+  f = LinearCombination(a)
+  args = arguments(a)
+  arg2s = arg2.(args)
+  dest2 .= f.(arg2s...)
+  return dest
+end
+function Base.copyto!(dest::KroneckerEye, a::Sum{<:KroneckerStyle{<:Any,<:Any,EyeStyle()}})
+  dest1 = arg1(dest)
+  f = LinearCombination(a)
+  args = arguments(a)
+  arg1s = arg1.(args)
+  dest1 .= f.(arg1s...)
+  return dest
+end
+function Base.copyto!(dest::EyeEye, a::Sum{<:KroneckerStyle{<:Any,EyeStyle(),EyeStyle()}})
+  return error("Can't write in-place to `Eye ⊗ Eye`.")
+end
+
+# Simplification rules similar to those for FillArrays.jl:
+# https://github.com/JuliaArrays/FillArrays.jl/blob/v1.13.0/src/fillbroadcast.jl
+using FillArrays: Zeros
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(+),
+  a::KroneckerArray,
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types.
+  return a
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(+),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray,
+)
+  # TODO: Promote the element types.
+  return b
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(+),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types and axes.
+  return b
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(-),
+  a::KroneckerArray,
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types.
+  return a
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(-),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray,
+)
+  # TODO: Promote the element types.
+  # TODO: Return `broadcasted(-, b)`.
+  return -b
+end
+function Base.broadcasted(
+  style::KroneckerStyle,
+  ::typeof(-),
+  a::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+  b::KroneckerArray{<:Any,<:Any,<:Zeros,<:Zeros},
+)
+  # TODO: Promote the element types and axes.
+  return b
+end
+
 ## function Base.:*(a::Number, b::EyeKronecker)
 ##   return b.a ⊗ (a * b.b)
 ## end
@@ -219,17 +313,3 @@ end
 ##   return error("Can't write in-place.")
 ## end
 ## 
-## using Base.Broadcast:
-##   AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
-## 
-## struct EyeStyle <: AbstractArrayStyle{2} end
-## EyeStyle(::Val{2}) = EyeStyle()
-## function _BroadcastStyle(::Type{<:Eye})
-##   return EyeStyle()
-## end
-## Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
-## Base.BroadcastStyle(style1::EyeStyle, style2::DefaultArrayStyle) = style2
-## 
-## function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
-##   return Eye{elt}(axes(bc))
-## end
