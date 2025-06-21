@@ -228,6 +228,7 @@ function _BroadcastStyle(::Type{<:Eye})
   return EyeStyle()
 end
 Base.BroadcastStyle(style1::EyeStyle, style2::EyeStyle) = EyeStyle()
+Base.BroadcastStyle(style1::EyeStyle, style2::DefaultArrayStyle) = style2
 
 function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
   return Eye{elt}(axes(bc))
