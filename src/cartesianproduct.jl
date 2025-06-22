@@ -66,28 +66,28 @@ end
 function CartesianProductUnitRange(a, b)
   return CartesianProductUnitRange(a × b)
 end
-to_range(a::AbstractUnitRange) = a
-to_range(i::Integer) = Base.OneTo(i)
-cartesianrange(a, b) = cartesianrange(to_range(a) × to_range(b))
+to_product_indices(a::AbstractUnitRange) = a
+to_product_indices(i::Integer) = Base.OneTo(i)
+cartesianrange(a, b) = cartesianrange(to_product_indices(a) × to_product_indices(b))
 function cartesianrange(p::CartesianPair)
-  p′ = to_range(p.a) × to_range(p.b)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return cartesianrange(p′)
 end
 function cartesianrange(p::CartesianProduct)
-  p′ = to_range(p.a) × to_range(p.b)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return cartesianrange(p′, Base.OneTo(length(p′)))
 end
 function cartesianrange(p::CartesianPair, range::AbstractUnitRange)
-  p′ = to_range(p.a) × to_range(p.b)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return cartesianrange(p′, range)
 end
 function cartesianrange(p::CartesianProduct, range::AbstractUnitRange)
-  p′ = to_range(p.a) × to_range(p.b)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return CartesianProductUnitRange(p′, range)
 end
 
 function Base.axes(r::CartesianProductUnitRange)
-  return (CartesianProductUnitRange(r.product, only(axes(r.range))),)
+  return (CartesianProductUnitRange(cartesianproduct(r), only(axes(unproduct(r)))),)
 end
 
 using Base.Broadcast: DefaultArrayStyle
@@ -96,12 +96,12 @@ for f in (:+, :-)
     function Broadcast.broadcasted(
       ::DefaultArrayStyle{1}, ::typeof($f), r::CartesianProductUnitRange, x::Integer
     )
-      return CartesianProductUnitRange(r.product, $f.(r.range, x))
+      return CartesianProductUnitRange(cartesianproduct(r), $f.(unproduct(r), x))
     end
     function Broadcast.broadcasted(
       ::DefaultArrayStyle{1}, ::typeof($f), x::Integer, r::CartesianProductUnitRange
     )
-      return CartesianProductUnitRange(r.product, $f.(x, r.range))
+      return CartesianProductUnitRange(cartesianproduct(r), $f.(x, unproduct(r)))
     end
   end
 end

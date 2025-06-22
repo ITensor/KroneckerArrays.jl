@@ -24,17 +24,17 @@ arg2(a::KroneckerArray) = a.b
 
 using Adapt: Adapt, adapt
 _adapt(to, a::AbstractArray) = adapt(to, a)
-Adapt.adapt_structure(to, a::KroneckerArray) = _adapt(to, a.a) ⊗ _adapt(to, a.b)
+Adapt.adapt_structure(to, a::KroneckerArray) = _adapt(to, arg1(a)) ⊗ _adapt(to, arg2(a))
 
 # Allows extra customization, like for `FillArrays.Eye`.
 _copy(a::AbstractArray) = copy(a)
 
 function Base.copy(a::KroneckerArray)
-  return _copy(a.a) ⊗ _copy(a.b)
+  return _copy(arg1(a)) ⊗ _copy(arg2(a))
 end
 function Base.copyto!(dest::KroneckerArray, src::KroneckerArray)
-  copyto!(dest.a, src.a)
-  copyto!(dest.b, src.b)
+  copyto!(arg1(dest), arg1(src))
+  copyto!(arg2(dest), arg2(src))
   return dest
 end
 
@@ -53,8 +53,7 @@ function Base.similar(
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 )
-  return _similar(a, elt, map(ax -> ax.product.a, axs)) ⊗
-         _similar(a, elt, map(ax -> ax.product.b, axs))
+  return _similar(a, elt, map(arg1, axs)) ⊗ _similar(a, elt, map(arg2, axs))
 end
 function Base.similar(
   a::KroneckerArray,
@@ -63,8 +62,7 @@ function Base.similar(
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 )
-  return _similar(a.a, elt, map(ax -> ax.product.a, axs)) ⊗
-         _similar(a.b, elt, map(ax -> ax.product.b, axs))
+  return _similar(arg1(a), elt, map(arg1, axs)) ⊗ _similar(arg2(a), elt, map(arg2, axs))
 end
 function Base.similar(
   arrayt::Type{<:AbstractArray},
@@ -72,8 +70,7 @@ function Base.similar(
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 )
-  return _similar(arrayt, map(ax -> ax.product.a, axs)) ⊗
-         _similar(arrayt, map(ax -> ax.product.b, axs))
+  return _similar(arrayt, map(arg1, axs)) ⊗ _similar(arrayt, map(arg2, axs))
 end
 function Base.similar(
   arrayt::Type{<:KroneckerArray{<:Any,<:Any,A,B}},
@@ -81,8 +78,7 @@ function Base.similar(
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 ) where {A,B}
-  return _similar(A, map(ax -> ax.product.a, axs)) ⊗
-         _similar(B, map(ax -> ax.product.b, axs))
+  return _similar(A, map(arg1, axs)) ⊗ _similar(B, map(arg2, axs))
 end
 function Base.similar(
   ::Type{<:KroneckerArray{<:Any,<:Any,A,B}}, sz::Tuple{Int,Vararg{Int}}
@@ -115,7 +111,7 @@ kron_nd(a::AbstractMatrix, b::AbstractMatrix) = kron(a, b)
 kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
 
 # Eagerly collect arguments to make more general on GPU.
-Base.collect(a::KroneckerArray) = kron_nd(collect(a.a), collect(a.b))
+Base.collect(a::KroneckerArray) = kron_nd(collect(arg1(a)), collect(arg2(a)))
 
 Base.zero(a::KroneckerArray) = zero(arg1(a)) ⊗ zero(arg2(a))
 
@@ -123,31 +119,33 @@ function Base.Array{T,N}(a::KroneckerArray{S,N}) where {T,S,N}
   return convert(Array{T,N}, collect(a))
 end
 
-Base.size(a::KroneckerArray) = ntuple(dim -> size(a.a, dim) * size(a.b, dim), ndims(a))
+function Base.size(a::KroneckerArray)
+  return ntuple(dim -> size(arg1(a), dim) * size(arg2(a), dim), ndims(a))
+end
 
 function Base.axes(a::KroneckerArray)
   return ntuple(ndims(a)) do dim
     return CartesianProductUnitRange(
-      axes(a.a, dim) × axes(a.b, dim), Base.OneTo(size(a, dim))
+      axes(arg1(a), dim) × axes(arg2(a), dim), Base.OneTo(size(a, dim))
     )
   end
 end
 
-arguments(a::KroneckerArray) = (a.a, a.b)
+arguments(a::KroneckerArray) = (arg1(a), arg2(a))
 arguments(a::KroneckerArray, n::Int) = arguments(a)[n]
 argument_types(a::KroneckerArray) = argument_types(typeof(a))
 argument_types(::Type{<:KroneckerArray{<:Any,<:Any,A,B}}) where {A,B} = (A, B)
 
 function Base.print_array(io::IO, a::KroneckerArray)
-  Base.print_array(io, a.a)
+  Base.print_array(io, arg1(a))
   println(io, "\n ⊗")
-  Base.print_array(io, a.b)
+  Base.print_array(io, arg2(a))
   return nothing
 end
 function Base.show(io::IO, a::KroneckerArray)
-  show(io, a.a)
+  show(io, arg1(a))
   print(io, " ⊗ ")
-  show(io, a.b)
+  show(io, arg2(a))
   return nothing
 end
 
@@ -172,14 +170,14 @@ function Base.getindex(a::KroneckerMatrix, i1::Integer, i2::Integer)
   GPUArraysCore.assertscalar("getindex")
   # Code logic from Kronecker.jl:
   # https://github.com/MichielStock/Kronecker.jl/blob/v0.5.5/src/base.jl#L101-L105
-  k, l = size(a.b)
-  return a.a[cld(i1, k), cld(i2, l)] * a.b[(i1 - 1) % k + 1, (i2 - 1) % l + 1]
+  k, l = size(arg2(a))
+  return arg1(a)[cld(i1, k), cld(i2, l)] * arg2(a)[(i1 - 1) % k + 1, (i2 - 1) % l + 1]
 end
 
 function Base.getindex(a::KroneckerVector, i::Integer)
   GPUArraysCore.assertscalar("getindex")
-  k = length(a.b)
-  return a.a[cld(i, k)] * a.b[(i - 1) % k + 1]
+  k = length(arg2(a))
+  return arg1(a)[cld(i, k)] * arg2(a)[(i - 1) % k + 1]
 end
 
 # Allow customizing for `FillArrays.Eye`.
@@ -191,49 +189,49 @@ function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianPair,N}) w
   return _getindex(arg1(a), arg1.(I)...) ⊗ _getindex(arg2(a), arg2.(I)...)
 end
 # Fix ambigiuity error.
-Base.getindex(a::KroneckerArray{<:Any,0}) = a.a[] * a.b[]
+Base.getindex(a::KroneckerArray{<:Any,0}) = arg1(a)[] * arg2(a)[]
 
 function Base.:(==)(a::KroneckerArray, b::KroneckerArray)
-  return a.a == b.a && a.b == b.b
+  return arg1(a) == arg1(b) && arg2(a) == arg2(b)
 end
 function Base.isapprox(a::KroneckerArray, b::KroneckerArray; kwargs...)
-  return isapprox(a.a, b.a; kwargs...) && isapprox(a.b, b.b; kwargs...)
+  return isapprox(arg1(a), arg1(b); kwargs...) && isapprox(arg2(a), arg2(b); kwargs...)
 end
 function Base.iszero(a::KroneckerArray)
-  return iszero(a.a) || iszero(a.b)
+  return iszero(arg1(a)) || iszero(arg2(a))
 end
 function Base.isreal(a::KroneckerArray)
-  return isreal(a.a) && isreal(a.b)
+  return isreal(arg1(a)) && isreal(arg2(a))
 end
 
 using DiagonalArrays: DiagonalArrays, diagonal
 function DiagonalArrays.diagonal(a::KroneckerArray)
-  return diagonal(a.a) ⊗ diagonal(a.b)
+  return diagonal(arg1(a)) ⊗ diagonal(arg2(a))
 end
 
 Base.real(a::KroneckerArray{<:Real}) = a
 function Base.real(a::KroneckerArray)
-  if iszero(imag(a.a)) || iszero(imag(a.b))
-    return real(a.a) ⊗ real(a.b)
-  elseif iszero(real(a.a)) || iszero(real(a.b))
-    return -imag(a.a) ⊗ imag(a.b)
+  if iszero(imag(arg1(a))) || iszero(imag(arg2(a)))
+    return real(arg1(a)) ⊗ real(arg2(a))
+  elseif iszero(real(arg1(a))) || iszero(real(arg2(a)))
+    return -imag(arg1(a)) ⊗ imag(arg2(a))
   end
-  return real(a.a) ⊗ real(a.b) - imag(a.a) ⊗ imag(a.b)
+  return real(arg1(a)) ⊗ real(arg2(a)) - imag(arg1(a)) ⊗ imag(arg2(a))
 end
 Base.imag(a::KroneckerArray{<:Real}) = zero(a)
 function Base.imag(a::KroneckerArray)
-  if iszero(imag(a.a)) || iszero(real(a.b))
-    return real(a.a) ⊗ imag(a.b)
-  elseif iszero(real(a.a)) || iszero(imag(a.b))
-    return imag(a.a) ⊗ real(a.b)
+  if iszero(imag(arg1(a))) || iszero(real(arg2(a)))
+    return real(arg1(a)) ⊗ imag(arg2(a))
+  elseif iszero(real(arg1(a))) || iszero(imag(arg2(a)))
+    return imag(arg1(a)) ⊗ real(arg2(a))
   end
-  return real(a.a) ⊗ imag(a.b) + imag(a.a) ⊗ real(a.b)
+  return real(arg1(a)) ⊗ imag(arg2(a)) + imag(arg1(a)) ⊗ real(arg2(a))
 end
 
 for f in [:transpose, :adjoint, :inv]
   @eval begin
     function Base.$f(a::KroneckerArray)
-      return $f(a.a) ⊗ $f(a.b)
+      return $f(arg1(a)) ⊗ $f(arg2(a))
     end
   end
 end
