@@ -38,6 +38,11 @@ function Base.copyto!(dest::KroneckerArray, src::KroneckerArray)
   return dest
 end
 
+using Base: has_offset_axes
+function Base.has_offset_axes(a::KroneckerArray)
+  return has_offset_axes(arg1(a)) || has_offset_axes(arg2(a))
+end
+
 # Like `similar` but allows some custom behavior, such as for `FillArrays.Eye`.
 function _similar(a::AbstractArray, elt::Type, axs::Tuple{Vararg{AbstractUnitRange}})
   return similar(a, elt, axs)
@@ -46,43 +51,34 @@ function _similar(arrayt::Type{<:AbstractArray}, axs::Tuple{Vararg{AbstractUnitR
   return similar(arrayt, axs)
 end
 
-function Base.similar(
-  a::AbstractArray,
-  elt::Type,
-  axs::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
-)
-  return _similar(a, elt, map(ax -> ax.product.a, axs)) ⊗
-         _similar(a, elt, map(ax -> ax.product.b, axs))
+function Base.similar(a::KroneckerArray, elt::Type)
+  return similar(a, elt, axes(a))
 end
 function Base.similar(
-  a::KroneckerArray,
-  elt::Type,
-  axs::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
+  a::AbstractArray, axs::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}}
 )
-  return _similar(a.a, elt, map(ax -> ax.product.a, axs)) ⊗
-         _similar(a.b, elt, map(ax -> ax.product.b, axs))
+  return similar(a, eltype(a), axs)
 end
 function Base.similar(
-  arrayt::Type{<:AbstractArray},
-  axs::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
+  a::AbstractArray, elt::Type, axs::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}}
 )
-  return _similar(arrayt, map(ax -> ax.product.a, axs)) ⊗
-         _similar(arrayt, map(ax -> ax.product.b, axs))
+  return _similar(a, elt, arg1.(axs)) ⊗ _similar(a, elt, arg2.(axs))
+end
+function Base.similar(
+  a::KroneckerArray, elt::Type, axs::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}}
+)
+  return _similar(arg1(a), elt, arg1.(axs)) ⊗ _similar(arg2(a), elt, arg2.(axs))
+end
+function Base.similar(
+  arrayt::Type{<:AbstractArray}, axs::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}}
+)
+  return _similar(arrayt, arg1.(axs)) ⊗ _similar(arrayt, arg2.(axs))
 end
 function Base.similar(
   arrayt::Type{<:KroneckerArray{<:Any,<:Any,A,B}},
-  axs::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
+  axs::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}},
 ) where {A,B}
-  return _similar(A, map(ax -> ax.product.a, axs)) ⊗
-         _similar(B, map(ax -> ax.product.b, axs))
+  return _similar(A, arg1.(axs)) ⊗ _similar(B, arg2.(axs))
 end
 function Base.similar(
   ::Type{<:KroneckerArray{<:Any,<:Any,A,B}}, sz::Tuple{Int,Vararg{Int}}
@@ -123,13 +119,13 @@ function Base.Array{T,N}(a::KroneckerArray{S,N}) where {T,S,N}
   return convert(Array{T,N}, collect(a))
 end
 
-Base.size(a::KroneckerArray) = ntuple(dim -> size(a.a, dim) * size(a.b, dim), ndims(a))
+function Base.size(a::KroneckerArray)
+  ntuple(dim -> size(arg1(a), dim) * size(arg2(a), dim), ndims(a))
+end
 
 function Base.axes(a::KroneckerArray)
   return ntuple(ndims(a)) do dim
-    return CartesianProductUnitRange(
-      axes(a.a, dim) × axes(a.b, dim), Base.OneTo(size(a, dim))
-    )
+    return cartesianrange(axes(arg1(a), dim) × axes(arg2(a), dim))
   end
 end
 
@@ -160,33 +156,22 @@ function Base.getindex(a::KroneckerArray, i::Integer)
   return a[CartesianIndices(a)[i]]
 end
 
-# TODO: Use this logic from KroneckerProducts.jl for cartesian indexing
-# in the n-dimensional case and use it to replace the matrix and vector cases:
-# https://github.com/perrutquist/KroneckerProducts.jl/blob/8c0104caf1f17729eb067259ba1473986121d032/src/KroneckerProducts.jl#L59-L66
-function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {N}
-  return error("Not implemented.")
-end
-
 using GPUArraysCore: GPUArraysCore
-function Base.getindex(a::KroneckerMatrix, i1::Integer, i2::Integer)
+function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {N}
   GPUArraysCore.assertscalar("getindex")
-  # Code logic from Kronecker.jl:
-  # https://github.com/MichielStock/Kronecker.jl/blob/v0.5.5/src/base.jl#L101-L105
-  k, l = size(a.b)
-  return a.a[cld(i1, k), cld(i2, l)] * a.b[(i1 - 1) % k + 1, (i2 - 1) % l + 1]
+  I′ = ntuple(Val(N)) do dim
+    return axes(a, dim)[I[dim]]
+  end
+  return a[I′...]
 end
 
-function Base.getindex(a::KroneckerVector, i::Integer)
-  GPUArraysCore.assertscalar("getindex")
-  k = length(a.b)
-  return a.a[cld(i, k)] * a.b[(i - 1) % k + 1]
+# Allow customizing for `FillArrays.Eye`.
+_getindex(a::AbstractArray, I...) = a[I...]
+function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianPair,N}) where {N}
+  return _getindex(arg1(a), arg1.(I)...) ⊗ _getindex(arg2(a), arg2.(I)...)
 end
-
-## function Base.getindex(a::KroneckerVector, i::CartesianProduct)
-##   return a.a[i.a] ⊗ a.b[i.b]
-## end
 function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianProduct,N}) where {N}
-  return a.a[map(Base.Fix2(getfield, :a), I)...] ⊗ a.b[map(Base.Fix2(getfield, :b), I)...]
+  return _getindex(arg1(a), arg1.(I)...) ⊗ _getindex(arg2(a), arg2.(I)...)
 end
 # Fix ambigiuity error.
 Base.getindex(a::KroneckerArray{<:Any,0}) = a.a[] * a.b[]

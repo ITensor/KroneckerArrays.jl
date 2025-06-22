@@ -1,11 +1,15 @@
 using FillArrays: FillArrays, Zeros
 function FillArrays.fillsimilar(
-  a::Zeros{T},
-  ax::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
+  a::Zeros{T}, ax::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}}
 ) where {T}
   return Zeros{T}(arg1.(ax)) ⊗ Zeros{T}(arg2.(ax))
+end
+
+# Work around that `Zeros` requires `AbstractUnitRange` axes.
+function FillArrays.Zeros{T,N}(
+  ax::Tuple{CartesianProduct,Vararg{CartesianProduct}}
+) where {T,N}
+  return Zeros{T,N}(cartesianslice.(ax))
 end
 
 using FillArrays: RectDiagonal, OnesVector
@@ -67,6 +71,8 @@ end
 
 # Like `copy` but preserves `Eye`.
 _copy(a::Eye) = a
+
+_getindex(a::Eye, I1::Colon, I2::Colon) = a
 
 using DerivableInterfaces: DerivableInterfaces, zero!
 function DerivableInterfaces.zero!(a::EyeKronecker)

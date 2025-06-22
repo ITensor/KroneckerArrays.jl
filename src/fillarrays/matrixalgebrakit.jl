@@ -1,4 +1,4 @@
-function infimum(r1::AbstractRange, r2::AbstractUnitRange)
+function infimum(r1::AbstractUnitRange, r2::AbstractUnitRange)
   Base.require_one_based_indexing(r1, r2)
   if length(r1) ≤ length(r2)
     return r1
@@ -6,13 +6,19 @@ function infimum(r1::AbstractRange, r2::AbstractUnitRange)
     return r2
   end
 end
-function supremum(r1::AbstractRange, r2::AbstractUnitRange)
+function infimum(r1::CartesianProduct, r2::CartesianProduct)
+  return infimum(arg1(r1), arg1(r2)) × infimum(arg2(r1), arg2(r2))
+end
+function supremum(r1::AbstractUnitRange, r2::AbstractUnitRange)
   Base.require_one_based_indexing(r1, r2)
   if length(r1) ≥ length(r2)
     return r1
   else
     return r2
   end
+end
+function supremum(r1::CartesianProduct, r2::CartesianProduct)
+  return supremum(arg1(r1), arg1(r2)) × supremum(arg2(r1), arg2(r2))
 end
 
 # Allow customization for `Eye`.

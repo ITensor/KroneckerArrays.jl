@@ -7,7 +7,6 @@ using KroneckerArrays:
   KroneckerArrays,
   KroneckerArray,
   KroneckerStyle,
-  CartesianProductUnitRange,
   ⊗,
   ×,
   cartesianproduct,
@@ -25,19 +24,15 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test length(p) == 6
   @test collect(p) == [1 × 3, 2 × 3, 1 × 4, 2 × 4, 1 × 5, 2 × 5]
 
-  r = @constinferred cartesianrange(2, 3)
-  @test r ===
-    @constinferred(cartesianrange(2 × 3)) ===
-    @constinferred(cartesianrange(Base.OneTo(2), Base.OneTo(3))) ===
-    @constinferred(cartesianrange(Base.OneTo(2) × Base.OneTo(3)))
+  r = @constinferred cartesianrange(Base.OneTo(2), Base.OneTo(3))
+  @test r === @constinferred(cartesianrange(Base.OneTo(2) × Base.OneTo(3)))
   @test @constinferred(cartesianproduct(r)) === Base.OneTo(2) × Base.OneTo(3)
   @test unproduct(r) === Base.OneTo(6)
   @test length(r) == 6
   @test first(r) == 1
   @test last(r) == 6
 
-  r = @constinferred(cartesianrange(2 × 3, 2:7))
-  @test r === cartesianrange(Base.OneTo(2) × Base.OneTo(3), 2:7)
+  r = @constinferred(cartesianrange(Base.OneTo(2) × Base.OneTo(3), 2:7))
   @test cartesianproduct(r) === Base.OneTo(2) × Base.OneTo(3)
   @test unproduct(r) === 2:7
   @test length(r) == 6

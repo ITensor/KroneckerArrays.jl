@@ -24,11 +24,11 @@ function MatrixAlgebraKit.findtruncated(
   values::OnesKroneckerVector, strategy::KroneckerTruncationStrategy
 )
   I = findtruncated(Vector(values), strategy.strategy)
-  prods = collect(only(axes(values)).product)[I]
-  I_data = unique(map(x -> x.a, prods))
+  prods = only(axes(values))[I]
+  I_data = unique(arg1.(prods))
   # Drop truncations that occur within the identity.
   I_data = filter(I_data) do i
-    return count(x -> x.a == i, prods) == length(values.a)
+    return count(x -> arg1(x) == i, prods) == length(arg1(values))
   end
   return (:) × I_data
 end
@@ -36,11 +36,11 @@ function MatrixAlgebraKit.findtruncated(
   values::KroneckerOnesVector, strategy::KroneckerTruncationStrategy
 )
   I = findtruncated(Vector(values), strategy.strategy)
-  prods = collect(only(axes(values)).product)[I]
-  I_data = unique(map(x -> x.b, prods))
+  prods = only(axes(values))[I]
+  I_data = unique(map(x -> arg2(x), prods))
   # Drop truncations that occur within the identity.
   I_data = filter(I_data) do i
-    return count(x -> x.b == i, prods) == length(values.b)
+    return count(x -> arg2(x) == i, prods) == length(arg2(values))
   end
   return I_data × (:)
 end
