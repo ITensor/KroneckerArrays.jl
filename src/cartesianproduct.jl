@@ -90,6 +90,10 @@ function Base.axes(r::CartesianProductUnitRange)
   return (CartesianProductUnitRange(cartesianproduct(r), only(axes(unproduct(r)))),)
 end
 
+function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::CartesianPair)
+  return checkindex(Bool, arg1(inds), arg1(i)) && checkindex(Bool, arg2(inds), arg2(i))
+end
+
 using Base.Broadcast: DefaultArrayStyle
 for f in (:+, :-)
   @eval begin
