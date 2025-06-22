@@ -158,26 +158,13 @@ function Base.getindex(a::KroneckerArray, i::Integer)
   return a[CartesianIndices(a)[i]]
 end
 
-# TODO: Use this logic from KroneckerProducts.jl for cartesian indexing
-# in the n-dimensional case and use it to replace the matrix and vector cases:
-# https://github.com/perrutquist/KroneckerProducts.jl/blob/8c0104caf1f17729eb067259ba1473986121d032/src/KroneckerProducts.jl#L59-L66
-function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {N}
-  return error("Not implemented.")
-end
-
 using GPUArraysCore: GPUArraysCore
-function Base.getindex(a::KroneckerMatrix, i1::Integer, i2::Integer)
+function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {N}
   GPUArraysCore.assertscalar("getindex")
-  # Code logic from Kronecker.jl:
-  # https://github.com/MichielStock/Kronecker.jl/blob/v0.5.5/src/base.jl#L101-L105
-  k, l = size(arg2(a))
-  return arg1(a)[cld(i1, k), cld(i2, l)] * arg2(a)[(i1 - 1) % k + 1, (i2 - 1) % l + 1]
-end
-
-function Base.getindex(a::KroneckerVector, i::Integer)
-  GPUArraysCore.assertscalar("getindex")
-  k = length(arg2(a))
-  return arg1(a)[cld(i, k)] * arg2(a)[(i - 1) % k + 1]
+  I′ = ntuple(Val(N)) do dim
+    return cartesianproduct(axes(a, dim))[I[dim]]
+  end
+  return a[I′...]
 end
 
 # Allow customizing for `FillArrays.Eye`.
