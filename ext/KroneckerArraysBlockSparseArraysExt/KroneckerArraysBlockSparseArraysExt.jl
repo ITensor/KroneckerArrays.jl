@@ -1,7 +1,20 @@
 module KroneckerArraysBlockSparseArraysExt
 
+using BlockArrays: Block
+using BlockSparseArrays: BlockIndexVector, GenericBlockIndex
+using KroneckerArrays: CartesianPair, CartesianProduct
+function Base.getindex(b::Block, I1::CartesianPair, Irest::CartesianPair...)
+  return GenericBlockIndex(b, (I1, Irest...))
+end
+function Base.getindex(b::Block, I1::CartesianProduct, Irest::CartesianProduct...)
+  return BlockIndexVector(b, (I1, Irest...))
+end
+
 using BlockSparseArrays: BlockSparseArrays, blockrange
-using KroneckerArrays: CartesianProduct, cartesianrange
+using KroneckerArrays: CartesianPair, CartesianProduct, cartesianrange
+function BlockSparseArrays.blockrange(bs::Vector{<:CartesianPair})
+  return blockrange(map(cartesianrange, bs))
+end
 function BlockSparseArrays.blockrange(bs::Vector{<:CartesianProduct})
   return blockrange(map(cartesianrange, bs))
 end
