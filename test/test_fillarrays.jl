@@ -4,6 +4,7 @@ using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2
 using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
+using TestExtras: @constinferred
 
 @testset "FillArrays.Eye" begin
   MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
