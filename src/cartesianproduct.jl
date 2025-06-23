@@ -94,6 +94,12 @@ function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::Carte
   return checkindex(Bool, arg1(inds), arg1(i)) && checkindex(Bool, arg2(inds), arg2(i))
 end
 
+# Reverse map from CartesianPair to linear index in the range.
+function Base.getindex(inds::CartesianProductUnitRange, i::CartesianPair)
+  i′ = (findfirst(==(arg1(i)), arg1(inds)), findfirst(==(arg2(i)), arg2(inds)))
+  return inds[LinearIndices((length(arg1(inds)), length(arg2(inds))))[i′...]]
+end
+
 using Base.Broadcast: DefaultArrayStyle
 for f in (:+, :-)
   @eval begin
