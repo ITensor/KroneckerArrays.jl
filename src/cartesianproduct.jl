@@ -1,4 +1,22 @@
-struct CartesianProduct{A,B}
+struct CartesianPair{A,B}
+  a::A
+  b::B
+end
+arguments(a::CartesianPair) = (a.a, a.b)
+arguments(a::CartesianPair, n::Int) = arguments(a)[n]
+
+arg1(a::CartesianPair) = a.a
+arg2(a::CartesianPair) = a.b
+
+×(a, b) = CartesianPair(a, b)
+
+function Base.show(io::IO, a::CartesianPair)
+  print(io, a.a, " × ", a.b)
+  return nothing
+end
+
+struct CartesianProduct{TA,TB,A<:AbstractVector{TA},B<:AbstractVector{TB}} <:
+       AbstractVector{CartesianPair{TA,TB}}
   a::A
   b::B
 end
@@ -13,15 +31,19 @@ function Base.show(io::IO, a::CartesianProduct)
   return nothing
 end
 
-×(a, b) = CartesianProduct(a, b)
+×(a::AbstractVector, b::AbstractVector) = CartesianProduct(a, b)
 Base.length(a::CartesianProduct) = length(a.a) * length(a.b)
-Base.getindex(a::CartesianProduct, i::CartesianProduct) = a.a[i.a] × a.b[i.b]
+Base.size(a::CartesianProduct) = (length(a),)
 
-function Base.iterate(a::CartesianProduct, state...)
-  x = iterate(Iterators.product(a.a, a.b), state...)
-  isnothing(x) && return x
-  next, new_state = x
-  return ×(next...), new_state
+function Base.getindex(a::CartesianProduct, i::CartesianProduct)
+  return arg1(a)[arg1(i)] × arg2(a)[arg2(i)]
+end
+function Base.getindex(a::CartesianProduct, i::CartesianPair)
+  return arg1(a)[arg1(i)] × arg2(a)[arg2(i)]
+end
+function Base.getindex(a::CartesianProduct, i::Int)
+  I = Tuple(CartesianIndices((length(arg1(a)), length(arg2(a))))[i])
+  return a[I[1] × I[2]]
 end
 
 struct CartesianProductUnitRange{T,P<:CartesianProduct,R<:AbstractUnitRange{T}} <:
@@ -44,20 +66,32 @@ end
 function CartesianProductUnitRange(a, b)
   return CartesianProductUnitRange(a × b)
 end
-to_range(a::AbstractUnitRange) = a
-to_range(i::Integer) = Base.OneTo(i)
-cartesianrange(a, b) = cartesianrange(to_range(a) × to_range(b))
+to_product_indices(a::AbstractUnitRange) = a
+to_product_indices(i::Integer) = Base.OneTo(i)
+cartesianrange(a, b) = cartesianrange(to_product_indices(a) × to_product_indices(b))
+function cartesianrange(p::CartesianPair)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
+  return cartesianrange(p′)
+end
 function cartesianrange(p::CartesianProduct)
-  p′ = to_range(p.a) × to_range(p.b)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return cartesianrange(p′, Base.OneTo(length(p′)))
 end
+function cartesianrange(p::CartesianPair, range::AbstractUnitRange)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
+  return cartesianrange(p′, range)
+end
 function cartesianrange(p::CartesianProduct, range::AbstractUnitRange)
-  p′ = to_range(p.a) × to_range(p.b)
+  p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return CartesianProductUnitRange(p′, range)
 end
 
 function Base.axes(r::CartesianProductUnitRange)
-  return (CartesianProductUnitRange(r.product, only(axes(r.range))),)
+  return (CartesianProductUnitRange(cartesianproduct(r), only(axes(unproduct(r)))),)
+end
+
+function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::CartesianPair)
+  return checkindex(Bool, arg1(inds), arg1(i)) && checkindex(Bool, arg2(inds), arg2(i))
 end
 
 using Base.Broadcast: DefaultArrayStyle
@@ -66,12 +100,12 @@ for f in (:+, :-)
     function Broadcast.broadcasted(
       ::DefaultArrayStyle{1}, ::typeof($f), r::CartesianProductUnitRange, x::Integer
     )
-      return CartesianProductUnitRange(r.product, $f.(r.range, x))
+      return CartesianProductUnitRange(cartesianproduct(r), $f.(unproduct(r), x))
     end
     function Broadcast.broadcasted(
       ::DefaultArrayStyle{1}, ::typeof($f), x::Integer, r::CartesianProductUnitRange
     )
-      return CartesianProductUnitRange(r.product, $f.(x, r.range))
+      return CartesianProductUnitRange(cartesianproduct(r), $f.(x, unproduct(r)))
     end
   end
 end

@@ -2,6 +2,7 @@ using Adapt: adapt
 using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
 using DerivableInterfaces: zero!
 using DiagonalArrays: diagonal
+using GPUArraysCore: @allowscalar
 using JLArrays: JLArray
 using KroneckerArrays:
   KroneckerArrays,
@@ -43,6 +44,15 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test length(r) == 6
   @test first(r) == 2
   @test last(r) == 7
+
+  # Test high-dimensional materialization.
+  a = randn(elt, 2, 2, 2) ⊗ randn(elt, 2, 2, 2)
+  x = Array(a)
+  y = similar(x)
+  for I in eachindex(a)
+    y[I] = @allowscalar x[I]
+  end
+  @test x == y
 
   a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
   b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
