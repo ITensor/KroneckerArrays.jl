@@ -3,7 +3,11 @@ module KroneckerArraysBlockSparseArraysExt
 using BlockArrays: Block
 using BlockSparseArrays: BlockIndexVector, GenericBlockIndex
 using KroneckerArrays: CartesianPair, CartesianProduct
-function Base.getindex(b::Block, I1::CartesianPair, Irest::CartesianPair...)
+function Base.getindex(
+  b::Block,
+  I1::Union{CartesianPair,CartesianProduct},
+  Irest::Union{CartesianPair,CartesianProduct}...,
+)
   return GenericBlockIndex(b, (I1, Irest...))
 end
 function Base.getindex(b::Block, I1::CartesianProduct, Irest::CartesianProduct...)
