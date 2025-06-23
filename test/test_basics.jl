@@ -11,6 +11,8 @@ using KroneckerArrays:
   CartesianProductUnitRange,
   ⊗,
   ×,
+  arg1,
+  arg2,
   cartesianproduct,
   cartesianrange,
   kron_nd,
@@ -67,8 +69,8 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test x == y
 
   a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
-  b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-  c = a.a ⊗ b.b
+  b = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
+  c = @constinferred(a.a ⊗ b.b)
   @test a isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
   @test similar(typeof(a), (2, 3)) isa Matrix{elt}
   @test size(similar(typeof(a), (2, 3))) == (2, 3)
@@ -100,6 +102,14 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   end
   @test tr(a) ≈ tr(collect(a))
   @test norm(a) ≈ norm(collect(a))
+
+  # Views
+  a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
+  b = @constinferred(view(a, (1:2) × (2:3), (1:2) × (2:3)))
+  @test arg1(b) === view(arg1(a), 1:2, 1:2)
+  @test arg1(b) == arg1(a)[1:2, 1:2]
+  @test arg2(b) === view(arg2(a), 2:3, 2:3)
+  @test arg2(b) == arg2(a)[2:3, 2:3]
 
   # Broadcasting
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)

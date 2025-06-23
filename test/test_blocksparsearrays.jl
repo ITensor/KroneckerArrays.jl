@@ -1,5 +1,5 @@
 using Adapt: adapt
-using BlockArrays: Block, BlockRange
+using BlockArrays: Block, BlockRange, mortar
 using BlockSparseArrays:
   BlockSparseArray, BlockSparseMatrix, blockrange, blocksparse, blocktype
 using FillArrays: Eye, SquareEye
@@ -38,22 +38,69 @@ arrayts = (Array, JLArray)
   @test a[Block(1, 2)] == dev(zeros(elt, 2, 3) ⊗ zeros(elt, 2, 3))
   @test a[Block(1, 2)] isa valtype(d)
 
+  # Slicing
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, r, r))
+  @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
+    a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
+  @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
+  @test_broken a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+
+  # Slicing
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, r, r))
+  i1 = Block(1)[(1:2) × (1:2)]
+  i2 = Block(2)[(2:3) × (2:3)]
+  I = mortar([i1, i2])
+  b = @view a[I, I]
+  b′ = copy(b)
+  @test b[Block(2, 2)] == b′[Block(2, 2)] == a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]]
+  @test_broken b[Block(1, 2)]
+
+  # Slicing
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, r, r))
+  i1 = Block(1)[(1:2) × (1:2)]
+  i2 = Block(2)[(2:3) × (2:3)]
+  I = [i1, i2]
+  b = @view a[I, I]
+  b′ = copy(b)
+  @test b[Block(2, 2)] == b′[Block(2, 2)] == a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]]
+  @test_broken b[Block(1, 2)]
+
+  # Matrix multiplication
   b = a * a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) * Array(a)
 
+  # Addition (mapping, broadcasting)
   b = a + a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) + Array(a)
 
+  # Scaling (mapping, broadcasting)
   b = 3a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ 3Array(a)
 
+  # Dividing (mapping, broadcasting)
   b = a / 3
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) / 3
 
+  # Norm
   @test norm(a) ≈ norm(Array(a))
 
   if arrayt === Array
@@ -101,6 +148,48 @@ end
   @test iszero(a[Block(1, 2)])
   @test a[Block(1, 2)] == dev(Eye(2, 3) ⊗ zeros(elt, 2, 3))
   @test a[Block(1, 2)] isa valtype(d)
+
+  # Slicing
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, r, r))
+  @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
+    a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
+  @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
+  @test_broken a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+
+  # Slicing
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, r, r))
+  i1 = Block(1)[(1:2) × (1:2)]
+  i2 = Block(2)[(2:3) × (2:3)]
+  I = mortar([i1, i2])
+  b = @view a[I, I]
+  @test b[Block(2, 2)] == a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]]
+  @test_broken copy(b)
+  @test_broken b[Block(1, 2)]
+
+  # Slicing
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, r, r))
+  i1 = Block(1)[(1:2) × (1:2)]
+  i2 = Block(2)[(2:3) × (2:3)]
+  I = [i1, i2]
+  b = @view a[I, I]
+  @test b[Block(2, 2)] == a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]]
+  @test_broken copy(b)
+  @test_broken b[Block(1, 2)]
 
   b = @constinferred a * a
   @test typeof(b) === typeof(a)

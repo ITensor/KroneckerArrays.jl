@@ -1,6 +1,6 @@
 using DerivableInterfaces: zero!
 using FillArrays: Eye, Zeros
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2
 using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
@@ -18,11 +18,25 @@ using Test: @test, @test_throws, @testset
   @test 2a == Eye(2) ⊗ (2a.b)
   @test a * a == Eye(2) ⊗ (a.b * a.b)
 
+  # Views
+  a = @constinferred(Eye(2) ⊗ randn(3, 3))
+  b = @constinferred(view(a, (:) × (2:3), (:) × (2:3)))
+  @test arg1(b) === Eye(2)
+  @test arg2(b) === view(arg2(a), 2:3, 2:3)
+  @test arg2(b) == arg2(a)[2:3, 2:3]
+
   a = randn(3, 3) ⊗ Eye(2)
   @test size(a) == (6, 6)
   @test a + a == (2a.a) ⊗ Eye(2)
   @test 2a == (2a.a) ⊗ Eye(2)
   @test a * a == (a.a * a.a) ⊗ Eye(2)
+
+  # Views
+  a = @constinferred(randn(3, 3) ⊗ Eye(2))
+  b = @constinferred(view(a, (2:3) × (:), (2:3) × (:)))
+  @test arg1(b) === view(arg1(a), 2:3, 2:3)
+  @test arg1(b) == arg1(a)[2:3, 2:3]
+  @test arg2(b) === Eye(2)
 
   # similar
   a = Eye(2) ⊗ randn(3, 3)

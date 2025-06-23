@@ -178,6 +178,17 @@ end
 # Fix ambigiuity error.
 Base.getindex(a::KroneckerArray{<:Any,0}) = arg1(a)[] * arg2(a)[]
 
+# Allow customizing for `FillArrays.Eye`.
+_view(a::AbstractArray, I...) = view(a, I...)
+function Base.view(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianProduct,N}) where {N}
+  return _view(arg1(a), arg1.(I)...) ⊗ _view(arg2(a), arg2.(I)...)
+end
+function Base.view(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianPair,N}) where {N}
+  return _view(arg1(a), arg1.(I)...) ⊗ _view(arg2(a), arg2.(I)...)
+end
+# Fix ambigiuity error.
+Base.view(a::KroneckerArray{<:Any,0}) = _view(arg1(a)) * _view(arg2(a))
+
 function Base.:(==)(a::KroneckerArray, b::KroneckerArray)
   return arg1(a) == arg1(b) && arg2(a) == arg2(b)
 end
