@@ -99,4 +99,10 @@ function (f::GetUnstoredBlock)(
   return error("Not implemented.")
 end
 
+using BlockSparseArrays: BlockSparseArrays
+using KroneckerArrays: KroneckerArrays, KroneckerVector
+function BlockSparseArrays.to_truncated_indices(values::KroneckerVector, I)
+  return KroneckerArrays.to_truncated_indices(values, I)
+end
+
 end

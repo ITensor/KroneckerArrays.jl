@@ -20,34 +20,40 @@ const OnesKroneckerVector{T,A<:OnesVector{T},B<:AbstractVector{T}} = KroneckerVe
 const KroneckerOnesVector{T,A<:AbstractVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
 const OnesVectorOnesVector{T,A<:OnesVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
 
-function MatrixAlgebraKit.findtruncated(
-  values::OnesKroneckerVector, strategy::KroneckerTruncationStrategy
-)
-  I = findtruncated(Vector(values), strategy.strategy)
-  prods = collect(cartesianproduct(only(axes(values))))[I]
-  I_data = unique(map(arg1, prods))
-  # Drop truncations that occur within the identity.
-  I_data = filter(I_data) do i
-    return count(x -> arg1(x) == i, prods) == length(arg1(values))
-  end
-  return (:) × I_data
-end
-function MatrixAlgebraKit.findtruncated(
-  values::KroneckerOnesVector, strategy::KroneckerTruncationStrategy
-)
-  I = findtruncated(Vector(values), strategy.strategy)
-  prods = collect(cartesianproduct(only(axes(values))))[I]
-  I_data = unique(map(x -> arg2(x), prods))
+axis(a) = only(axes(a))
+
+# Convert indices determined with a generic call to `findtruncated` to indices
+# more suited for a KroneckerVector.
+function to_truncated_indices(values::OnesKroneckerVector, I)
+  prods = cartesianproduct(axis(values))[I]
+  I_id = only(to_indices(arg1(values), (:,)))
+  I_data = unique(arg2.(prods))
   # Drop truncations that occur within the identity.
   I_data = filter(I_data) do i
     return count(x -> arg2(x) == i, prods) == length(arg2(values))
   end
-  return I_data × (:)
+  return I_id × I_data
 end
-function MatrixAlgebraKit.findtruncated(
-  values::OnesVectorOnesVector, strategy::KroneckerTruncationStrategy
-)
+function to_truncated_indices(values::KroneckerOnesVector, I)
+  #I = findtruncated(Vector(values), strategy.strategy)
+  prods = cartesianproduct(axis(values))[I]
+  I_data = unique(arg1.(prods))
+  # Drop truncations that occur within the identity.
+  I_data = filter(I_data) do i
+    return count(x -> arg1(x) == i, prods) == length(arg2(values))
+  end
+  I_id = only(to_indices(arg2(values), (:,)))
+  return I_data × I_id
+end
+function to_truncated_indices(values::OnesVectorOnesVector, I)
   return throw(ArgumentError("Can't truncate Eye ⊗ Eye."))
+end
+
+function MatrixAlgebraKit.findtruncated(
+  values::KroneckerVector, strategy::KroneckerTruncationStrategy
+)
+  I = findtruncated(Vector(values), strategy.strategy)
+  return to_truncated_indices(values, I)
 end
 
 for f in [:eig_trunc!, :eigh_trunc!]
