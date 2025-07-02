@@ -1,10 +1,10 @@
 using Adapt: adapt
 using BlockArrays: Block, BlockRange, mortar
 using BlockSparseArrays:
-  BlockSparseArray, BlockSparseMatrix, blockrange, blocksparse, blocktype
+  BlockIndexVector, BlockSparseArray, BlockSparseMatrix, blockrange, blocksparse, blocktype
 using FillArrays: Eye, SquareEye
 using JLArrays: JLArray
-using KroneckerArrays: KroneckerArray, ⊗, ×
+using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2
 using LinearAlgebra: norm
 using MatrixAlgebraKit: svd_compact
 using Test: @test, @test_broken, @testset
@@ -48,7 +48,18 @@ arrayts = (Array, JLArray)
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
     a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
   @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
-  @test_broken a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+  @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
+    a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+
+  # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
+  I1 = BlockIndexVector(Block(1), Base.Slice(Base.OneTo(2)) × [1])
+  I2 = BlockIndexVector(Block(2), Base.Slice(Base.OneTo(3)) × [1, 3])
+  I = [I1, I2]
+  b = a[I, I]
+  @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
+  @test iszero(b[Block(2, 1)])
+  @test iszero(b[Block(1, 2)])
+  @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
@@ -159,7 +170,22 @@ end
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
     a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
   @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
-  @test_broken a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+  @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
+    a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+
+  # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
+  I1 = BlockIndexVector(Block(1), Base.Slice(Base.OneTo(2)) × [1])
+  I2 = BlockIndexVector(Block(2), Base.Slice(Base.OneTo(3)) × [1, 3])
+  I = [I1, I2]
+  b = a[I, I]
+  @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
+  @test arg1(b[Block(1, 1)]) isa Eye
+  @test iszero(b[Block(2, 1)])
+  @test arg1(b[Block(2, 1)]) isa Eye
+  @test iszero(b[Block(1, 2)])
+  @test arg1(b[Block(1, 2)]) isa Eye
+  @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
+  @test arg1(b[Block(2, 2)]) isa Eye
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])

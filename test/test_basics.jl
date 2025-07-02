@@ -26,7 +26,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
 @testset "KroneckerArrays (eltype=$elt)" for elt in elts
   p = [1, 2] × [3, 4, 5]
   @test length(p) == 6
-  @test collect(p) == [1 × 3, 2 × 3, 1 × 4, 2 × 4, 1 × 5, 2 × 5]
+  @test collect(p) == [1 × 3, 1 × 4, 1 × 5, 2 × 3, 2 × 4, 2 × 5]
 
   r = @constinferred cartesianrange(2, 3)
   @test r ===
@@ -39,10 +39,10 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test first(r) == 1
   @test last(r) == 6
   @test r[1 × 1] == 1
-  @test r[2 × 1] == 2
-  @test r[1 × 2] == 3
-  @test r[2 × 2] == 4
-  @test r[1 × 3] == 5
+  @test r[1 × 2] == 2
+  @test r[1 × 3] == 3
+  @test r[2 × 1] == 4
+  @test r[2 × 2] == 5
   @test r[2 × 3] == 6
 
   r = @constinferred(cartesianrange(2 × 3, 2:7))
@@ -53,10 +53,10 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test first(r) == 2
   @test last(r) == 7
   @test r[1 × 1] == 2
-  @test r[2 × 1] == 3
-  @test r[1 × 2] == 4
-  @test r[2 × 2] == 5
-  @test r[1 × 3] == 6
+  @test r[1 × 2] == 3
+  @test r[1 × 3] == 4
+  @test r[2 × 1] == 5
+  @test r[2 × 2] == 6
   @test r[2 × 3] == 7
 
   # Test high-dimensional materialization.
