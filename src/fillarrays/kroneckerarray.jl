@@ -22,8 +22,13 @@ const KroneckerSquareEye{T,A<:AbstractMatrix{T},B<:SquareEye{T}} = KroneckerMatr
 const SquareEyeSquareEye{T,A<:SquareEye{T},B<:SquareEye{T}} = KroneckerMatrix{T,A,B}
 
 _getindex(a::Eye, I1::Colon, I2::Colon) = a
+_getindex(a::Eye, I1::Base.Slice, I2::Base.Slice) = a
+_getindex(a::Eye, I1::Base.Slice, I2::Colon) = a
+_getindex(a::Eye, I1::Colon, I2::Base.Slice) = a
 _view(a::Eye, I1::Colon, I2::Colon) = a
 _view(a::Eye, I1::Base.Slice, I2::Base.Slice) = a
+_view(a::Eye, I1::Base.Slice, I2::Colon) = a
+_view(a::Eye, I1::Colon, I2::Base.Slice) = a
 
 # Like `adapt` but preserves `Eye`.
 _adapt(to, a::Eye) = a
