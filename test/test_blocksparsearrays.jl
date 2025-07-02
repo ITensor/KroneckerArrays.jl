@@ -48,7 +48,8 @@ arrayts = (Array, JLArray)
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
     a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
   @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
-  @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+  @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
+    a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
 
   # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
   I1 = BlockIndexVector(Block(1), Base.Slice(Base.OneTo(2)) × [1])
@@ -169,7 +170,8 @@ end
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
     a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
   @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
-  @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
+  @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
+    a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
 
   # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
   I1 = BlockIndexVector(Block(1), Base.Slice(Base.OneTo(2)) × [1])

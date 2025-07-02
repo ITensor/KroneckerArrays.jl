@@ -168,7 +168,9 @@ function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Integer,N}) where {
 end
 
 # Indexing logic.
-function Base.to_indices(a::KroneckerArray, inds, I::Tuple{Union{CartesianPair,CartesianProduct},Vararg})
+function Base.to_indices(
+  a::KroneckerArray, inds, I::Tuple{Union{CartesianPair,CartesianProduct},Vararg}
+)
   I1 = to_indices(arg1(a), arg1.(inds), arg1.(I))
   I2 = to_indices(arg2(a), arg2.(inds), arg2.(I))
   return I1 .× I2
@@ -176,7 +178,9 @@ end
 
 # Allow customizing for `FillArrays.Eye`.
 _getindex(a::AbstractArray, I...) = a[I...]
-function Base.getindex(a::KroneckerArray{<:Any,N}, I::Vararg{Union{CartesianPair,CartesianProduct},N}) where {N}
+function Base.getindex(
+  a::KroneckerArray{<:Any,N}, I::Vararg{Union{CartesianPair,CartesianProduct},N}
+) where {N}
   I′ = to_indices(a, I)
   return _getindex(arg1(a), arg1.(I′)...) ⊗ _getindex(arg2(a), arg2.(I′)...)
 end
