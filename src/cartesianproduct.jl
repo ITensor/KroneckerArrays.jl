@@ -134,12 +134,21 @@ function cartesianrange(p::CartesianProduct, range::AbstractUnitRange)
 end
 
 function Base.axes(r::CartesianProductUnitRange)
-  return (CartesianProductUnitRange(cartesianproduct(r), only(axes(unproduct(r)))),)
+  prod = cartesianproduct(r)
+  prod_ax = only(axes(arg1(prod))) × only(axes(arg2(prod)))
+  return (CartesianProductUnitRange(prod_ax, only(axes(unproduct(r)))),)
 end
 
 function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::CartesianPair)
   return checkindex(Bool, arg1(inds), arg1(i)) && checkindex(Bool, arg2(inds), arg2(i))
 end
+
+const CartesianProductOneTo{T,P<:CartesianProduct,R<:Base.OneTo{T}} = CartesianProductUnitRange{
+  T,P,R
+}
+Base.axes(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
+Base.axes1(S::Base.Slice{<:CartesianProductOneTo}) = S.indices
+Base.unsafe_indices(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
 
 function Base.getindex(a::CartesianProductUnitRange, I::CartesianProduct)
   prod = cartesianproduct(a)
