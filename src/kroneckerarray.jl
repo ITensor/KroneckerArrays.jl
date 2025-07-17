@@ -38,6 +38,10 @@ function Base.copyto!(dest::KroneckerArray, src::KroneckerArray)
   return dest
 end
 
+function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where {T,N,A,B}
+  return KroneckerArray(convert(A, arg1(a)), convert(B, arg2(a)))
+end
+
 # Like `similar` but allows some custom behavior, such as for `FillArrays.Eye`.
 function _similar(a::AbstractArray, elt::Type, axs::Tuple{Vararg{AbstractUnitRange}})
   return similar(a, elt, axs)
@@ -189,7 +193,14 @@ Base.getindex(a::KroneckerArray{<:Any,0}) = arg1(a)[] * arg2(a)[]
 
 # Allow customizing for `FillArrays.Eye`.
 _view(a::AbstractArray, I...) = view(a, I...)
-function Base.view(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianProduct,N}) where {N}
+arg1(::Colon) = (:)
+arg2(::Colon) = (:)
+arg1(::Base.Slice) = (:)
+arg2(::Base.Slice) = (:)
+function Base.view(
+  a::KroneckerArray{<:Any,N},
+  I::Vararg{Union{CartesianProduct,CartesianProductUnitRange,Base.Slice,Colon},N},
+) where {N}
   return _view(arg1(a), arg1.(I)...) ⊗ _view(arg2(a), arg2.(I)...)
 end
 function Base.view(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianPair,N}) where {N}
@@ -272,10 +283,8 @@ function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N
   return KroneckerStyle{N}(style_a, style_b)
 end
 function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type, ax) where {N,A,B}
-  ax_a = arg1.(ax)
-  ax_b = arg2.(ax)
-  bc_a = Broadcasted(A, nothing, (), ax_a)
-  bc_b = Broadcasted(B, nothing, (), ax_b)
+  bc_a = Broadcasted(A, bc.f, arg1.(bc.args), arg1.(ax))
+  bc_b = Broadcasted(B, bc.f, arg2.(bc.args), arg2.(ax))
   a = similar(bc_a, elt)
   b = similar(bc_b, elt)
   return a ⊗ b

@@ -134,7 +134,9 @@ function cartesianrange(p::CartesianProduct, range::AbstractUnitRange)
 end
 
 function Base.axes(r::CartesianProductUnitRange)
-  return (CartesianProductUnitRange(cartesianproduct(r), only(axes(unproduct(r)))),)
+  prod = cartesianproduct(r)
+  prod_ax = only(axes(arg1(prod))) × only(axes(arg2(prod)))
+  return (CartesianProductUnitRange(prod_ax, only(axes(unproduct(r)))),)
 end
 
 function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::CartesianPair)
