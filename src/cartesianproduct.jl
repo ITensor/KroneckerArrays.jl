@@ -143,7 +143,9 @@ function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::Carte
   return checkindex(Bool, arg1(inds), arg1(i)) && checkindex(Bool, arg2(inds), arg2(i))
 end
 
-const CartesianProductOneTo{T,P<:CartesianProduct,R<:Base.OneTo{T}} = CartesianProductUnitRange{T,P,R}
+const CartesianProductOneTo{T,P<:CartesianProduct,R<:Base.OneTo{T}} = CartesianProductUnitRange{
+  T,P,R
+}
 Base.axes(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
 Base.axes1(S::Base.Slice{<:CartesianProductOneTo}) = S.indices
 Base.unsafe_indices(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
