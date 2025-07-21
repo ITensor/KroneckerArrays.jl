@@ -24,7 +24,7 @@ function BlockSparseArrays.blockrange(bs::Vector{<:CartesianProduct})
 end
 
 using BlockArrays: AbstractBlockedUnitRange
-using BlockSparseArrays: Block, GetUnstoredBlock, eachblockaxis, mortar_axis
+using BlockSparseArrays: Block, ZeroBlocks, eachblockaxis, mortar_axis
 using DerivableInterfaces: zero!
 using FillArrays: Eye
 using KroneckerArrays:
@@ -56,45 +56,41 @@ function block_axes(ax::NTuple{N,AbstractUnitRange{<:Integer}}, I::Block{N}) whe
   return block_axes(ax, Tuple(I)...)
 end
 
-function (f::GetUnstoredBlock)(
-  ::Type{<:AbstractMatrix{KroneckerMatrix{T,A,B}}}, I::Vararg{Int,2}
+function Base.getindex(
+  a::ZeroBlocks{2,KroneckerMatrix{T,A,B}}, I::Vararg{Int,2}
 ) where {T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}}
-  ax_a = arg1.(f.axes)
-  f_a = GetUnstoredBlock(ax_a)
-  a = f_a(AbstractMatrix{A}, I...)
+  ax_a1 = arg1.(a.parentaxes)
+  a1 = ZeroBlocks{2,A}(ax_a1)[I...]
 
-  ax_b = arg2.(f.axes)
-  f_b = GetUnstoredBlock(ax_b)
-  b = f_b(AbstractMatrix{B}, I...)
+  ax_a2 = arg2.(a.parentaxes)
+  a2 = ZeroBlocks{2,B}(ax_a2)[I...]
 
-  return a ⊗ b
+  return a1 ⊗ a2
 end
-function (f::GetUnstoredBlock)(
-  ::Type{<:AbstractMatrix{EyeKronecker{T,A,B}}}, I::Vararg{Int,2}
+function Base.getindex(
+  a::ZeroBlocks{2,EyeKronecker{T,A,B}}, I::Vararg{Int,2}
 ) where {T,A<:Eye{T},B<:AbstractMatrix{T}}
-  block_ax_a = arg1.(block_axes(f.axes, Block(I)))
-  a = _similar(A, block_ax_a)
+  block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
+  a1 = _similar(A, block_ax_a1)
 
-  ax_b = arg2.(f.axes)
-  f_b = GetUnstoredBlock(ax_b)
-  b = f_b(AbstractMatrix{B}, I...)
+  ax_a2 = arg2.(a.parentaxes)
+  a2 = ZeroBlocks{2,B}(ax_a2)[I...]
 
-  return a ⊗ b
+  return a1 ⊗ a2
 end
-function (f::GetUnstoredBlock)(
-  ::Type{<:AbstractMatrix{KroneckerEye{T,A,B}}}, I::Vararg{Int,2}
+function Base.getindex(
+  a::ZeroBlocks{2,KroneckerEye{T,A,B}}, I::Vararg{Int,2}
 ) where {T,A<:AbstractMatrix{T},B<:Eye{T}}
-  ax_a = arg1.(f.axes)
-  f_a = GetUnstoredBlock(ax_a)
-  a = f_a(AbstractMatrix{A}, I...)
+  ax_a1 = arg1.(a.parentaxes)
+  a1 = ZeroBlocks{2,A}(ax_a1)[I...]
 
-  block_ax_b = arg2.(block_axes(f.axes, Block(I)))
-  b = _similar(B, block_ax_b)
+  block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
+  a2 = _similar(B, block_ax_a2)
 
-  return a ⊗ b
+  return a1 ⊗ a2
 end
-function (f::GetUnstoredBlock)(
-  ::Type{<:AbstractMatrix{EyeEye{T,A,B}}}, I::Vararg{Int,2}
+function Base.getindex(
+  a::ZeroBlocks{2,EyeEye{T,A,B}}, I::Vararg{Int,2}
 ) where {T,A<:Eye{T},B<:Eye{T}}
   return error("Not implemented.")
 end
