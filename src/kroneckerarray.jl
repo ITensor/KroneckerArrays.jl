@@ -2,6 +2,17 @@
 function _convert(A::Type{<:AbstractArray}, a::AbstractArray)
   return convert(A, a)
 end
+# Custom `_convert` works around the issue that
+# `convert(::Type{<:Diagonal}, ::AbstractMatrix)` isnt' defined
+# in Julia v1.10 (https://github.com/JuliaLang/julia/pull/48895,
+# https://github.com/JuliaLang/julia/pull/52487).
+# TODO: Delete once we drop support for Julia v1.10.
+using LinearAlgebra: LinearAlgebra, Diagonal, diag, isdiag
+_construct(A::Type{<:Diagonal}, a::AbstractMatrix) = A(diag(a))
+function _convert(A::Type{<:Diagonal}, a::AbstractMatrix)
+  LinearAlgebra.checksquare(a)
+  return isdiag(a) ? _construct(A, a) : throw(InexactError(:convert, A, a))
+end
 
 struct KroneckerArray{T,N,A<:AbstractArray{T,N},B<:AbstractArray{T,N}} <: AbstractArray{T,N}
   a::A
@@ -39,7 +50,7 @@ function Base.copyto!(dest::KroneckerArray, src::KroneckerArray)
 end
 
 function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where {T,N,A,B}
-  return KroneckerArray(convert(A, arg1(a)), convert(B, arg2(a)))
+  return KroneckerArray(_convert(A, arg1(a)), _convert(B, arg2(a)))
 end
 
 # Like `similar` but allows some custom behavior, such as for `FillArrays.Eye`.
