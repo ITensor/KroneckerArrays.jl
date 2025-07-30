@@ -43,9 +43,26 @@ _copy(a::AbstractArray) = copy(a)
 function Base.copy(a::KroneckerArray)
   return _copy(arg1(a)) ⊗ _copy(arg2(a))
 end
-function Base.copyto!(dest::KroneckerArray, src::KroneckerArray)
-  copyto!(arg1(dest), arg1(src))
-  copyto!(arg2(dest), arg2(src))
+
+# Allows extra customization, like for `FillArrays.Eye`.
+function _copyto!!(dest::AbstractArray{<:Any,N}, src::AbstractArray{<:Any,N}) where {N}
+  copyto!(dest, src)
+  return dest
+end
+function _copyto!!(dest::AbstractArray, src::Broadcasted)
+  copyto!(dest, src)
+  return dest
+end
+
+function Base.copyto!(dest::KroneckerArray{<:Any,N}, src::KroneckerArray{<:Any,N}) where {N}
+  return copyto!_kronecker(dest, src)
+end
+function copyto!_kronecker(
+  dest::KroneckerArray{<:Any,N}, src::KroneckerArray{<:Any,N}
+) where {N}
+  # TODO: Check if neither argument is mutated and if so error.
+  _copyto!!(arg1(dest), arg1(src))
+  _copyto!!(arg2(dest), arg2(src))
   return dest
 end
 
@@ -101,6 +118,23 @@ function Base.similar(
   return similar(promote_type(A, B), sz)
 end
 
+function _permutedims!!(dest::AbstractArray, src::AbstractArray, perm)
+  permutedims!(dest, src, perm)
+  return dest
+end
+
+# TODO: Define `DerivableInterfaces.permuteddims` and overload that instead.
+function Base.PermutedDimsArray(a::KroneckerArray, perm)
+  return PermutedDimsArray(arg1(a), perm) ⊗ PermutedDimsArray(arg2(a), perm)
+end
+
+function Base.permutedims!(dest::KroneckerArray, src::KroneckerArray, perm)
+  # TODO: Error if neither argument is mutable.
+  _permutedims!!(arg1(dest), arg1(src), perm)
+  _permutedims!!(arg2(dest), arg2(src), perm)
+  return dest
+end
+
 function flatten(t::Tuple{Tuple,Tuple,Vararg{Tuple}})
   return (t[1]..., flatten(Base.tail(t))...)
 end
@@ -119,7 +153,7 @@ function kron_nd(a::AbstractArray{<:Any,N}, b::AbstractArray{<:Any,N}) where {N}
   a′ = reshape(a, interleave(size(a), ntuple(one, N)))
   b′ = reshape(b, interleave(ntuple(one, N), size(b)))
   c′ = permutedims(a′ .* b′, reverse(ntuple(identity, 2N)))
-  sz = ntuple(i -> size(a, i) * size(b, i), N)
+  sz = reverse(ntuple(i -> size(a, i) * size(b, i), N))
   return permutedims(reshape(c′, sz), reverse(ntuple(identity, N)))
 end
 kron_nd(a::AbstractMatrix, b::AbstractMatrix) = kron(a, b)
@@ -265,6 +299,12 @@ for f in [:transpose, :adjoint, :inv]
   end
 end
 
+function Base.reshape(
+  a::KroneckerArray, ax::Tuple{CartesianProductUnitRange,Vararg{CartesianProductUnitRange}}
+)
+  return reshape(arg1(a), map(arg1, ax)) ⊗ reshape(arg2(a), map(arg2, ax))
+end
+
 # Allows for customizations for FillArrays.
 _BroadcastStyle(x) = BroadcastStyle(x)
 
@@ -384,8 +424,8 @@ Broadcast.materialize!(dest, a::KroneckerBroadcasted) = copyto!(dest, a)
 Broadcast.broadcastable(a::KroneckerBroadcasted) = a
 Base.copy(a::KroneckerBroadcasted) = copy(arg1(a)) ⊗ copy(arg2(a))
 function Base.copyto!(dest::KroneckerArray, a::KroneckerBroadcasted)
-  copyto!(arg1(dest), copy(arg1(a)))
-  copyto!(arg2(dest), copy(arg2(a)))
+  _copyto!!(arg1(dest), arg1(a))
+  _copyto!!(arg2(dest), arg2(a))
   return dest
 end
 function Base.eltype(a::KroneckerBroadcasted)
@@ -432,4 +472,40 @@ function Base.broadcasted(
   style::KroneckerStyle, f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}}, a
 )
   return broadcasted(style, /, a, f.args[2])
+end
+
+using TensorAlgebra: TensorAlgebra, AbstractBlockPermutation, FusionStyle, matricize
+struct KroneckerFusion{A<:FusionStyle,B<:FusionStyle} <: FusionStyle
+  a::A
+  b::B
+end
+arg1(style::KroneckerFusion) = style.a
+arg2(style::KroneckerFusion) = style.b
+function TensorAlgebra.FusionStyle(a::KroneckerArray)
+  return KroneckerFusion(FusionStyle(arg1(a)), FusionStyle(arg2(a)))
+end
+function matricize_kronecker(
+  style::KroneckerFusion, a::AbstractArray, biperm::AbstractBlockPermutation{2}
+)
+  return matricize(arg1(style), arg1(a), biperm) ⊗ matricize(arg2(style), arg2(a), biperm)
+end
+function TensorAlgebra.matricize(
+  style::KroneckerFusion, a::AbstractArray, biperm::AbstractBlockPermutation{2}
+)
+  return matricize_kronecker(style, a, biperm)
+end
+# Fix ambiguity error.
+# TODO: Investigate rewriting the logic in `TensorAlgebra.jl` to avoid this.
+using TensorAlgebra: BlockedTrivialPermutation, unmatricize
+function TensorAlgebra.matricize(
+  style::KroneckerFusion, a::AbstractArray, biperm::BlockedTrivialPermutation{2}
+)
+  return matricize_kronecker(style, a, biperm)
+end
+function unmatricize_kronecker(style::KroneckerFusion, a::AbstractArray, ax)
+  return unmatricize(arg1(style), arg1(a), arg1.(ax)) ⊗
+         unmatricize(arg2(style), arg2(a), arg2.(ax))
+end
+function TensorAlgebra.unmatricize(style::KroneckerFusion, a::AbstractArray, ax)
+  return unmatricize_kronecker(style, a, ax)
 end

@@ -1,7 +1,7 @@
 name = "KroneckerArrays"
 uuid = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.1.26"
+version = "0.1.27"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -12,23 +12,28 @@ GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MapBroadcast = "ebd9b9da-f48d-417c-9660-449667d60261"
 MatrixAlgebraKit = "6c742aac-3347-4629-af66-fc926824e5e4"
+TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 
 [weakdeps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 BlockSparseArrays = "2c9a651f-6452-4ace-a6ac-809f4280fbb4"
+TensorProducts = "decf83d6-1968-43f4-96dc-fdb3fe15fc6d"
 
 [extensions]
 KroneckerArraysBlockSparseArraysExt = ["BlockArrays", "BlockSparseArrays"]
+KroneckerArraysTensorProductsExt = "TensorProducts"
 
 [compat]
 Adapt = "4.3"
 BlockArrays = "1.6"
 BlockSparseArrays = "0.8.1"
 DerivableInterfaces = "0.5"
-DiagonalArrays = "0.3.5"
+DiagonalArrays = "0.3.11"
 FillArrays = "1.13"
 GPUArraysCore = "0.2"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.9"
 MatrixAlgebraKit = "0.2"
+TensorAlgebra = "0.3.10"
+TensorProducts = "0.1.7"
 julia = "1.10"
