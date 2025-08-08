@@ -54,10 +54,19 @@ function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where 
 end
 
 # Like `similar` but allows some custom behavior, such as for `FillArrays.Eye`.
-function _similar(a::AbstractArray, elt::Type, axs::Tuple{Vararg{AbstractUnitRange}})
+function _similar(a::AbstractArray, elt::Type, axs::Tuple)
   return similar(a, elt, axs)
 end
-function _similar(arrayt::Type{<:AbstractArray}, axs::Tuple{Vararg{AbstractUnitRange}})
+function _similar(a::AbstractArray, ax::Tuple)
+  return _similar(a, eltype(a), ax)
+end
+function _similar(a::AbstractArray, elt::Type)
+  return _similar(a, elt, axes(a))
+end
+function _similar(a::AbstractArray)
+  return _similar(a, eltype(a), axes(a))
+end
+function _similar(arrayt::Type{<:AbstractArray}, axs::Tuple)
   return similar(arrayt, axs)
 end
 
@@ -129,6 +138,16 @@ kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
 Base.collect(a::KroneckerArray) = kron_nd(collect(arg1(a)), collect(arg2(a)))
 
 Base.zero(a::KroneckerArray) = zero(arg1(a)) ⊗ zero(arg2(a))
+
+using DerivableInterfaces: DerivableInterfaces, zero!
+function DerivableInterfaces.zero!(a::KroneckerArray)
+  ismut1 = ismutable(arg1(a))
+  ismut2 = ismutable(arg2(a))
+  (ismut1 || ismut2) || throw(ArgumentError("Can't zero out immutable KroneckerArray."))
+  ismut1 && zero!(arg1(a))
+  ismut2 && zero!(arg2(a))
+  return a
+end
 
 function Base.Array{T,N}(a::KroneckerArray{S,N}) where {T,S,N}
   return convert(Array{T,N}, collect(a))
@@ -372,13 +391,15 @@ _eltype(x) = eltype(x)
 _eltype(x::Broadcasted) = Base.promote_op(x.f, _eltype.(x.args)...)
 
 using Base.Broadcast: broadcasted
-struct KroneckerBroadcasted{A<:Broadcasted,B<:Broadcasted}
+struct KroneckerBroadcasted{A,B}
   a::A
   b::B
 end
 arg1(a::KroneckerBroadcasted) = a.a
 arg2(a::KroneckerBroadcasted) = a.b
 ⊗(a::Broadcasted, b::Broadcasted) = KroneckerBroadcasted(a, b)
+⊗(a::Broadcasted, b) = KroneckerBroadcasted(a, b)
+⊗(a, b::Broadcasted) = KroneckerBroadcasted(a, b)
 Broadcast.materialize(a::KroneckerBroadcasted) = copy(a)
 Broadcast.materialize!(dest, a::KroneckerBroadcasted) = copyto!(dest, a)
 Broadcast.broadcastable(a::KroneckerBroadcasted) = a
