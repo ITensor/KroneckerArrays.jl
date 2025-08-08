@@ -68,7 +68,7 @@ arrayts = (Array, JLArray)
     Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
   i2 = Block(2)[(2:3) × (2:3)]
   I = mortar([i1, i2])
@@ -83,7 +83,7 @@ arrayts = (Array, JLArray)
     Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
   i2 = Block(2)[(2:3) × (2:3)]
   I = [i1, i2]
