@@ -130,9 +130,12 @@ arrayts = (Array, JLArray)
     @test_broken svd_compact(a)
   end
 
+  b = a[Block.(1:2), Block(2)]
+  @test b[Block(1)] == a[Block(1, 2)]
+  @test b[Block(2)] == a[Block(2, 2)]
+
   # Broken operations
   @test_broken exp(a)
-  @test_broken a[Block.(1:2), Block(2)]
 end
 
 @testset "BlockSparseArraysExt, EyeKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
@@ -174,19 +177,19 @@ end
   @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
     a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
 
-  ## # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
-  ## I1 = BlockIndexVector(Block(1), Base.Slice(Base.OneTo(2)) × [1])
-  ## I2 = BlockIndexVector(Block(2), Base.Slice(Base.OneTo(3)) × [1, 3])
-  ## I = [I1, I2]
-  ## b = a[I, I]
-  ## @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
-  ## @test arg1(b[Block(1, 1)]) isa Eye
-  ## @test iszero(b[Block(2, 1)])
-  ## @test arg1(b[Block(2, 1)]) isa Eye
-  ## @test iszero(b[Block(1, 2)])
-  ## @test arg1(b[Block(1, 2)]) isa Eye
-  ## @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
-  ## @test arg1(b[Block(2, 2)]) isa Eye
+  # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
+  I1 = BlockIndexVector(Block(1), Base.Slice(Base.OneTo(2)) × [1])
+  I2 = BlockIndexVector(Block(2), Base.Slice(Base.OneTo(3)) × [1, 3])
+  I = [I1, I2]
+  b = a[I, I]
+  @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
+  @test arg1(b[Block(1, 1)]) isa Eye
+  @test iszero(b[Block(2, 1)])
+  @test arg1(b[Block(2, 1)]) isa Eye
+  @test iszero(b[Block(1, 2)])
+  @test arg1(b[Block(1, 2)]) isa Eye
+  @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
+  @test arg1(b[Block(2, 2)]) isa Eye
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
@@ -272,7 +275,9 @@ end
   end
 
   # Broken operations
-  @test_broken a[Block.(1:2), Block(2)]
+  b = a[Block.(1:2), Block(2)]
+  @test b[Block(1)] == a[Block(1, 2)]
+  @test b[Block(2)] == a[Block(2, 2)]
 
   # svd_trunc
   dev = adapt(arrayt)
