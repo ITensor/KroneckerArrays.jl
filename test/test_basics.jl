@@ -46,6 +46,10 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test r[2 × 2] == 5
   @test r[2 × 3] == 6
 
+  @test sprint(show, "text/plain", cartesianrange(2 × 3)) ==
+    "Base.OneTo(2) × Base.OneTo(3)\nBase.OneTo(6)"
+  @test sprint(show, cartesianrange(2 × 3)) == "Base.OneTo(6)"
+
   # CartesianProductUnitRange axes
   r = cartesianrange((2:3) × (3:4), 2:5)
   @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
