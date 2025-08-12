@@ -189,6 +189,17 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     @test_throws ErrorException imag(a)
   end
 
+  # permutedims
+  a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
+  @test permutedims(a, (2, 1, 3)) ==
+    permutedims(arg1(a), (2, 1, 3)) ⊗ permutedims(arg2(a), (2, 1, 3))
+
+  # permutedims!
+  a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
+  b = similar(a)
+  permutedims!(b, a, (2, 1, 3))
+  @test b == permutedims(arg1(a), (2, 1, 3)) ⊗ permutedims(arg2(a), (2, 1, 3))
+
   # Adapt
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   a′ = adapt(JLArray, a)

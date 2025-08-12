@@ -204,6 +204,24 @@ using TestExtras: @constinferred
   @test fa.b isa Eye
 
   @test det(a) ≈ det(collect(a)) ≈ 1
+
+  # permutedims
+  a = Eye(2, 2) ⊗ randn(3, 3)
+  @test permutedims(a, (2, 1)) == Eye(2, 2) ⊗ permutedims(arg2(a), (2, 1))
+
+  a = randn(2, 2) ⊗ Eye(3, 3)
+  @test permutedims(a, (2, 1)) == permutedims(arg1(a), (2, 1)) ⊗ Eye(3, 3)
+
+  # permutedims!
+  a = Eye(2, 2) ⊗ randn(3, 3)
+  b = similar(a)
+  permutedims!(b, a, (2, 1))
+  @test b == Eye(2, 2) ⊗ permutedims(arg2(a), (2, 1))
+
+  a = randn(3, 3) ⊗ Eye(2, 2)
+  b = similar(a)
+  permutedims!(b, a, (2, 1))
+  @test b == permutedims(arg1(a), (2, 1)) ⊗ Eye(2, 2)
 end
 
 @testset "FillArrays.Zeros" begin
