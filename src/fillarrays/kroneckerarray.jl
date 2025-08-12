@@ -108,31 +108,6 @@ function _permutedims!!(dest::Delta, src::Delta, perm)
   return dest
 end
 
-using DerivableInterfaces: DerivableInterfaces, zero!
-function DerivableInterfaces.zero!(a::EyeKronecker)
-  zero!(a.b)
-  return a
-end
-function DerivableInterfaces.zero!(a::KroneckerEye)
-  zero!(a.a)
-  return a
-end
-function DerivableInterfaces.zero!(a::EyeEye)
-  return throw(ArgumentError("Can't zero out `Eye ⊗ Eye`."))
-end
-
-function DerivableInterfaces.zero!(a::DeltaKronecker)
-  zero!(a.b)
-  return a
-end
-function DerivableInterfaces.zero!(a::KroneckerDelta)
-  zero!(a.a)
-  return a
-end
-function DerivableInterfaces.zero!(a::DeltaDelta)
-  return throw(ArgumentError("Can't zero out `Delta ⊗ Delta`."))
-end
-
 using Base.Broadcast:
   AbstractArrayStyle, AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
 

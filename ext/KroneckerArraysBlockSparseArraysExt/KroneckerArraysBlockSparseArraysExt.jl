@@ -57,15 +57,15 @@ function block_axes(ax::NTuple{N,AbstractUnitRange{<:Integer}}, I::Block{N}) whe
 end
 
 ## TODO: Is this needed?
-## function Base.getindex(
-##   a::ZeroBlocks{2,KroneckerMatrix{T,A,B}}, I::Vararg{Int,2}
-## ) where {T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}}
-##   ax_a1 = map(arg1, a.parentaxes)
-##   a1 = ZeroBlocks{2,A}(ax_a1)[I...]
-##   ax_a2 = map(arg2, a.parentaxes)
-##   a2 = ZeroBlocks{2,B}(ax_a2)[I...]
-##   return a1 ⊗ a2
-## end
+function Base.getindex(
+  a::ZeroBlocks{2,KroneckerMatrix{T,A,B}}, I::Vararg{Int,2}
+) where {T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}}
+  ax_a1 = map(arg1, a.parentaxes)
+  a1 = ZeroBlocks{2,A}(ax_a1)[I...]
+  ax_a2 = map(arg2, a.parentaxes)
+  a2 = ZeroBlocks{2,B}(ax_a2)[I...]
+  return a1 ⊗ a2
+end
 function Base.getindex(
   a::ZeroBlocks{2,EyeKronecker{T,A,B}}, I::Vararg{Int,2}
 ) where {T,A<:Eye{T},B<:AbstractMatrix{T}}
