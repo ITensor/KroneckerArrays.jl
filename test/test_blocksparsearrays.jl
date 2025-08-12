@@ -1,10 +1,16 @@
 using Adapt: adapt
-using BlockArrays: Block, BlockRange, mortar
+using BlockArrays: Block, BlockRange, blockedrange, blockisequal, mortar
 using BlockSparseArrays:
-  BlockIndexVector, BlockSparseArray, BlockSparseMatrix, blockrange, blocksparse, blocktype
+  BlockIndexVector,
+  BlockSparseArray,
+  BlockSparseMatrix,
+  blockrange,
+  blocksparse,
+  blocktype,
+  eachblockaxis
 using FillArrays: Eye, SquareEye
 using JLArrays: JLArray
-using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2
+using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2, cartesianrange
 using LinearAlgebra: norm
 using MatrixAlgebraKit: svd_compact, svd_trunc
 using StableRNGs: StableRNG
@@ -16,6 +22,15 @@ arrayts = (Array, JLArray)
 @testset "BlockSparseArraysExt, KroneckerArray blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
                                                                                             arrayts,
   elt in elts
+
+  # BlockUnitRange with CartesianProduct blocks
+  r = blockrange([2 × 3, 3 × 4])
+  @test r[Block(1)] ≡ cartesianrange(2 × 3, 1:6)
+  @test r[Block(2)] ≡ cartesianrange(3 × 4, 7:18)
+  @test eachblockaxis(r)[1] ≡ cartesianrange(2, 3)
+  @test eachblockaxis(r)[2] ≡ cartesianrange(3, 4)
+  @test blockisequal(arg1(r), blockedrange([2, 3]))
+  @test blockisequal(arg2(r), blockedrange([3, 4]))
 
   dev = adapt(arrayt)
   r = blockrange([2 × 2, 3 × 3])
