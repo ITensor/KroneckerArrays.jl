@@ -1,12 +1,15 @@
+using Adapt: adapt
 using DerivableInterfaces: zero!
+using DiagonalArrays: δ
 using FillArrays: Eye, Zeros
+using JLArrays: JLArray, jl
 using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, ×, arg1, arg2
 using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using TestExtras: @constinferred
 
-@testset "FillArrays.Eye" begin
+@testset "FillArrays.Eye, DiagonalArrays.Delta" begin
   MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
   if VERSION < v"1.11-"
     # `cbrt(::AbstractMatrix{<:Real})` was implemented in Julia 1.11.
@@ -15,9 +18,46 @@ using TestExtras: @constinferred
 
   a = Eye(2) ⊗ randn(3, 3)
   @test size(a) == (6, 6)
-  @test a + a == Eye(2) ⊗ (2a.b)
-  @test 2a == Eye(2) ⊗ (2a.b)
-  @test a * a == Eye(2) ⊗ (a.b * a.b)
+  @test a + a == Eye(2) ⊗ (2 * arg2(a))
+  @test 2a == Eye(2) ⊗ (2 * arg2(a))
+  @test a * a == Eye(2) ⊗ (arg2(a) * arg2(a))
+  @test arg1(a[(:) × (:), (:) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, (:) × (:), (:) × (:))) ≡ Eye(2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ Eye(2)
+  @test arg1(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ Eye(2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
+    Eye(2)
+  @test arg1(adapt(JLArray, a)) ≡ Eye(2)
+  @test arg2(adapt(JLArray, a)) == jl(arg2(a))
+  @test arg2(adapt(JLArray, a)) isa JLArray
+  @test arg1(similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ Eye(3)
+  @test arg1(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ Eye(3)
+  @test arg1(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡
+    Eye{Float32}(3)
+
+  a = δ(2, 2) ⊗ randn(3, 3)
+  @test size(a) == (6, 6)
+  @test a + a == δ(2, 2) ⊗ (2 * arg2(a))
+  @test 2a == δ(2, 2) ⊗ (2 * arg2(a))
+  @test a * a == δ(2, 2) ⊗ (arg2(a) * arg2(a))
+  @test arg1(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg1(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
+    δ(2, 2)
+  @test arg1(adapt(JLArray, a)) ≡ δ(2, 2)
+  @test arg2(adapt(JLArray, a)) == jl(arg2(a))
+  @test arg2(adapt(JLArray, a)) isa JLArray
+  @test arg1(similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ δ(3, 3)
+  @test arg1(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ δ(3, 3)
+  @test arg1(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡
+    δ(Float32, 3, 3)
 
   # Views
   a = @constinferred(Eye(2) ⊗ randn(3, 3))
