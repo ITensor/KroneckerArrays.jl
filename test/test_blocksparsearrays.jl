@@ -23,7 +23,7 @@ arrayts = (Array, JLArray)
     Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   @test sprint(show, a) isa String
   @test sprint(show, MIME("text/plain"), a) isa String
   @test blocktype(a) === valtype(d)
@@ -45,7 +45,7 @@ arrayts = (Array, JLArray)
     Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
     a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
   @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
@@ -68,7 +68,7 @@ arrayts = (Array, JLArray)
     Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
   i2 = Block(2)[(2:3) × (2:3)]
   I = mortar([i1, i2])
@@ -83,7 +83,7 @@ arrayts = (Array, JLArray)
     Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
   i2 = Block(2)[(2:3) × (2:3)]
   I = [i1, i2]
@@ -130,9 +130,12 @@ arrayts = (Array, JLArray)
     @test_broken svd_compact(a)
   end
 
+  b = a[Block.(1:2), Block(2)]
+  @test b[Block(1)] == a[Block(1, 2)]
+  @test b[Block(2)] == a[Block(2, 2)]
+
   # Broken operations
   @test_broken exp(a)
-  @test_broken a[Block.(1:2), Block(2)]
 end
 
 @testset "BlockSparseArraysExt, EyeKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
@@ -145,7 +148,7 @@ end
     Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)),
     Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)),
   )
-  a = @constinferred dev(blocksparse(d, r, r))
+  a = @constinferred dev(blocksparse(d, (r, r)))
   @test sprint(show, a) == sprint(show, Array(a))
   @test sprint(show, MIME("text/plain"), a) isa String
   @test @constinferred(blocktype(a)) === valtype(d)
@@ -167,7 +170,7 @@ end
     Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
     a[Block(2, 2)][(2:3) × (2:3), (2:3) × (2:3)]
   @test a[Block(2, 2)[(:) × (2:3), (:) × (2:3)]] == a[Block(2, 2)][(:) × (2:3), (:) × (2:3)]
@@ -194,7 +197,7 @@ end
     Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
   i2 = Block(2)[(2:3) × (2:3)]
   I = mortar([i1, i2])
@@ -209,7 +212,7 @@ end
     Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
     Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
   )
-  a = dev(blocksparse(d, r, r))
+  a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
   i2 = Block(2)[(2:3) × (2:3)]
   I = [i1, i2]
@@ -272,7 +275,9 @@ end
   end
 
   # Broken operations
-  @test_broken a[Block.(1:2), Block(2)]
+  b = a[Block.(1:2), Block(2)]
+  @test b[Block(1)] == a[Block(1, 2)]
+  @test b[Block(2)] == a[Block(2, 2)]
 
   # svd_trunc
   dev = adapt(arrayt)
@@ -282,7 +287,7 @@ end
     Block(1, 1) => Eye{elt}(2, 2) ⊗ randn(rng, elt, 2, 2),
     Block(2, 2) => Eye{elt}(3, 3) ⊗ randn(rng, elt, 3, 3),
   )
-  a = @constinferred dev(blocksparse(d, r, r))
+  a = @constinferred dev(blocksparse(d, (r, r)))
   if arrayt === Array
     u, s, v = svd_trunc(a; trunc=(; maxrank=6))
     u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=5))
@@ -293,10 +298,10 @@ end
 
   @testset "Block deficient" begin
     da = Dict(Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)))
-    a = @constinferred dev(blocksparse(da, r, r))
+    a = @constinferred dev(blocksparse(da, (r, r)))
 
     db = Dict(Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)))
-    b = @constinferred dev(blocksparse(db, r, r))
+    b = @constinferred dev(blocksparse(db, (r, r)))
 
     @test Array(a + b) ≈ Array(a) + Array(b)
     @test Array(2a) ≈ 2Array(a)

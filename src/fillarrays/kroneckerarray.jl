@@ -54,24 +54,11 @@ function _convert(::Type{AbstractMatrix{T}}, a::RectDiagonal) where {T}
   return RectDiagonal(convert(AbstractVector{T}, _diagview(a)), axes(a))
 end
 
-# Like `similar` but preserves `Eye`.
-function _similar(a::AbstractArray, elt::Type, ax::Tuple)
-  return similar(a, elt, ax)
+# Like `similar` but preserves `Eye`, `Ones`, etc.
+using FillArrays: Ones
+function _similar(arrayt::Type{<:Ones}, axs::Tuple)
+  return Ones{eltype(arrayt)}(axs)
 end
-function _similar(A::Type{<:AbstractArray}, ax::Tuple)
-  return similar(A, ax)
-end
-function _similar(a::AbstractArray, ax::Tuple)
-  return _similar(a, eltype(a), ax)
-end
-function _similar(a::AbstractArray, elt::Type)
-  return _similar(a, elt, axes(a))
-end
-function _similar(a::AbstractArray)
-  return _similar(a, eltype(a), axes(a))
-end
-
-# Like `similar` but preserves `Eye`.
 function _similar(a::Eye, elt::Type, axs::NTuple{2,AbstractUnitRange})
   return Eye{elt}(axs)
 end

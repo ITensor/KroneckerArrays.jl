@@ -9,6 +9,7 @@ using KroneckerArrays:
   KroneckerArray,
   KroneckerStyle,
   CartesianProductUnitRange,
+  CartesianProductVector,
   ⊗,
   ×,
   arg1,
@@ -44,6 +45,14 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test r[2 × 1] == 4
   @test r[2 × 2] == 5
   @test r[2 × 3] == 6
+
+  # CartesianProductUnitRange axes
+  r = cartesianrange((2:3) × (3:4), 2:5)
+  @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
+
+  # CartesianProductVector axes
+  r = CartesianProductVector(([2, 4]) × ([3, 5]), [3, 5, 7, 9])
+  @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
 
   r = @constinferred(cartesianrange(2 × 3, 2:7))
   @test r === cartesianrange(Base.OneTo(2) × Base.OneTo(3), 2:7)

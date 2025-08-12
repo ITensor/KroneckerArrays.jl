@@ -179,10 +179,3 @@ function LinearAlgebra.lq(a::KroneckerArray)
   Fb = lq(a.b)
   return KroneckerLQ(Fa.L ⊗ Fb.L, Fa.Q ⊗ Fb.Q)
 end
-
-using DerivableInterfaces: DerivableInterfaces, zero!
-function DerivableInterfaces.zero!(a::KroneckerArray)
-  zero!(a.a)
-  zero!(a.b)
-  return a
-end
