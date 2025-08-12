@@ -96,12 +96,6 @@ function _copyto!!(dest::Delta{<:Any,N}, src::Delta{<:Any,N}) where {N}
   return dest
 end
 
-using DerivableInterfaces: DerivableInterfaces, permuteddims
-function DerivableInterfaces.permuteddims(a::Delta, perm)
-  ax_perm = Base.PermutedDimsArrays.genperm(axes(a), perm)
-  return Delta{eltype(a)}(ax_perm)
-end
-
 function _permutedims!!(dest::Delta, src::Delta, perm)
   Base.PermutedDimsArrays.genperm(axes(src), perm) == axes(dest) ||
     throw(ArgumentError("Permuted axes do not match."))

@@ -50,6 +50,13 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   r = cartesianrange((2:3) × (3:4), 2:5)
   @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
 
+  # CartesianProductUnitRange getindex
+  r1 = cartesianrange((2:4) × (3:5), 2:10)
+  r2 = cartesianrange((2:3) × (2:3), 2:5)
+  @test r1[r2] ≡ cartesianrange((3:4) × (4:5), 3:6)
+
+  @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
+
   # CartesianProductVector axes
   r = CartesianProductVector(([2, 4]) × ([3, 5]), [3, 5, 7, 9])
   @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
