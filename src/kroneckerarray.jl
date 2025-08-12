@@ -132,9 +132,9 @@ function _permutedims!!(dest::AbstractArray, src::AbstractArray, perm)
   return dest
 end
 
-# TODO: Define `DerivableInterfaces.permuteddims` and overload that instead.
-function Base.PermutedDimsArray(a::KroneckerArray, perm)
-  return PermutedDimsArray(arg1(a), perm) ⊗ PermutedDimsArray(arg2(a), perm)
+using DerivableInterfaces: DerivableInterfaces, permuteddims
+function DerivableInterfaces.permuteddims(a::KroneckerArray, perm)
+  return permuteddims(arg1(a), perm) ⊗ permuteddims(arg2(a), perm)
 end
 
 function Base.permutedims!(dest::KroneckerArray, src::KroneckerArray, perm)

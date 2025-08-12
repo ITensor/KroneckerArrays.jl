@@ -96,8 +96,8 @@ function _copyto!!(dest::Delta{<:Any,N}, src::Delta{<:Any,N}) where {N}
   return dest
 end
 
-# TODO: Define `DerivableInterfaces.permuteddims` and overload that instead.
-function Base.PermutedDimsArray(a::Delta, perm)
+using DerivableInterfaces: DerivableInterfaces, permuteddims
+function DerivableInterfaces.permuteddims(a::Delta, perm)
   ax_perm = Base.PermutedDimsArrays.genperm(axes(a), perm)
   return Delta{eltype(a)}(ax_perm)
 end
