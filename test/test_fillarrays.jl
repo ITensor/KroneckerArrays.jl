@@ -37,6 +37,16 @@ using TestExtras: @constinferred
   @test arg1(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ Eye(3)
   @test arg1(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡
     Eye{Float32}(3)
+  @test arg1(copy(a)) ≡ Eye(2)
+  @test arg2(copy(a)) == arg2(a)
+  b = similar(a)
+  @test arg1(copyto!(b, a)) ≡ Eye(2)
+  @test arg2(copyto!(b, a)) == arg2(a)
+  @test arg1(permutedims(a, (2, 1))) ≡ Eye(2)
+  @test arg2(permutedims(a, (2, 1))) == permutedims(arg2(a), (2, 1))
+  b = similar(a)
+  @test arg1(permutedims!(b, a, (2, 1))) ≡ Eye(2)
+  @test arg2(permutedims!(b, a, (2, 1))) == permutedims(arg2(a), (2, 1))
 
   a = δ(2, 2) ⊗ randn(3, 3)
   @test size(a) == (6, 6)
@@ -58,6 +68,16 @@ using TestExtras: @constinferred
   @test arg1(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ δ(3, 3)
   @test arg1(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡
     δ(Float32, 3, 3)
+  @test arg1(copy(a)) ≡ δ(2, 2)
+  @test arg2(copy(a)) == arg2(a)
+  b = similar(a)
+  @test arg1(copyto!(b, a)) ≡ δ(2, 2)
+  @test arg2(copyto!(b, a)) == arg2(a)
+  @test arg1(permutedims(a, (2, 1))) ≡ δ(2, 2)
+  @test arg2(permutedims(a, (2, 1))) == permutedims(arg2(a), (2, 1))
+  b = similar(a)
+  @test arg1(permutedims!(b, a, (2, 1))) ≡ δ(2, 2)
+  @test arg2(permutedims!(b, a, (2, 1))) == permutedims(arg2(a), (2, 1))
 
   # Views
   a = @constinferred(Eye(2) ⊗ randn(3, 3))
