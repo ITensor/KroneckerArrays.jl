@@ -1,7 +1,8 @@
 module KroneckerArraysTensorAlgebraExt
 
-using KroneckerArrays: KroneckerArrays, KroneckerArray
-using TensorAlgebra: TensorAlgebra, AbstractBlockPermutation, FusionStyle, matricize
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2
+using TensorAlgebra:
+  TensorAlgebra, AbstractBlockPermutation, FusionStyle, matricize, unmatricize
 
 struct KroneckerFusion{A<:FusionStyle,B<:FusionStyle} <: FusionStyle
   a::A
