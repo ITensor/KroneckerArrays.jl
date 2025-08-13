@@ -39,7 +39,7 @@ using KroneckerArrays:
   _similar
 
 function KroneckerArrays.arg1(r::AbstractBlockedUnitRange)
-  return mortar_axis(arg2.(eachblockaxis(r)))
+  return mortar_axis(arg1.(eachblockaxis(r)))
 end
 function KroneckerArrays.arg2(r::AbstractBlockedUnitRange)
   return mortar_axis(arg2.(eachblockaxis(r)))
@@ -56,15 +56,14 @@ function block_axes(ax::NTuple{N,AbstractUnitRange{<:Integer}}, I::Block{N}) whe
   return block_axes(ax, Tuple(I)...)
 end
 
+## TODO: Is this needed?
 function Base.getindex(
   a::ZeroBlocks{2,KroneckerMatrix{T,A,B}}, I::Vararg{Int,2}
 ) where {T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}}
-  ax_a1 = arg1.(a.parentaxes)
+  ax_a1 = map(arg1, a.parentaxes)
   a1 = ZeroBlocks{2,A}(ax_a1)[I...]
-
-  ax_a2 = arg2.(a.parentaxes)
+  ax_a2 = map(arg2, a.parentaxes)
   a2 = ZeroBlocks{2,B}(ax_a2)[I...]
-
   return a1 ⊗ a2
 end
 function Base.getindex(

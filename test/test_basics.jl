@@ -46,8 +46,19 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test r[2 × 2] == 5
   @test r[2 × 3] == 6
 
+  @test sprint(show, "text/plain", cartesianrange(2 × 3)) ==
+    "Base.OneTo(2) × Base.OneTo(3)\nBase.OneTo(6)"
+  @test sprint(show, cartesianrange(2 × 3)) == "Base.OneTo(6)"
+
   # CartesianProductUnitRange axes
   r = cartesianrange((2:3) × (3:4), 2:5)
+  @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
+
+  # CartesianProductUnitRange getindex
+  r1 = cartesianrange((2:4) × (3:5), 2:10)
+  r2 = cartesianrange((2:3) × (2:3), 2:5)
+  @test r1[r2] ≡ cartesianrange((3:4) × (4:5), 3:6)
+
   @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
 
   # CartesianProductVector axes
@@ -177,6 +188,17 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   else
     @test_throws ErrorException imag(a)
   end
+
+  # permutedims
+  a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
+  @test permutedims(a, (2, 1, 3)) ==
+    permutedims(arg1(a), (2, 1, 3)) ⊗ permutedims(arg2(a), (2, 1, 3))
+
+  # permutedims!
+  a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
+  b = similar(a)
+  permutedims!(b, a, (2, 1, 3))
+  @test b == permutedims(arg1(a), (2, 1, 3)) ⊗ permutedims(arg2(a), (2, 1, 3))
 
   # Adapt
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)

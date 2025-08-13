@@ -98,6 +98,12 @@ unproduct(r::CartesianProductUnitRange) = getfield(r, :range)
 arg1(a::CartesianProductUnitRange) = arg1(cartesianproduct(a))
 arg2(a::CartesianProductUnitRange) = arg2(cartesianproduct(a))
 
+function Base.getindex(a::CartesianProductUnitRange, i::CartesianProductUnitRange)
+  prod = cartesianproduct(a)[cartesianproduct(i)]
+  range = unproduct(a)[unproduct(i)]
+  return cartesianrange(prod, range)
+end
+
 function Base.show(io::IO, a::CartesianProductUnitRange)
   show(io, unproduct(a))
   return nothing

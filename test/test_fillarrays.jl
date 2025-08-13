@@ -1,12 +1,15 @@
+using Adapt: adapt
 using DerivableInterfaces: zero!
+using DiagonalArrays: δ
 using FillArrays: Eye, Zeros
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, ×, arg1, arg2
+using JLArrays: JLArray, jl
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, ×, arg1, arg2, cartesianrange
 using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using TestExtras: @constinferred
 
-@testset "FillArrays.Eye" begin
+@testset "FillArrays.Eye, DiagonalArrays.Delta" begin
   MATRIX_FUNCTIONS = KroneckerArrays.MATRIX_FUNCTIONS
   if VERSION < v"1.11-"
     # `cbrt(::AbstractMatrix{<:Real})` was implemented in Julia 1.11.
@@ -15,9 +18,130 @@ using TestExtras: @constinferred
 
   a = Eye(2) ⊗ randn(3, 3)
   @test size(a) == (6, 6)
-  @test a + a == Eye(2) ⊗ (2a.b)
-  @test 2a == Eye(2) ⊗ (2a.b)
-  @test a * a == Eye(2) ⊗ (a.b * a.b)
+  @test a + a == Eye(2) ⊗ (2 * arg2(a))
+  @test 2a == Eye(2) ⊗ (2 * arg2(a))
+  @test a * a == Eye(2) ⊗ (arg2(a) * arg2(a))
+  @test arg1(a[(:) × (:), (:) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, (:) × (:), (:) × (:))) ≡ Eye(2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ Eye(2)
+  @test arg1(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ Eye(2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ Eye(2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
+    Eye(2)
+  @test arg1(adapt(JLArray, a)) ≡ Eye(2)
+  @test arg2(adapt(JLArray, a)) == jl(arg2(a))
+  @test arg2(adapt(JLArray, a)) isa JLArray
+  @test arg1(similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ Eye(3)
+  @test arg1(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ Eye(3)
+  @test arg1(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡
+    Eye{Float32}(3)
+  @test arg1(copy(a)) ≡ Eye(2)
+  @test arg2(copy(a)) == arg2(a)
+  b = similar(a)
+  @test arg1(copyto!(b, a)) ≡ Eye(2)
+  @test arg2(copyto!(b, a)) == arg2(a)
+  @test arg1(permutedims(a, (2, 1))) ≡ Eye(2)
+  @test arg2(permutedims(a, (2, 1))) == permutedims(arg2(a), (2, 1))
+  b = similar(a)
+  @test arg1(permutedims!(b, a, (2, 1))) ≡ Eye(2)
+  @test arg2(permutedims!(b, a, (2, 1))) == permutedims(arg2(a), (2, 1))
+
+  a = randn(3, 3) ⊗ Eye(2)
+  @test size(a) == (6, 6)
+  @test a + a == (2 * arg1(a)) ⊗ Eye(2)
+  @test 2a == (2 * arg1(a)) ⊗ Eye(2)
+  @test a * a == (arg1(a) * arg1(a)) ⊗ Eye(2)
+  @test arg2(a[(:) × (:), (:) × (:)]) ≡ Eye(2)
+  @test arg2(view(a, (:) × (:), (:) × (:))) ≡ Eye(2)
+  @test arg2(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ Eye(2)
+  @test arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ Eye(2)
+  @test arg2(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ Eye(2)
+  @test arg2(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ Eye(2)
+  @test arg2(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ Eye(2)
+  @test arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
+    Eye(2)
+  @test arg2(adapt(JLArray, a)) ≡ Eye(2)
+  @test arg1(adapt(JLArray, a)) == jl(arg1(a))
+  @test arg1(adapt(JLArray, a)) isa JLArray
+  @test arg2(similar(a, (cartesianrange(2 × 3), cartesianrange(2 × 3)))) ≡ Eye(3)
+  @test arg2(similar(typeof(a), (cartesianrange(2 × 3), cartesianrange(2 × 3)))) ≡ Eye(3)
+  @test arg2(similar(a, Float32, (cartesianrange(2 × 3), cartesianrange(2 × 3)))) ≡
+    Eye{Float32}(3)
+  @test arg2(copy(a)) ≡ Eye(2)
+  @test arg2(copy(a)) == arg2(a)
+  b = similar(a)
+  @test arg2(copyto!(b, a)) ≡ Eye(2)
+  @test arg2(copyto!(b, a)) == arg2(a)
+  @test arg2(permutedims(a, (2, 1))) ≡ Eye(2)
+  @test arg1(permutedims(a, (2, 1))) == permutedims(arg1(a), (2, 1))
+  b = similar(a)
+  @test arg2(permutedims!(b, a, (2, 1))) ≡ Eye(2)
+  @test arg1(permutedims!(b, a, (2, 1))) == permutedims(arg1(a), (2, 1))
+
+  a = δ(2, 2) ⊗ randn(3, 3)
+  @test size(a) == (6, 6)
+  @test a + a == δ(2, 2) ⊗ (2 * arg2(a))
+  @test 2a == δ(2, 2) ⊗ (2 * arg2(a))
+  @test a * a == δ(2, 2) ⊗ (arg2(a) * arg2(a))
+  @test arg1(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg1(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
+    δ(2, 2)
+  @test arg1(adapt(JLArray, a)) ≡ δ(2, 2)
+  @test arg2(adapt(JLArray, a)) == jl(arg2(a))
+  @test arg2(adapt(JLArray, a)) isa JLArray
+  @test arg1(similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ δ(3, 3)
+  @test arg1(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡ δ(3, 3)
+  @test arg1(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))) ≡
+    δ(Float32, 3, 3)
+  @test arg1(copy(a)) ≡ δ(2, 2)
+  @test arg2(copy(a)) == arg2(a)
+  b = similar(a)
+  @test arg1(copyto!(b, a)) ≡ δ(2, 2)
+  @test arg2(copyto!(b, a)) == arg2(a)
+  @test arg1(permutedims(a, (2, 1))) ≡ δ(2, 2)
+  @test arg2(permutedims(a, (2, 1))) == permutedims(arg2(a), (2, 1))
+  b = similar(a)
+  @test arg1(permutedims!(b, a, (2, 1))) ≡ δ(2, 2)
+  @test arg2(permutedims!(b, a, (2, 1))) == permutedims(arg2(a), (2, 1))
+
+  a = randn(3, 3) ⊗ δ(2, 2)
+  @test size(a) == (6, 6)
+  @test a + a == (2 * arg1(a)) ⊗ δ(2, 2)
+  @test 2a == (2 * arg1(a)) ⊗ δ(2, 2)
+  @test a * a == (arg1(a) * arg1(a)) ⊗ δ(2, 2)
+  @test arg2(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, (:) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg2(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg2(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
+  @test arg2(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
+    δ(2, 2)
+  @test arg2(adapt(JLArray, a)) ≡ δ(2, 2)
+  @test arg1(adapt(JLArray, a)) == jl(arg1(a))
+  @test arg1(adapt(JLArray, a)) isa JLArray
+  @test arg2(similar(a, (cartesianrange(2 × 3), cartesianrange(2 × 3)))) ≡ δ(3, 3)
+  @test arg2(similar(typeof(a), (cartesianrange(2 × 3), cartesianrange(2 × 3)))) ≡ δ(3, 3)
+  @test arg2(similar(a, Float32, (cartesianrange(2 × 3), cartesianrange(2 × 3)))) ≡
+    δ(Float32, (3, 3))
+  @test arg2(copy(a)) ≡ δ(2, 2)
+  @test arg2(copy(a)) == arg2(a)
+  b = similar(a)
+  @test arg2(copyto!(b, a)) ≡ δ(2, 2)
+  @test arg2(copyto!(b, a)) == arg2(a)
+  @test arg2(permutedims(a, (2, 1))) ≡ δ(2, 2)
+  @test arg1(permutedims(a, (2, 1))) == permutedims(arg1(a), (2, 1))
+  b = similar(a)
+  @test arg2(permutedims!(b, a, (2, 1))) ≡ δ(2, 2)
+  @test arg1(permutedims!(b, a, (2, 1))) == permutedims(arg1(a), (2, 1))
 
   # Views
   a = @constinferred(Eye(2) ⊗ randn(3, 3))
@@ -204,6 +328,24 @@ using TestExtras: @constinferred
   @test fa.b isa Eye
 
   @test det(a) ≈ det(collect(a)) ≈ 1
+
+  # permutedims
+  a = Eye(2, 2) ⊗ randn(3, 3)
+  @test permutedims(a, (2, 1)) == Eye(2, 2) ⊗ permutedims(arg2(a), (2, 1))
+
+  a = randn(2, 2) ⊗ Eye(3, 3)
+  @test permutedims(a, (2, 1)) == permutedims(arg1(a), (2, 1)) ⊗ Eye(3, 3)
+
+  # permutedims!
+  a = Eye(2, 2) ⊗ randn(3, 3)
+  b = similar(a)
+  permutedims!(b, a, (2, 1))
+  @test b == Eye(2, 2) ⊗ permutedims(arg2(a), (2, 1))
+
+  a = randn(3, 3) ⊗ Eye(2, 2)
+  b = similar(a)
+  permutedims!(b, a, (2, 1))
+  @test b == permutedims(arg1(a), (2, 1)) ⊗ Eye(2, 2)
 end
 
 @testset "FillArrays.Zeros" begin
