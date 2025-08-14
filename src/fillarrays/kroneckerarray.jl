@@ -123,23 +123,27 @@ function Base.similar(bc::Broadcasted{EyeStyle}, elt::Type)
 end
 
 # TODO: Define in terms of `_copyto!!` that is called on each argument.
-function Base.copyto!(dest::EyeKronecker, a::Sum{<:KroneckerStyle{<:Any,EyeStyle()}})
+function Base.copyto!(dest::EyeKronecker, a::Summed{<:KroneckerStyle{<:Any,EyeStyle()}})
   dest2 = arg2(dest)
   f = LinearCombination(a)
-  args = arguments(a)
+  args = MapBroadcast.arguments(a)
   arg2s = arg2.(args)
   dest2 .= f.(arg2s...)
   return dest
 end
-function Base.copyto!(dest::KroneckerEye, a::Sum{<:KroneckerStyle{<:Any,<:Any,EyeStyle()}})
+function Base.copyto!(
+  dest::KroneckerEye, a::Summed{<:KroneckerStyle{<:Any,<:Any,EyeStyle()}}
+)
   dest1 = arg1(dest)
   f = LinearCombination(a)
-  args = arguments(a)
+  args = MapBroadcast.arguments(a)
   arg1s = arg1.(args)
   dest1 .= f.(arg1s...)
   return dest
 end
-function Base.copyto!(dest::EyeEye, a::Sum{<:KroneckerStyle{<:Any,EyeStyle(),EyeStyle()}})
+function Base.copyto!(
+  dest::EyeEye, a::Summed{<:KroneckerStyle{<:Any,EyeStyle(),EyeStyle()}}
+)
   return error("Can't write in-place to `Eye ⊗ Eye`.")
 end
 
@@ -162,25 +166,25 @@ function Base.similar(bc::Broadcasted{<:DeltaStyle}, elt::Type)
 end
 
 # TODO: Dispatch on `DeltaStyle`.
-function Base.copyto!(dest::DeltaKronecker, a::Sum{<:KroneckerStyle})
+function Base.copyto!(dest::DeltaKronecker, a::Summed{<:KroneckerStyle})
   dest2 = arg2(dest)
   f = LinearCombination(a)
-  args = arguments(a)
+  args = MapBroadcast.arguments(a)
   arg2s = arg2.(args)
   dest2 .= f.(arg2s...)
   return dest
 end
 # TODO: Dispatch on `DeltaStyle`.
-function Base.copyto!(dest::KroneckerDelta, a::Sum{<:KroneckerStyle})
+function Base.copyto!(dest::KroneckerDelta, a::Summed{<:KroneckerStyle})
   dest1 = arg1(dest)
   f = LinearCombination(a)
-  args = arguments(a)
+  args = MapBroadcast.arguments(a)
   arg1s = arg1.(args)
   dest1 .= f.(arg1s...)
   return dest
 end
 # TODO: Dispatch on `DeltaStyle`.
-function Base.copyto!(dest::DeltaDelta, a::Sum{<:KroneckerStyle})
+function Base.copyto!(dest::DeltaDelta, a::Summed{<:KroneckerStyle})
   return error("Can't write in-place to `Delta ⊗ Delta`.")
 end
 
