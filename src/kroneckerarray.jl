@@ -49,6 +49,7 @@ function _copyto!!(dest::AbstractArray{<:Any,N}, src::AbstractArray{<:Any,N}) wh
   copyto!(dest, src)
   return dest
 end
+using Base.Broadcast: Broadcasted
 function _copyto!!(dest::AbstractArray, src::Broadcasted)
   copyto!(dest, src)
   return dest
@@ -368,11 +369,12 @@ function Base.map!(f, dest::KroneckerArray, a1::KroneckerArray, a_rest::Kronecke
   return dest
 end
 
-function Base.copyto!(dest::KroneckerArray, a::Sum{<:KroneckerStyle})
+using MapBroadcast: MapBroadcast, LinearCombination, Summed
+function Base.copyto!(dest::KroneckerArray, a::Summed{<:KroneckerStyle})
   dest1 = arg1(dest)
   dest2 = arg2(dest)
   f = LinearCombination(a)
-  args = arguments(a)
+  args = MapBroadcast.arguments(a)
   arg1s = arg1.(args)
   arg2s = arg2.(args)
   if allequal(arg2s)
@@ -393,26 +395,26 @@ end
 
 # Linear operations.
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(+), a, b)
-  return Sum(a) + Sum(b)
+  return Summed(a) + Summed(b)
 end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(-), a, b)
-  return Sum(a) - Sum(b)
+  return Summed(a) - Summed(b)
 end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), c::Number, a)
-  return c * Sum(a)
+  return c * Summed(a)
 end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), a, c::Number)
-  return Sum(a) * c
+  return Summed(a) * c
 end
 # Fix ambiguity error.
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), a::Number, b::Number)
   return a * b
 end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(/), a, c::Number)
-  return Sum(a) / c
+  return Summed(a) / c
 end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(-), a)
-  return -Sum(a)
+  return -Summed(a)
 end
 
 # Rewrite rules to canonicalize broadcast expressions.
