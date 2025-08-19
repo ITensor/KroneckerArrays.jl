@@ -25,18 +25,8 @@ end
 
 using BlockArrays: AbstractBlockedUnitRange
 using BlockSparseArrays: Block, ZeroBlocks, eachblockaxis, mortar_axis
-using DerivableInterfaces: zero!
-using FillArrays: Eye
-using KroneckerArrays:
-  KroneckerArrays,
-  EyeEye,
-  EyeKronecker,
-  KroneckerEye,
-  KroneckerMatrix,
-  ⊗,
-  arg1,
-  arg2,
-  _similar
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2, _similar
+using BlockSparseArrays.TypeParameterAccessors: unwrap_array_type
 
 function KroneckerArrays.arg1(r::AbstractBlockedUnitRange)
   return mortar_axis(arg1.(eachblockaxis(r)))
@@ -58,40 +48,28 @@ end
 
 ## TODO: Is this needed?
 function Base.getindex(
-  a::ZeroBlocks{2,KroneckerMatrix{T,A,B}}, I::Vararg{Int,2}
-) where {T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}}
+  a::ZeroBlocks{N,KroneckerArray{T,N,A,B}}, I::Vararg{Int,N}
+) where {T,N,A<:AbstractArray{T,N},B<:AbstractArray{T,N}}
   ax_a1 = map(arg1, a.parentaxes)
-  a1 = ZeroBlocks{2,A}(ax_a1)[I...]
   ax_a2 = map(arg2, a.parentaxes)
-  a2 = ZeroBlocks{2,B}(ax_a2)[I...]
+  # TODO: Instead of mutability, maybe have a trait like
+  # `isstructural` or `isdata`.
+  ismut1 = ismutabletype(unwrap_array_type(A))
+  ismut2 = ismutabletype(unwrap_array_type(B))
+  (ismut1 || ismut2) || error("Can't get zero block.")
+  a1 = if ismut1
+    ZeroBlocks{N,A}(ax_a1)[I...]
+  else
+    block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
+    _similar(A, block_ax_a1)
+  end
+  a2 = if ismut2
+    ZeroBlocks{N,B}(ax_a2)[I...]
+  else
+    block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
+    a2 = _similar(B, block_ax_a2)
+  end
   return a1 ⊗ a2
-end
-function Base.getindex(
-  a::ZeroBlocks{2,EyeKronecker{T,A,B}}, I::Vararg{Int,2}
-) where {T,A<:Eye{T},B<:AbstractMatrix{T}}
-  block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
-  a1 = _similar(A, block_ax_a1)
-
-  ax_a2 = arg2.(a.parentaxes)
-  a2 = ZeroBlocks{2,B}(ax_a2)[I...]
-
-  return a1 ⊗ a2
-end
-function Base.getindex(
-  a::ZeroBlocks{2,KroneckerEye{T,A,B}}, I::Vararg{Int,2}
-) where {T,A<:AbstractMatrix{T},B<:Eye{T}}
-  ax_a1 = arg1.(a.parentaxes)
-  a1 = ZeroBlocks{2,A}(ax_a1)[I...]
-
-  block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
-  a2 = _similar(B, block_ax_a2)
-
-  return a1 ⊗ a2
-end
-function Base.getindex(
-  a::ZeroBlocks{2,EyeEye{T,A,B}}, I::Vararg{Int,2}
-) where {T,A<:Eye{T},B<:Eye{T}}
-  return error("Not implemented.")
 end
 
 using BlockSparseArrays: BlockSparseArrays
