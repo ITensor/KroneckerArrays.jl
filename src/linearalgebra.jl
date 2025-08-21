@@ -30,7 +30,7 @@ function LinearAlgebra.pinv(a::KroneckerArray; kwargs...)
 end
 
 function LinearAlgebra.diag(a::KroneckerArray)
-  return copy(diagview(a))
+  return copy(DiagonalArrays.diagview(a))
 end
 
 # Allows customizing multiplication for specific types
