@@ -3,7 +3,7 @@ function _convert(A::Type{<:AbstractArray}, a::AbstractArray)
   return convert(A, a)
 end
 # Custom `_convert` works around the issue that
-# `convert(::Type{<:Diagonal}, ::AbstractMatrix)` isnt' defined
+# `convert(::Type{<:Diagonal}, ::AbstractMatrix)` isn't defined
 # in Julia v1.10 (https://github.com/JuliaLang/julia/pull/48895,
 # https://github.com/JuliaLang/julia/pull/52487).
 # TODO: Delete once we drop support for Julia v1.10.
@@ -34,14 +34,10 @@ arg1(a::KroneckerArray) = a.a
 arg2(a::KroneckerArray) = a.b
 
 using Adapt: Adapt, adapt
-_adapt(to, a::AbstractArray) = adapt(to, a)
-Adapt.adapt_structure(to, a::KroneckerArray) = _adapt(to, arg1(a)) ⊗ _adapt(to, arg2(a))
-
-# Allows extra customization, like for `FillArrays.Eye`.
-_copy(a::AbstractArray) = copy(a)
+Adapt.adapt_structure(to, a::KroneckerArray) = adapt(to, arg1(a)) ⊗ adapt(to, arg2(a))
 
 function Base.copy(a::KroneckerArray)
-  return _copy(arg1(a)) ⊗ _copy(arg2(a))
+  return copy(arg1(a)) ⊗ copy(arg2(a))
 end
 
 # Allows extra customization, like for `FillArrays.Eye`.
