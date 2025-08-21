@@ -1,7 +1,7 @@
 name = "KroneckerArrays"
 uuid = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.1.30"
+version = "0.2.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -29,7 +29,7 @@ Adapt = "4.3"
 BlockArrays = "1.6"
 BlockSparseArrays = "0.9"
 DerivableInterfaces = "0.5.3"
-DiagonalArrays = "0.3.11"
+DiagonalArrays = "0.3.16"
 FillArrays = "1.13"
 GPUArraysCore = "0.2"
 LinearAlgebra = "1.10"
