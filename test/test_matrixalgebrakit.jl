@@ -34,7 +34,7 @@ herm(a) = parent(hermitianpart(a))
   @test a * v ≈ v * d
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-  @test_throws MethodError eig_trunc(a)
+  @test_throws ArgumentError eig_trunc(a)
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   d = eig_vals(a)
@@ -47,7 +47,7 @@ herm(a) = parent(hermitianpart(a))
   @test eltype(v) === elt
 
   a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
-  @test_throws MethodError eigh_trunc(a)
+  @test_throws ArgumentError eigh_trunc(a)
 
   a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
   d = eigh_vals(a)
@@ -121,7 +121,7 @@ herm(a) = parent(hermitianpart(a))
   @test collect(v * v') ≈ I
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-  @test_throws MethodError svd_trunc(a)
+  @test_throws ArgumentError svd_trunc(a)
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   s = svd_vals(a)
