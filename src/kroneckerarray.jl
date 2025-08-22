@@ -31,7 +31,7 @@ function KroneckerArray(a::AbstractArray, b::AbstractArray)
     )
   end
   elt = promote_type(eltype(a), eltype(b))
-  return KroneckerArray(_convert(AbstractArray{elt}, a), _convert(AbstractArray{elt}, b))
+  return _convert(AbstractArray{elt}, a) ⊗ _convert(AbstractArray{elt}, b)
 end
 const KroneckerMatrix{T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}} = KroneckerArray{T,2,A,B}
 const KroneckerVector{T,A<:AbstractVector{T},B<:AbstractVector{T}} = KroneckerArray{T,1,A,B}
@@ -70,21 +70,34 @@ function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where 
   return _convert(A, arg1(a)) ⊗ _convert(B, arg2(a))
 end
 
-# Like `similar` but allows some custom behavior, such as for `FillArrays.Eye`.
-function _similar(a::AbstractArray, elt::Type, axs::Tuple)
-  return similar(a, elt, axs)
+function Base.similar(
+  a::KroneckerArray,
+  elt::Type,
+  axs::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+)
+  return similar(arg1(a), elt, map(arg1, axs)) ⊗ similar(arg2(a), elt, map(arg2, axs))
 end
-function _similar(a::AbstractArray, ax::Tuple)
-  return _similar(a, eltype(a), ax)
+function Base.similar(a::KroneckerArray, elt::Type)
+  # TODO: Is this a good definition?
+  return if isactive(arg1(a)) == isactive(arg2(a))
+    similar(arg1(a), elt) ⊗ similar(arg2(a), elt)
+  elseif isactive(arg1(a))
+    similar(arg1(a), elt) ⊗ elt.(arg2(a))
+  elseif isactive(arg2(a))
+    elt.(arg1(a)) ⊗ similar(arg2(a), elt)
+  end
 end
-function _similar(a::AbstractArray, elt::Type)
-  return _similar(a, elt, axes(a))
-end
-function _similar(a::AbstractArray)
-  return _similar(a, eltype(a), axes(a))
-end
-function _similar(arrayt::Type{<:AbstractArray}, axs::Tuple)
-  return similar(arrayt, axs)
+function Base.similar(a::KroneckerArray)
+  # TODO: Is this a good definition?
+  return if isactive(arg1(a)) == isactive(arg2(a))
+    similar(arg1(a)) ⊗ similar(arg2(a))
+  elseif isactive(arg1(a))
+    similar(arg1(a)) ⊗ arg2(a)
+  elseif isactive(arg2(a))
+    arg1(a) ⊗ similar(arg2(a))
+  end
 end
 
 function Base.similar(
@@ -94,37 +107,30 @@ function Base.similar(
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 )
-  return _similar(a, elt, map(arg1, axs)) ⊗ _similar(a, elt, map(arg2, axs))
+  return similar(a, elt, map(arg1, axs)) ⊗ similar(a, elt, map(arg2, axs))
 end
-function Base.similar(
-  a::KroneckerArray,
-  elt::Type,
-  axs::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
-)
-  return _similar(arg1(a), elt, map(arg1, axs)) ⊗ _similar(arg2(a), elt, map(arg2, axs))
-end
-function Base.similar(
-  arrayt::Type{<:AbstractArray},
-  axs::Tuple{
-    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
-  },
-)
-  return _similar(arrayt, map(arg1, axs)) ⊗ _similar(arrayt, map(arg2, axs))
-end
+
 function Base.similar(
   arrayt::Type{<:KroneckerArray{<:Any,<:Any,A,B}},
   axs::Tuple{
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 ) where {A,B}
-  return _similar(A, map(arg1, axs)) ⊗ _similar(B, map(arg2, axs))
+  return similar(A, map(arg1, axs)) ⊗ similar(B, map(arg2, axs))
 end
 function Base.similar(
   ::Type{<:KroneckerArray{<:Any,<:Any,A,B}}, sz::Tuple{Int,Vararg{Int}}
 ) where {A,B}
   return similar(promote_type(A, B), sz)
+end
+
+function Base.similar(
+  arrayt::Type{<:AbstractArray},
+  axs::Tuple{
+    CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
+  },
+)
+  return similar(arrayt, map(arg1, axs)) ⊗ similar(arrayt, map(arg2, axs))
 end
 
 function Base.permutedims(a::KroneckerArray, perm)
@@ -168,7 +174,17 @@ kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
 # Eagerly collect arguments to make more general on GPU.
 Base.collect(a::KroneckerArray) = kron_nd(collect(arg1(a)), collect(arg2(a)))
 
-Base.zero(a::KroneckerArray) = zero(arg1(a)) ⊗ zero(arg2(a))
+function Base.zero(a::KroneckerArray)
+  return if isactive(arg1(a)) == isactive(arg2(a))
+    # TODO: Maybe this should zero both arguments?
+    # This is how `a * false` would behave.
+    arg1(a) ⊗ zero(arg2(a))
+  elseif isactive(arg1(a))
+    zero(arg1(a)) ⊗ arg2(a)
+  elseif isactive(arg2(a))
+    arg1(a) ⊗ zero(arg2(a))
+  end
+end
 
 using DerivableInterfaces: DerivableInterfaces, zero!
 function DerivableInterfaces.zero!(a::KroneckerArray)
@@ -240,19 +256,15 @@ function Base.to_indices(
   return I1 .× I2
 end
 
-# Allow customizing for `FillArrays.Eye`.
-_getindex(a::AbstractArray, I...) = a[I...]
 function Base.getindex(
   a::KroneckerArray{<:Any,N}, I::Vararg{Union{CartesianPair,CartesianProduct},N}
 ) where {N}
   I′ = to_indices(a, I)
-  return _getindex(arg1(a), arg1.(I′)...) ⊗ _getindex(arg2(a), arg2.(I′)...)
+  return arg1(a)[arg1.(I′)...] ⊗ arg2(a)[arg2.(I′)...]
 end
 # Fix ambigiuity error.
 Base.getindex(a::KroneckerArray{<:Any,0}) = arg1(a)[] * arg2(a)[]
 
-# Allow customizing for `FillArrays.Eye`.
-_view(a::AbstractArray, I...) = view(a, I...)
 arg1(::Colon) = (:)
 arg2(::Colon) = (:)
 arg1(::Base.Slice) = (:)
@@ -261,13 +273,13 @@ function Base.view(
   a::KroneckerArray{<:Any,N},
   I::Vararg{Union{CartesianProduct,CartesianProductUnitRange,Base.Slice,Colon},N},
 ) where {N}
-  return _view(arg1(a), arg1.(I)...) ⊗ _view(arg2(a), arg2.(I)...)
+  return view(arg1(a), arg1.(I)...) ⊗ view(arg2(a), arg2.(I)...)
 end
 function Base.view(a::KroneckerArray{<:Any,N}, I::Vararg{CartesianPair,N}) where {N}
-  return _view(arg1(a), arg1.(I)...) ⊗ _view(arg2(a), arg2.(I)...)
+  return view(arg1(a), arg1.(I)...) ⊗ view(arg2(a), arg2.(I)...)
 end
 # Fix ambigiuity error.
-Base.view(a::KroneckerArray{<:Any,0}) = _view(arg1(a)) * _view(arg2(a))
+Base.view(a::KroneckerArray{<:Any,0}) = view(arg1(a)) ⊗ view(arg2(a))
 
 function Base.:(==)(a::KroneckerArray, b::KroneckerArray)
   return arg1(a) == arg1(b) && arg2(a) == arg2(b)
