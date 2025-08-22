@@ -1,12 +1,18 @@
-# Allows customizing for `FillArrays.Eye`.
-function _convert(A::Type{<:AbstractArray}, a::AbstractArray)
-  return convert(A, a)
+function unwrap_array(a::AbstractArray)
+  p = parent(a)
+  p ≡ a && return a
+  return unwrap_array(p)
 end
+isactive(a::AbstractArray) = ismutable(unwrap_array(a))
+
 # Custom `_convert` works around the issue that
 # `convert(::Type{<:Diagonal}, ::AbstractMatrix)` isn't defined
 # in Julia v1.10 (https://github.com/JuliaLang/julia/pull/48895,
 # https://github.com/JuliaLang/julia/pull/52487).
 # TODO: Delete once we drop support for Julia v1.10.
+function _convert(A::Type{<:AbstractArray}, a::AbstractArray)
+  return convert(A, a)
+end
 using LinearAlgebra: LinearAlgebra, Diagonal, diag, isdiag
 _construct(A::Type{<:Diagonal}, a::AbstractMatrix) = A(diag(a))
 function _convert(A::Type{<:Diagonal}, a::AbstractMatrix)
@@ -33,6 +39,22 @@ const KroneckerVector{T,A<:AbstractVector{T},B<:AbstractVector{T}} = KroneckerAr
 arg1(a::KroneckerArray) = a.a
 arg2(a::KroneckerArray) = a.b
 
+function mutate_active_args!(f!, f, dest, src)
+  (isactive(arg1(dest)) || isactive(arg2(dest))) ||
+    error("Can't mutate immutable KroneckerArray.")
+  if isactive(arg1(dest))
+    f!(arg1(dest), arg1(src))
+  else
+    arg1(dest) == f(arg1(src)) || error("Immutable arguments aren't equal.")
+  end
+  if isactive(arg2(dest))
+    f!(arg2(dest), arg2(src))
+  else
+    arg2(dest) == f(arg2(src)) || error("Immutable arguments aren't equal.")
+  end
+  return dest
+end
+
 using Adapt: Adapt, adapt
 Adapt.adapt_structure(to, a::KroneckerArray) = adapt(to, arg1(a)) ⊗ adapt(to, arg2(a))
 
@@ -40,31 +62,12 @@ function Base.copy(a::KroneckerArray)
   return copy(arg1(a)) ⊗ copy(arg2(a))
 end
 
-# Allows extra customization, like for `FillArrays.Eye`.
-function _copyto!!(dest::AbstractArray{<:Any,N}, src::AbstractArray{<:Any,N}) where {N}
-  copyto!(dest, src)
-  return dest
-end
-using Base.Broadcast: Broadcasted
-function _copyto!!(dest::AbstractArray, src::Broadcasted)
-  copyto!(dest, src)
-  return dest
-end
-
 function Base.copyto!(dest::KroneckerArray{<:Any,N}, src::KroneckerArray{<:Any,N}) where {N}
-  return copyto!_kronecker(dest, src)
-end
-function copyto!_kronecker(
-  dest::KroneckerArray{<:Any,N}, src::KroneckerArray{<:Any,N}
-) where {N}
-  # TODO: Check if neither argument is mutated and if so error.
-  _copyto!!(arg1(dest), arg1(src))
-  _copyto!!(arg2(dest), arg2(src))
-  return dest
+  return mutate_active_args!(copyto!, copy, dest, src)
 end
 
 function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where {T,N,A,B}
-  return KroneckerArray(_convert(A, arg1(a)), _convert(B, arg2(a)))
+  return _convert(A, arg1(a)) ⊗ _convert(B, arg2(a))
 end
 
 # Like `similar` but allows some custom behavior, such as for `FillArrays.Eye`.
@@ -124,21 +127,18 @@ function Base.similar(
   return similar(promote_type(A, B), sz)
 end
 
-function _permutedims!!(dest::AbstractArray, src::AbstractArray, perm)
-  permutedims!(dest, src, perm)
-  return dest
+function Base.permutedims(a::KroneckerArray, perm)
+  return permutedims(arg1(a), perm) ⊗ permutedims(arg2(a), perm)
 end
-
 using DerivableInterfaces: DerivableInterfaces, permuteddims
 function DerivableInterfaces.permuteddims(a::KroneckerArray, perm)
   return permuteddims(arg1(a), perm) ⊗ permuteddims(arg2(a), perm)
 end
 
 function Base.permutedims!(dest::KroneckerArray, src::KroneckerArray, perm)
-  # TODO: Error if neither argument is mutable.
-  _permutedims!!(arg1(dest), arg1(src), perm)
-  _permutedims!!(arg2(dest), arg2(src), perm)
-  return dest
+  return mutate_active_args!(
+    (dest, src) -> permutedims!(dest, src, perm), Base.Fix2(permutedims, perm), dest, src
+  )
 end
 
 function flatten(t::Tuple{Tuple,Tuple,Vararg{Tuple}})
@@ -172,11 +172,10 @@ Base.zero(a::KroneckerArray) = zero(arg1(a)) ⊗ zero(arg2(a))
 
 using DerivableInterfaces: DerivableInterfaces, zero!
 function DerivableInterfaces.zero!(a::KroneckerArray)
-  ismut1 = ismutable(arg1(a))
-  ismut2 = ismutable(arg2(a))
-  (ismut1 || ismut2) || throw(ArgumentError("Can't zero out immutable KroneckerArray."))
-  ismut1 && zero!(arg1(a))
-  ismut2 && zero!(arg2(a))
+  (isactive(arg1(a)) || isactive(arg2(a))) ||
+    error("Can't mutate immutable KroneckerArray.")
+  isactive(arg1(a)) && zero!(arg1(a))
+  isactive(arg2(a)) && zero!(arg2(a))
   return a
 end
 
@@ -293,7 +292,7 @@ function Base.real(a::KroneckerArray)
   if iszero(imag(arg1(a))) || iszero(imag(arg2(a)))
     return real(arg1(a)) ⊗ real(arg2(a))
   elseif iszero(real(arg1(a))) || iszero(real(arg2(a)))
-    return -imag(arg1(a)) ⊗ imag(arg2(a))
+    return -(imag(arg1(a)) ⊗ imag(arg2(a)))
   end
   return real(arg1(a)) ⊗ real(arg2(a)) - imag(arg1(a)) ⊗ imag(arg2(a))
 end
@@ -321,9 +320,6 @@ function Base.reshape(
   return reshape(arg1(a), map(arg1, ax)) ⊗ reshape(arg2(a), map(arg2, ax))
 end
 
-# Allows for customizations for FillArrays.
-_BroadcastStyle(x) = BroadcastStyle(x)
-
 using Base.Broadcast: Broadcast, AbstractArrayStyle, BroadcastStyle, Broadcasted
 struct KroneckerStyle{N,A,B} <: AbstractArrayStyle{N} end
 arg1(::Type{<:KroneckerStyle{<:Any,A}}) where {A} = A
@@ -340,7 +336,7 @@ function KroneckerStyle{N,A,B}(v::Val{M}) where {N,A,B,M}
   return KroneckerStyle{M,typeof(A)(v),typeof(B)(v)}()
 end
 function Base.BroadcastStyle(::Type{<:KroneckerArray{<:Any,N,A,B}}) where {N,A,B}
-  return KroneckerStyle{N}(_BroadcastStyle(A), _BroadcastStyle(B))
+  return KroneckerStyle{N}(BroadcastStyle(A), BroadcastStyle(B))
 end
 function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N}) where {N}
   style_a = BroadcastStyle(arg1(style1), arg1(style2))
@@ -366,23 +362,34 @@ function Base.map!(f, dest::KroneckerArray, a1::KroneckerArray, a_rest::Kronecke
 end
 
 using MapBroadcast: MapBroadcast, LinearCombination, Summed
-function Base.copyto!(dest::KroneckerArray, a::Summed{<:KroneckerStyle})
-  dest1 = arg1(dest)
-  dest2 = arg2(dest)
+function KroneckerBroadcast(a::Summed{<:KroneckerStyle})
   f = LinearCombination(a)
   args = MapBroadcast.arguments(a)
   arg1s = arg1.(args)
   arg2s = arg2.(args)
-  if allequal(arg2s)
-    copyto!(dest2, first(arg2s))
-    dest1 .= f.(arg1s...)
-  elseif allequal(arg1s)
-    copyto!(dest1, first(arg1s))
-    dest2 .= f.(arg2s...)
-  else
+  arg1_isunique = allequal(arg1s)
+  arg2_isunique = allequal(arg2s)
+  (arg1_isunique || arg2_isunique) ||
     error("This operation doesn't preserve the Kronecker structure.")
+  broadcast_arg = if arg1_isunique && arg2_isunique
+    isactive(first(arg1s)) ? 1 : 2
+  elseif arg1_isunique
+    2
+  elseif arg2_isunique
+    1
   end
-  return dest
+  return if broadcast_arg == 1
+    broadcasted(f, arg1s...) ⊗ first(arg2s)
+  elseif broadcast_arg == 2
+    first(arg1s) ⊗ broadcasted(f, arg2s...)
+  end
+end
+
+function Base.copy(a::Summed{<:KroneckerStyle})
+  return copy(KroneckerBroadcast(a))
+end
+function Base.copyto!(dest::KroneckerArray, a::Summed{<:KroneckerStyle})
+  return copyto!(dest, KroneckerBroadcast(a))
 end
 
 function Broadcast.broadcasted(::KroneckerStyle, f, as...)
@@ -424,11 +431,31 @@ function Broadcast.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(/),<:N
   return broadcasted(style, /, a, f.x)
 end
 
+# Compatibility with MapBroadcast.jl.
+using MapBroadcast: MapBroadcast, MapFunction
+function Base.broadcasted(
+  style::KroneckerStyle, f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}}, a
+)
+  return broadcasted(style, *, f.args[1], a)
+end
+function Base.broadcasted(
+  style::KroneckerStyle, f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}}, a
+)
+  return broadcasted(style, *, a, f.args[2])
+end
+function Base.broadcasted(
+  style::KroneckerStyle, f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}}, a
+)
+  return broadcasted(style, /, a, f.args[2])
+end
 # Use to determine the element type of KroneckerBroadcasted.
 _eltype(x) = eltype(x)
 _eltype(x::Broadcasted) = Base.promote_op(x.f, _eltype.(x.args)...)
 
 using Base.Broadcast: broadcasted
+# Represents broadcast operations that can be applied Kronecker-wise,
+# i.e. independently to each argument of the Kronecker product.
+# Note that not all broadcast operations can be mapped to this.
 struct KroneckerBroadcasted{A,B}
   a::A
   b::B
@@ -442,10 +469,8 @@ Broadcast.materialize(a::KroneckerBroadcasted) = copy(a)
 Broadcast.materialize!(dest, a::KroneckerBroadcasted) = copyto!(dest, a)
 Broadcast.broadcastable(a::KroneckerBroadcasted) = a
 Base.copy(a::KroneckerBroadcasted) = copy(arg1(a)) ⊗ copy(arg2(a))
-function Base.copyto!(dest::KroneckerArray, a::KroneckerBroadcasted)
-  _copyto!!(arg1(dest), arg1(a))
-  _copyto!!(arg2(dest), arg2(a))
-  return dest
+function Base.copyto!(dest::KroneckerArray, src::KroneckerBroadcasted)
+  return mutate_active_args!(copyto!, copy, dest, src)
 end
 function Base.eltype(a::KroneckerBroadcasted)
   a1 = arg1(a)
@@ -473,22 +498,4 @@ for f in [:identity, :conj]
       return broadcasted(A, $f, arg1(a)) ⊗ broadcasted(B, $f, arg2(a))
     end
   end
-end
-
-# Compatibility with MapBroadcast.jl.
-using MapBroadcast: MapBroadcast, MapFunction
-function Base.broadcasted(
-  style::KroneckerStyle, f::MapFunction{typeof(*),<:Tuple{<:Number,MapBroadcast.Arg}}, a
-)
-  return broadcasted(style, *, f.args[1], a)
-end
-function Base.broadcasted(
-  style::KroneckerStyle, f::MapFunction{typeof(*),<:Tuple{MapBroadcast.Arg,<:Number}}, a
-)
-  return broadcasted(style, *, a, f.args[2])
-end
-function Base.broadcasted(
-  style::KroneckerStyle, f::MapFunction{typeof(/),<:Tuple{MapBroadcast.Arg,<:Number}}, a
-)
-  return broadcasted(style, /, a, f.args[2])
 end

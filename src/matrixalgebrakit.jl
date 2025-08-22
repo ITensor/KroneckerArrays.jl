@@ -136,9 +136,7 @@ for f in [
 ]
   f! = Symbol(f, :!)
   @eval begin
-    function MatrixAlgebraKit.initialize_output(
-      ::typeof($f!), a, alg::KroneckerAlgorithm
-    )
+    function MatrixAlgebraKit.initialize_output(::typeof($f!), a, alg::KroneckerAlgorithm)
       return nothing
     end
     function MatrixAlgebraKit.$f!(
@@ -151,16 +149,10 @@ for f in [
   end
 end
 
-for f in [
-  :eig_vals,
-  :eigh_vals,
-  :svd_vals,
-]
+for f in [:eig_vals, :eigh_vals, :svd_vals]
   f! = Symbol(f, :!)
   @eval begin
-    function MatrixAlgebraKit.initialize_output(
-      ::typeof($f!), a, alg::KroneckerAlgorithm
-    )
+    function MatrixAlgebraKit.initialize_output(::typeof($f!), a, alg::KroneckerAlgorithm)
       return nothing
     end
     function MatrixAlgebraKit.$f!(
@@ -179,7 +171,9 @@ for f in [:left_orth, :right_orth]
     function MatrixAlgebraKit.initialize_output(::typeof($f!), a::KroneckerMatrix)
       return nothing
     end
-    function MatrixAlgebraKit.$f!(a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...)
+    function MatrixAlgebraKit.$f!(
+      a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...
+    )
       a1 = $f(arg1(a); kwargs..., kwargs1...)
       a2 = $f(arg2(a); kwargs..., kwargs2...)
       return a1 .⊗ a2
@@ -193,7 +187,9 @@ for f in [:left_null, :right_null]
     function MatrixAlgebraKit.initialize_output(::typeof($f), a::KroneckerMatrix)
       return nothing
     end
-    function MatrixAlgebraKit.$f!(a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...)
+    function MatrixAlgebraKit.$f!(
+      a::KroneckerMatrix, F; kwargs1=(;), kwargs2=(;), kwargs...
+    )
       a1 = $f(arg1(a); kwargs..., kwargs1...)
       a2 = $f(arg2(a); kwargs..., kwargs2...)
       return a1 ⊗ a2
