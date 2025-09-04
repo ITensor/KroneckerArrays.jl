@@ -9,7 +9,7 @@ using BlockSparseArrays:
   blocktype,
   eachblockaxis
 # using FillArrays: Eye, SquareEye
-using DiagonalArrays: Delta, δ
+using DiagonalArrays: DeltaMatrix, δ
 using JLArrays: JLArray
 using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2, cartesianrange
 using LinearAlgebra: norm
@@ -178,7 +178,7 @@ end
   @test @constinferred(iszero(a[Block(2, 1)]))
   @test a[Block(2, 1)] == dev(δ(3, 2) ⊗ zeros(elt, 3, 2))
   @test a[Block(2, 1)] isa valtype(d)
-  @test iszero(a[Block(1, 2)])
+  @test @constinferred(iszero(a[Block(1, 2)]))
   @test a[Block(1, 2)] == dev(δ(2, 3) ⊗ zeros(elt, 2, 3))
   @test a[Block(1, 2)] isa valtype(d)
 
@@ -201,13 +201,13 @@ end
   I = [I1, I2]
   b = a[I, I]
   @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
-  @test arg1(b[Block(1, 1)]) isa Delta
+  @test arg1(b[Block(1, 1)]) isa DeltaMatrix
   @test iszero(b[Block(2, 1)])
-  @test arg1(b[Block(2, 1)]) isa Delta
+  @test arg1(b[Block(2, 1)]) isa DeltaMatrix
   @test iszero(b[Block(1, 2)])
-  @test arg1(b[Block(1, 2)]) isa Delta
+  @test arg1(b[Block(1, 2)]) isa DeltaMatrix
   @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
-  @test arg1(b[Block(2, 2)]) isa Delta
+  @test arg1(b[Block(2, 2)]) isa DeltaMatrix
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
