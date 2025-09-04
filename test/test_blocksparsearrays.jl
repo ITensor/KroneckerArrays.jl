@@ -8,7 +8,8 @@ using BlockSparseArrays:
   blocksparse,
   blocktype,
   eachblockaxis
-using FillArrays: Eye, SquareEye
+# using FillArrays: Eye, SquareEye
+using DiagonalArrays: Delta, δ
 using JLArrays: JLArray
 using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2, cartesianrange
 using LinearAlgebra: norm
@@ -155,15 +156,15 @@ arrayts = (Array, JLArray)
   @test_broken exp(a)
 end
 
-@testset "BlockSparseArraysExt, EyeKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
-                                                                                          arrayts,
+@testset "BlockSparseArraysExt, DeltaKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
+                                                                                            arrayts,
   elt in elts
 
   dev = adapt(arrayt)
   r = @constinferred blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)),
-    Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)),
+    Block(1, 1) => δ(elt, (2, 2)) ⊗ dev(randn(elt, 2, 2)),
+    Block(2, 2) => δ(elt, (3, 3)) ⊗ dev(randn(elt, 3, 3)),
   )
   a = @constinferred dev(blocksparse(d, (r, r)))
   @test sprint(show, a) == sprint(show, Array(a))
@@ -175,17 +176,17 @@ end
   @test @constinferred(a[Block(2, 2)]) == dev(d[Block(2, 2)])
   @test @constinferred(a[Block(2, 2)]) isa valtype(d)
   @test @constinferred(iszero(a[Block(2, 1)]))
-  @test a[Block(2, 1)] == dev(Eye(3, 2) ⊗ zeros(elt, 3, 2))
+  @test a[Block(2, 1)] == dev(δ(3, 2) ⊗ zeros(elt, 3, 2))
   @test a[Block(2, 1)] isa valtype(d)
   @test iszero(a[Block(1, 2)])
-  @test a[Block(1, 2)] == dev(Eye(2, 3) ⊗ zeros(elt, 2, 3))
+  @test a[Block(1, 2)] == dev(δ(2, 3) ⊗ zeros(elt, 2, 3))
   @test a[Block(1, 2)] isa valtype(d)
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   @test a[Block(2, 2)[(2:3) × (2:3), (2:3) × (2:3)]] ==
@@ -200,19 +201,19 @@ end
   I = [I1, I2]
   b = a[I, I]
   @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
-  @test arg1(b[Block(1, 1)]) isa Eye
+  @test arg1(b[Block(1, 1)]) isa Delta
   @test iszero(b[Block(2, 1)])
-  @test arg1(b[Block(2, 1)]) isa Eye
+  @test arg1(b[Block(2, 1)]) isa Delta
   @test iszero(b[Block(1, 2)])
-  @test arg1(b[Block(1, 2)]) isa Eye
+  @test arg1(b[Block(1, 2)]) isa Delta
   @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
-  @test arg1(b[Block(2, 2)]) isa Eye
+  @test arg1(b[Block(2, 2)]) isa Delta
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
@@ -226,8 +227,8 @@ end
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   i1 = Block(1)[(1:2) × (1:2)]
@@ -240,8 +241,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   b = @constinferred a * a
@@ -250,8 +251,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   # Type inference is broken for this operation.
@@ -262,8 +263,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   # Type inference is broken for this operation.
@@ -274,8 +275,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   # Type inference is broken for this operation.
@@ -286,16 +287,16 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   @test @constinferred(norm(a)) ≈ norm(Array(a))
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   if arrayt === Array
@@ -307,8 +308,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   u, s, v = svd_compact(a)
@@ -321,8 +322,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   if arrayt === Array
@@ -334,8 +335,8 @@ end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
-    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
-    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
   # Broken operations
@@ -348,8 +349,8 @@ end
   r = @constinferred blockrange([2 × 2, 3 × 3])
   rng = StableRNG(1234)
   d = Dict(
-    Block(1, 1) => Eye{elt}(2, 2) ⊗ randn(rng, elt, 2, 2),
-    Block(2, 2) => Eye{elt}(3, 3) ⊗ randn(rng, elt, 3, 3),
+    Block(1, 1) => δ(elt, (2, 2)) ⊗ randn(rng, elt, 2, 2),
+    Block(2, 2) => δ(elt, (3, 3)) ⊗ randn(rng, elt, 3, 3),
   )
   a = @constinferred dev(blocksparse(d, (r, r)))
   if arrayt === Array
@@ -361,10 +362,10 @@ end
   end
 
   @testset "Block deficient" begin
-    da = Dict(Block(1, 1) => Eye{elt}(2, 2) ⊗ dev(randn(elt, 2, 2)))
+    da = Dict(Block(1, 1) => δ(elt, (2, 2)) ⊗ dev(randn(elt, 2, 2)))
     a = @constinferred dev(blocksparse(da, (r, r)))
 
-    db = Dict(Block(2, 2) => Eye{elt}(3, 3) ⊗ dev(randn(elt, 3, 3)))
+    db = Dict(Block(2, 2) => δ(elt, (3, 3)) ⊗ dev(randn(elt, 3, 3)))
     b = @constinferred dev(blocksparse(db, (r, r)))
 
     @test Array(a + b) ≈ Array(a) + Array(b)
