@@ -23,6 +23,17 @@ function BlockSparseArrays.blockrange(bs::Vector{<:CartesianProduct})
   return blockrange(map(cartesianrange, bs))
 end
 
+using BlockArrays: BlockArrays, mortar
+using BlockSparseArrays: blockrange
+using KroneckerArrays: CartesianProductUnitRange
+# Makes sure that `mortar` results in a `BlockVector` with the correct
+# axes, otherwise the axes would not preserve the Kronecker structure.
+# This is helpful when indexing `BlockUnitRange`, for example:
+# https://github.com/JuliaArrays/BlockArrays.jl/blob/v1.7.1/src/blockaxis.jl#L540-L547
+function BlockArrays.mortar(blocks::AbstractVector{<:CartesianProductUnitRange})
+  return mortar(blocks, (blockrange(map(Base.axes1, blocks)),))
+end
+
 using BlockArrays: AbstractBlockedUnitRange
 using BlockSparseArrays: Block, ZeroBlocks, eachblockaxis, mortar_axis
 using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2, _similar

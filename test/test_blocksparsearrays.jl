@@ -32,6 +32,13 @@ arrayts = (Array, JLArray)
   @test blockisequal(arg1(r), blockedrange([2, 3]))
   @test blockisequal(arg2(r), blockedrange([3, 4]))
 
+  r = blockrange([2 × 3, 3 × 4])
+  r′ = r[Block.([2, 1])]
+  @test r′[Block(1)] ≡ cartesianrange(3 × 4, 7:18)
+  @test r′[Block(2)] ≡ cartesianrange(2 × 3, 1:6)
+  @test eachblockaxis(r′)[1] ≡ cartesianrange(3, 4)
+  @test eachblockaxis(r′)[2] ≡ cartesianrange(2, 3)
+
   dev = adapt(arrayt)
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
@@ -137,13 +144,8 @@ arrayts = (Array, JLArray)
     @test_broken inv(a)
   end
 
-  if arrayt === Array
-    u, s, v = svd_compact(a)
-    @test Array(u * s * v) ≈ Array(a)
-  else
-    # Broken on GPU.
-    @test_broken svd_compact(a)
-  end
+  u, s, v = svd_compact(a)
+  @test Array(u * s * v) ≈ Array(a)
 
   b = a[Block.(1:2), Block(2)]
   @test b[Block(1)] == a[Block(1, 2)]
@@ -236,30 +238,66 @@ end
   @test_broken copy(b)
   @test_broken b[Block(1, 2)]
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   b = @constinferred a * a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) * Array(a)
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   # Type inference is broken for this operation.
   # b = @constinferred a + a
   b = a + a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) + Array(a)
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   # Type inference is broken for this operation.
   # b = @constinferred 3a
   b = 3a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ 3Array(a)
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   # Type inference is broken for this operation.
   # b = @constinferred a / 3
   b = a / 3
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) / 3
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   @test @constinferred(norm(a)) ≈ norm(Array(a))
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   if arrayt === Array
     b = @constinferred exp(a)
     @test Array(b) ≈ exp(Array(a))
@@ -267,21 +305,26 @@ end
     @test_broken exp(a)
   end
 
-  ## if VERSION < v"1.11-" && elt <: Complex
-  ##   # Broken because of type stability issue in Julia v1.10.
-  ##   @test_broken svd_compact(a)
-  if arrayt === Array
-    u, s, v = svd_compact(a)
-    @test u * s * v ≈ a
-    @test blocktype(u) >: blocktype(u)
-    @test eltype(u) === eltype(a)
-    @test blocktype(v) >: blocktype(a)
-    @test eltype(v) === eltype(a)
-    @test eltype(s) === real(eltype(a))
-  else
-    @test_broken svd_compact(a)
-  end
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
+  u, s, v = svd_compact(a)
+  @test u * s * v ≈ a
+  @test blocktype(u) >: blocktype(u)
+  @test eltype(u) === eltype(a)
+  @test blocktype(v) >: blocktype(a)
+  @test eltype(v) === eltype(a)
+  @test eltype(s) === real(eltype(a))
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   if arrayt === Array
     @test Array(inv(a)) ≈ inv(Array(a))
   else
@@ -289,6 +332,12 @@ end
     @test_broken inv(a)
   end
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(Eye{elt}(2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(Eye{elt}(3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   # Broken operations
   b = a[Block.(1:2), Block(2)]
   @test b[Block(1)] == a[Block(1, 2)]
