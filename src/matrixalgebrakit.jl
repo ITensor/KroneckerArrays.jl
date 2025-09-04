@@ -136,7 +136,9 @@ for f in [
 ]
   f! = Symbol(f, :!)
   @eval begin
-    function MatrixAlgebraKit.initialize_output(::typeof($f!), a, alg::KroneckerAlgorithm)
+    function MatrixAlgebraKit.initialize_output(
+      ::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm
+    )
       return nothing
     end
     function MatrixAlgebraKit.$f!(
@@ -152,7 +154,9 @@ end
 for f in [:eig_vals, :eigh_vals, :svd_vals]
   f! = Symbol(f, :!)
   @eval begin
-    function MatrixAlgebraKit.initialize_output(::typeof($f!), a, alg::KroneckerAlgorithm)
+    function MatrixAlgebraKit.initialize_output(
+      ::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm
+    )
       return nothing
     end
     function MatrixAlgebraKit.$f!(
