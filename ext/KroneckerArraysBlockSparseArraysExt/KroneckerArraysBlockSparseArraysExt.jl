@@ -36,7 +36,7 @@ end
 
 using BlockArrays: AbstractBlockedUnitRange
 using BlockSparseArrays: Block, ZeroBlocks, eachblockaxis, mortar_axis
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2, _similar
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2
 using BlockSparseArrays.TypeParameterAccessors: unwrap_array_type
 
 function KroneckerArrays.arg1(r::AbstractBlockedUnitRange)
@@ -72,13 +72,13 @@ function Base.getindex(
     ZeroBlocks{N,A}(ax_a1)[I...]
   else
     block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
-    _similar(A, block_ax_a1)
+    similar(A, block_ax_a1)
   end
   a2 = if ismut2
     ZeroBlocks{N,B}(ax_a2)[I...]
   else
     block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
-    a2 = _similar(B, block_ax_a2)
+    a2 = similar(B, block_ax_a2)
   end
   return a1 ⊗ a2
 end
