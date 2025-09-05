@@ -102,7 +102,13 @@ const MATRIX_FUNCTIONS = [
 for f in MATRIX_FUNCTIONS
   @eval begin
     function Base.$f(a::KroneckerArray)
-      return throw(ArgumentError("Generic KroneckerArray `$($f)` is not supported."))
+      return if isone(arg1(a))
+        arg1(a) ⊗ $f(arg2(a))
+      elseif isone(arg2(a))
+        $f(arg1(a)) ⊗ arg2(a)
+      else
+        throw(ArgumentError("Generic KroneckerArray `$($f)` is not supported."))
+      end
     end
   end
 end

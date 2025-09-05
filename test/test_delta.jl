@@ -186,19 +186,19 @@ using TestExtras: @constinferred
   a′ = similar(a, eltype(a))
   @test size(a′) == (6, 6)
   @test a′ isa KroneckerArray{eltype(a),ndims(a)}
-  @test_broken arg1(a′) ≡ arg1(a)
+  @test arg1(a′) ≡ arg1(a)
 
   a = Eye(2) ⊗ randn(3, 3)
   a′ = similar(a, axes(a))
   @test size(a′) == (6, 6)
   @test a′ isa KroneckerArray{eltype(a),ndims(a)}
-  @test_broken arg1(a′) ≡ arg1(a)
+  @test arg1(a′) ≡ arg1(a)
 
   a = Eye(2) ⊗ randn(3, 3)
   a′ = similar(a, eltype(a), axes(a))
   @test size(a′) == (6, 6)
   @test a′ isa KroneckerArray{eltype(a),ndims(a)}
-  @test_broken arg1(a′) ≡ arg1(a)
+  @test arg1(a′) ≡ arg1(a)
 
   @test_broken similar(typeof(a), axes(a))
 
@@ -224,19 +224,19 @@ using TestExtras: @constinferred
   a′ = similar(a, eltype(a))
   @test size(a′) == (6, 6)
   @test a′ isa KroneckerArray{eltype(a),ndims(a)}
-  @test_broken arg2(a′) ≡ arg2(a)
+  @test arg2(a′) ≡ arg2(a)
 
   a = randn(3, 3) ⊗ Eye(2)
   a′ = similar(a, axes(a))
   @test size(a′) == (6, 6)
   @test a′ isa KroneckerArray{eltype(a),ndims(a)}
-  @test_broken arg2(a′) ≡ arg2(a)
+  @test arg2(a′) ≡ arg2(a)
 
   a = randn(3, 3) ⊗ Eye(2)
   a′ = similar(a, eltype(a), axes(a))
   @test size(a′) == (6, 6)
   @test a′ isa KroneckerArray{eltype(a),ndims(a)}
-  @test_broken arg2(a′) ≡ arg2(a)
+  @test arg2(a′) ≡ arg2(a)
 
   @test_broken similar(typeof(a), axes(a))
 
@@ -356,7 +356,7 @@ using TestExtras: @constinferred
   a = Eye(2) ⊗ Eye(2)
   for f in KroneckerArrays.MATRIX_FUNCTIONS
     @eval begin
-      @test_throws ArgumentError $f($a)
+      @test $f($a) == arg1($a) ⊗ $f(arg2($a))
     end
   end
 

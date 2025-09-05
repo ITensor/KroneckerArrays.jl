@@ -1,18 +1,3 @@
-# TODO: Move this to DiagonalArrays.jl.
-using DiagonalArrays: DiagonalArrays, _DiagonalArray, DiagonalArray, Unstored
-# TODO: Also support size inputs.
-function DiagonalArrays.DiagonalArray{T,N,D,U}(
-  ax::Tuple{AbstractUnitRange{<:Integer},Vararg{AbstractUnitRange{<:Integer}}}
-) where {T,N,D<:AbstractVector{T},U<:AbstractArray{T,N}}
-  # TODO: Support these constructors.
-  # return DiagonalArray{T,N,Diag,Unstored}(Diag((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
-  # return DiagonalArray{T,N,Diag}(Diag((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
-  # return DiagonalArray{T,N}(Diag((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
-  # return DiagonalArray{T}(D((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
-  # return DiagonalArray(D((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
-  return _DiagonalArray(D((Base.OneTo(minimum(length, ax)),)), U(ax))
-end
-
 function unwrap_array(a::AbstractArray)
   p = parent(a)
   p ≡ a && return a
@@ -100,6 +85,11 @@ function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where 
   return _convert(A, arg1(a)) ⊗ _convert(B, arg2(a))
 end
 
+# Promote the element type if needed.
+# This works around issues like:
+# https://github.com/JuliaArrays/FillArrays.jl/issues/416
+maybe_promot_eltype(a, elt) = eltype(a) <: elt ? a : elt.(a)
+
 function Base.similar(
   a::KroneckerArray,
   elt::Type,
@@ -107,16 +97,25 @@ function Base.similar(
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
 )
-  return similar(arg1(a), elt, map(arg1, axs)) ⊗ similar(arg2(a), elt, map(arg2, axs))
+  # TODO: Is this a good definition?
+  return if isactive(arg1(a)) == isactive(arg2(a))
+    similar(arg1(a), elt, arg1.(axs)) ⊗ similar(arg2(a), elt, arg2.(axs))
+  elseif isactive(arg1(a))
+    @assert arg2.(axs) == axes(arg2(a))
+    similar(arg1(a), elt, arg1.(axs)) ⊗ maybe_promot_eltype(arg2(a), elt)
+  elseif isactive(arg2(a))
+    @assert arg1.(axs) == axes(arg1(a))
+    maybe_promot_eltype(arg1(a), elt) ⊗ similar(arg2(a), elt, arg2.(axs))
+  end
 end
 function Base.similar(a::KroneckerArray, elt::Type)
   # TODO: Is this a good definition?
   return if isactive(arg1(a)) == isactive(arg2(a))
     similar(arg1(a), elt) ⊗ similar(arg2(a), elt)
   elseif isactive(arg1(a))
-    similar(arg1(a), elt) ⊗ elt.(arg2(a))
+    similar(arg1(a), elt) ⊗ maybe_promot_eltype(arg2(a), elt)
   elseif isactive(arg2(a))
-    elt.(arg1(a)) ⊗ similar(arg2(a), elt)
+    maybe_promot_eltype(arg1(a), elt) ⊗ similar(arg2(a), elt)
   end
 end
 function Base.similar(a::KroneckerArray)
