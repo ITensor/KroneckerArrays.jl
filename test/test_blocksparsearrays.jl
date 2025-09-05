@@ -161,10 +161,10 @@ end
   elt in elts
 
   dev = adapt(arrayt)
-  r = @constinferred blockrange([2 × 2, 3 × 3])
+  r = @constinferred blockrange([2 × 2, 2 × 3])
   d = Dict(
     Block(1, 1) => δ(elt, (2, 2)) ⊗ dev(randn(elt, 2, 2)),
-    Block(2, 2) => δ(elt, (3, 3)) ⊗ dev(randn(elt, 3, 3)),
+    Block(2, 2) => δ(elt, (2, 2)) ⊗ dev(randn(elt, 3, 3)),
   )
   a = @constinferred dev(blocksparse(d, (r, r)))
   @test sprint(show, a) == sprint(show, Array(a))
@@ -176,10 +176,10 @@ end
   @test @constinferred(a[Block(2, 2)]) == dev(d[Block(2, 2)])
   @test @constinferred(a[Block(2, 2)]) isa valtype(d)
   @test @constinferred(iszero(a[Block(2, 1)]))
-  @test a[Block(2, 1)] == dev(δ(3, 2) ⊗ zeros(elt, 3, 2))
+  @test a[Block(2, 1)] == dev(δ(2, 2) ⊗ zeros(elt, 3, 2))
   @test a[Block(2, 1)] isa valtype(d)
   @test @constinferred(iszero(a[Block(1, 2)]))
-  @test a[Block(1, 2)] == dev(δ(2, 3) ⊗ zeros(elt, 2, 3))
+  @test a[Block(1, 2)] == dev(δ(2, 2) ⊗ zeros(elt, 2, 3))
   @test a[Block(1, 2)] isa valtype(d)
 
   # Slicing

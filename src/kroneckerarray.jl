@@ -1,9 +1,29 @@
+# TODO: Move this to DiagonalArrays.jl.
+using DiagonalArrays: DiagonalArrays, _DiagonalArray, DiagonalArray, Unstored
+# TODO: Also support size inputs.
+function DiagonalArrays.DiagonalArray{T,N,D,U}(
+  ax::Tuple{AbstractUnitRange{<:Integer},Vararg{AbstractUnitRange{<:Integer}}}
+) where {T,N,D<:AbstractVector{T},U<:AbstractArray{T,N}}
+  # TODO: Support these constructors.
+  # return DiagonalArray{T,N,Diag,Unstored}(Diag((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
+  # return DiagonalArray{T,N,Diag}(Diag((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
+  # return DiagonalArray{T,N}(Diag((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
+  # return DiagonalArray{T}(D((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
+  # return DiagonalArray(D((Base.OneTo(minimum(length, ax)),)), Unstored(U(ax)))
+  return _DiagonalArray(D((Base.OneTo(minimum(length, ax)),)), U(ax))
+end
+
 function unwrap_array(a::AbstractArray)
   p = parent(a)
   p ≡ a && return a
   return unwrap_array(p)
 end
 isactive(a::AbstractArray) = ismutable(unwrap_array(a))
+
+using TypeParameterAccessors: unwrap_array_type
+function isactive(arrayt::Type{<:AbstractArray})
+  return ismutabletype(unwrap_array_type(arrayt))
+end
 
 # Custom `_convert` works around the issue that
 # `convert(::Type{<:Diagonal}, ::AbstractMatrix)` isn't defined
@@ -56,7 +76,17 @@ function mutate_active_args!(f!, f, dest, src)
 end
 
 using Adapt: Adapt, adapt
-Adapt.adapt_structure(to, a::KroneckerArray) = adapt(to, arg1(a)) ⊗ adapt(to, arg2(a))
+function Adapt.adapt_structure(to, a::KroneckerArray)
+  # TODO: Is this a good definition? It is similar to
+  # the definition of `similar`.
+  return if isactive(arg1(a)) == isactive(arg2(a))
+    adapt(to, arg1(a)) ⊗ adapt(to, arg2(a))
+  elseif isactive(arg1(a))
+    adapt(to, arg1(a)) ⊗ arg2(a)
+  elseif isactive(arg2(a))
+    arg1(a) ⊗ adapt(to, arg2(a))
+  end
+end
 
 function Base.copy(a::KroneckerArray)
   return copy(arg1(a)) ⊗ copy(arg2(a))
