@@ -189,6 +189,7 @@ end
   @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
     a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
 
+  @test_broken false
   ## # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
   ## r = blockrange([2 × 2, 3 × 3])
   ## d = Dict(
@@ -306,20 +307,21 @@ end
     @test_broken exp(a)
   end
 
-  ## r = blockrange([2 × 2, 3 × 3])
-  ## d = Dict(
-  ##   Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
-  ##   Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
-  ## )
-  ## a = dev(blocksparse(d, (r, r)))
-  ## u, s, v = svd_compact(a)
-  ## @test u * s * v ≈ a
-  ## @test blocktype(u) >: blocktype(u)
-  ## @test eltype(u) === eltype(a)
-  ## @test blocktype(v) >: blocktype(a)
-  ## @test eltype(v) === eltype(a)
-  ## @test eltype(s) === real(eltype(a))
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
+  u, s, v = svd_compact(a)
+  @test u * s * v ≈ a
+  @test blocktype(u) >: blocktype(u)
+  @test eltype(u) === eltype(a)
+  @test blocktype(v) >: blocktype(a)
+  @test eltype(v) === eltype(a)
+  @test eltype(s) === real(eltype(a))
 
+  @test_broken false
   ## r = blockrange([2 × 2, 3 × 3])
   ## d = Dict(
   ##   Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
@@ -333,17 +335,18 @@ end
   ##   @test_broken inv(a)
   ## end
 
-  ## r = blockrange([2 × 2, 3 × 3])
-  ## d = Dict(
-  ##   Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
-  ##   Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
-  ## )
-  ## a = dev(blocksparse(d, (r, r)))
-  ## # Broken operations
-  ## b = a[Block.(1:2), Block(2)]
-  ## @test b[Block(1)] == a[Block(1, 2)]
-  ## @test b[Block(2)] == a[Block(2, 2)]
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
+  # Broken operations
+  b = a[Block.(1:2), Block(2)]
+  @test b[Block(1)] == a[Block(1, 2)]
+  @test b[Block(2)] == a[Block(2, 2)]
 
+  @test_broken false
   ## # svd_trunc
   ## dev = adapt(arrayt)
   ## r = @constinferred blockrange([2 × 2, 3 × 3])
