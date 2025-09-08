@@ -30,14 +30,14 @@ struct KroneckerArray{T,N,A1<:AbstractArray{T,N},A2<:AbstractArray{T,N}} <:
   arg1::A1
   arg2::A2
 end
-function KroneckerArray(a::AbstractArray, b::AbstractArray)
-  if ndims(a) != ndims(b)
+function KroneckerArray(a1::AbstractArray, a2::AbstractArray)
+  if ndims(a1) != ndims(a2)
     throw(
       ArgumentError("Kronecker product requires arrays of the same number of dimensions.")
     )
   end
-  elt = promote_type(eltype(a), eltype(b))
-  return _convert(AbstractArray{elt}, a) ⊗ _convert(AbstractArray{elt}, b)
+  elt = promote_type(eltype(a1), eltype(a2))
+  return _convert(AbstractArray{elt}, a1) ⊗ _convert(AbstractArray{elt}, a2)
 end
 const KroneckerMatrix{T,A1<:AbstractMatrix{T},A2<:AbstractMatrix{T}} = KroneckerArray{
   T,2,A1,A2
@@ -204,8 +204,8 @@ function kron_nd(a::AbstractArray{<:Any,N}, b::AbstractArray{<:Any,N}) where {N}
   sz = reverse(ntuple(i -> size(a, i) * size(b, i), N))
   return permutedims(reshape(c′, sz), reverse(ntuple(identity, N)))
 end
-kron_nd(a::AbstractMatrix, b::AbstractMatrix) = kron(a, b)
-kron_nd(a::AbstractVector, b::AbstractVector) = kron(a, b)
+kron_nd(a1::AbstractMatrix, a2::AbstractMatrix) = kron(a1, a2)
+kron_nd(a1::AbstractVector, a2::AbstractVector) = kron(a1, a2)
 
 # Eagerly collect arguments to make more general on GPU.
 Base.collect(a::KroneckerArray) = kron_nd(collect(arg1(a)), collect(arg2(a)))
@@ -265,10 +265,10 @@ function Base.show(io::IO, a::KroneckerArray)
   return nothing
 end
 
-⊗(a::AbstractArray, b::AbstractArray) = KroneckerArray(a, b)
-⊗(a::Number, b::Number) = a * b
-⊗(a::Number, b::AbstractArray) = a * b
-⊗(a::AbstractArray, b::Number) = a * b
+⊗(a1::AbstractArray, a2::AbstractArray) = KroneckerArray(a1, a2)
+⊗(a1::Number, a2::Number) = a1 * a2
+⊗(a1::Number, a2::AbstractArray) = a1 * a2
+⊗(a1::AbstractArray, a2::Number) = a1 * a2
 
 function Base.getindex(a::KroneckerArray, i::Integer)
   return a[CartesianIndices(a)[i]]
@@ -374,11 +374,11 @@ arg1(::Type{<:KroneckerStyle{<:Any,A1}}) where {A1} = A1
 arg1(style::KroneckerStyle) = arg1(typeof(style))
 arg2(::Type{<:KroneckerStyle{<:Any,<:Any,A2}}) where {A2} = A2
 arg2(style::KroneckerStyle) = arg2(typeof(style))
-function KroneckerStyle{N}(a::BroadcastStyle, b::BroadcastStyle) where {N}
-  return KroneckerStyle{N,a,b}()
+function KroneckerStyle{N}(a1::BroadcastStyle, a2::BroadcastStyle) where {N}
+  return KroneckerStyle{N,a1,a2}()
 end
-function KroneckerStyle(a::AbstractArrayStyle{N}, b::AbstractArrayStyle{N}) where {N}
-  return KroneckerStyle{N}(a, b)
+function KroneckerStyle(a1::AbstractArrayStyle{N}, a2::AbstractArrayStyle{N}) where {N}
+  return KroneckerStyle{N}(a1, a2)
 end
 function KroneckerStyle{N,A1,A2}(v::Val{M}) where {N,A1,A2,M}
   return KroneckerStyle{M,typeof(A1)(v),typeof(A2)(v)}()
@@ -447,11 +447,11 @@ function Broadcast.broadcasted(::KroneckerStyle, f, as...)
 end
 
 # Linear operations.
-function Broadcast.broadcasted(::KroneckerStyle, ::typeof(+), a, b)
-  return Summed(a) + Summed(b)
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(+), a1, a2)
+  return Summed(a1) + Summed(a2)
 end
-function Broadcast.broadcasted(::KroneckerStyle, ::typeof(-), a, b)
-  return Summed(a) - Summed(b)
+function Broadcast.broadcasted(::KroneckerStyle, ::typeof(-), a1, a2)
+  return Summed(a1) - Summed(a2)
 end
 function Broadcast.broadcasted(::KroneckerStyle, ::typeof(*), c::Number, a)
   return c * Summed(a)
@@ -512,9 +512,9 @@ struct KroneckerBroadcasted{A1,A2}
 end
 @inline arg1(a::KroneckerBroadcasted) = getfield(a, :arg1)
 @inline arg2(a::KroneckerBroadcasted) = getfield(a, :arg2)
-⊗(a::Broadcasted, b::Broadcasted) = KroneckerBroadcasted(a, b)
-⊗(a::Broadcasted, b) = KroneckerBroadcasted(a, b)
-⊗(a, b::Broadcasted) = KroneckerBroadcasted(a, b)
+⊗(a1::Broadcasted, a2::Broadcasted) = KroneckerBroadcasted(a1, a2)
+⊗(a1::Broadcasted, a2) = KroneckerBroadcasted(a1, a2)
+⊗(a1, a2::Broadcasted) = KroneckerBroadcasted(a1, a2)
 Broadcast.materialize(a::KroneckerBroadcasted) = copy(a)
 Broadcast.materialize!(dest, a::KroneckerBroadcasted) = copyto!(dest, a)
 Broadcast.broadcastable(a::KroneckerBroadcasted) = a

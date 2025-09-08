@@ -8,7 +8,7 @@ arguments(a::CartesianPair, n::Int) = arguments(a)[n]
 arg1(a::CartesianPair) = getfield(a, :arg1)
 arg2(a::CartesianPair) = getfield(a, :arg2)
 
-×(a, b) = CartesianPair(a, b)
+×(a1, a2) = CartesianPair(a1, a2)
 
 function Base.show(io::IO, a::CartesianPair)
   print(io, arg1(a), " × ", arg2(a))
@@ -37,7 +37,7 @@ function Base.show(io::IO, ::MIME"text/plain", a::CartesianProduct)
   return nothing
 end
 
-×(a::AbstractVector, b::AbstractVector) = CartesianProduct(a, b)
+×(a1::AbstractVector, a2::AbstractVector) = CartesianProduct(a1, a2)
 Base.length(a::CartesianProduct) = length(arg1(a)) * length(arg2(a))
 Base.size(a::CartesianProduct) = (length(a),)
 
@@ -118,12 +118,12 @@ end
 function CartesianProductUnitRange(p::CartesianProduct)
   return CartesianProductUnitRange(p, Base.OneTo(length(p)))
 end
-function CartesianProductUnitRange(a, b)
-  return CartesianProductUnitRange(a × b)
+function CartesianProductUnitRange(a1, a2)
+  return CartesianProductUnitRange(a1 × a2)
 end
 to_product_indices(a::AbstractVector) = a
 to_product_indices(i::Integer) = Base.OneTo(i)
-cartesianrange(a, b) = cartesianrange(to_product_indices(a) × to_product_indices(b))
+cartesianrange(a1, a2) = cartesianrange(to_product_indices(a1) × to_product_indices(a2))
 function cartesianrange(p::CartesianPair)
   p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return cartesianrange(p′)

@@ -168,8 +168,8 @@ end
 Base.iterate(F::KroneckerQR) = (F.Q, Val(:R))
 Base.iterate(F::KroneckerQR, ::Val{:R}) = (F.R, Val(:done))
 Base.iterate(F::KroneckerQR, ::Val{:done}) = nothing
-function ⊗(a::LinearAlgebra.QRCompactWYQ, b::LinearAlgebra.QRCompactWYQ)
-  return KroneckerQ(a, b)
+function ⊗(a1::LinearAlgebra.QRCompactWYQ, a2::LinearAlgebra.QRCompactWYQ)
+  return KroneckerQ(a1, a2)
 end
 function LinearAlgebra.qr(a::KroneckerArray)
   Fa = qr(arg1(a))
@@ -184,8 +184,8 @@ end
 Base.iterate(F::KroneckerLQ) = (F.L, Val(:Q))
 Base.iterate(F::KroneckerLQ, ::Val{:Q}) = (F.Q, Val(:done))
 Base.iterate(F::KroneckerLQ, ::Val{:done}) = nothing
-function ⊗(a::LinearAlgebra.LQPackedQ, b::LinearAlgebra.LQPackedQ)
-  return KroneckerQ(a, b)
+function ⊗(a1::LinearAlgebra.LQPackedQ, a2::LinearAlgebra.LQPackedQ)
+  return KroneckerQ(a1, a2)
 end
 function LinearAlgebra.lq(a::KroneckerArray)
   Fa = lq(arg1(a))
