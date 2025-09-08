@@ -2,7 +2,6 @@ using Adapt: adapt
 using BlockArrays: Block, BlockRange, blockedrange, blockisequal, mortar
 using BlockSparseArrays:
   BlockSparseArray, BlockSparseMatrix, blockrange, blocksparse, blocktype, eachblockaxis
-# using FillArrays: Eye, SquareEye
 using DiagonalArrays: DeltaMatrix, δ
 using JLArrays: JLArray
 using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2, cartesianrange
@@ -110,38 +109,86 @@ arrayts = (Array, JLArray)
   @test_broken b[Block(1, 2)]
 
   # Matrix multiplication
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   b = a * a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) * Array(a)
 
   # Addition (mapping, broadcasting)
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   b = a + a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) + Array(a)
 
   # Scaling (mapping, broadcasting)
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   b = 3a
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ 3Array(a)
 
   # Dividing (mapping, broadcasting)
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   b = a / 3
   @test typeof(b) === typeof(a)
   @test Array(b) ≈ Array(a) / 3
 
   # Norm
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   @test norm(a) ≈ norm(Array(a))
 
-  ## if arrayt === Array
-  ##   @test Array(inv(a)) ≈ inv(Array(a))
-  ## else
-  ##   # Broken on GPU.
-  ##   @test_broken inv(a)
-  ## end
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
+  if arrayt === Array
+    @test Array(inv(a)) ≈ inv(Array(a))
+  else
+    # Broken on GPU.
+    @test_broken inv(a)
+  end
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   u, s, v = svd_compact(a)
   @test Array(u * s * v) ≈ Array(a)
 
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(randn(elt, 2, 2) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(randn(elt, 3, 3) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
   b = a[Block.(1:2), Block(2)]
   @test b[Block(1)] == a[Block(1, 2)]
   @test b[Block(2)] == a[Block(2, 2)]
@@ -189,26 +236,25 @@ end
   @test a[Block(2, 2)[(1:2) × (2:3), (:) × (2:3)]] ==
     a[Block(2, 2)][(1:2) × (2:3), (:) × (2:3)]
 
-  @test_broken false
-  ## # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
-  ## r = blockrange([2 × 2, 3 × 3])
-  ## d = Dict(
-  ##   Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
-  ##   Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
-  ## )
-  ## a = dev(blocksparse(d, (r, r)))
-  ## I1 = Block(1)[Base.Slice(Base.OneTo(2)) × [1]]
-  ## I2 = Block(2)[Base.Slice(Base.OneTo(3)) × [1, 3]]
-  ## I = [I1, I2]
-  ## b = a[I, I]
-  ## @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
-  ## @test arg1(b[Block(1, 1)]) isa DeltaMatrix
-  ## @test iszero(b[Block(2, 1)])
-  ## @test arg1(b[Block(2, 1)]) isa DeltaMatrix
-  ## @test iszero(b[Block(1, 2)])
-  ## @test arg1(b[Block(1, 2)]) isa DeltaMatrix
-  ## @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
-  ## @test arg1(b[Block(2, 2)]) isa DeltaMatrix
+  # Blockwise slicing, shows up in truncated block sparse matrix factorizations.
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
+  I1 = Block(1)[Base.Slice(Base.OneTo(2)) × [1]]
+  I2 = Block(2)[Base.Slice(Base.OneTo(3)) × [1, 3]]
+  I = [I1, I2]
+  b = a[I, I]
+  @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
+  @test arg1(b[Block(1, 1)]) isa DeltaMatrix
+  @test iszero(b[Block(2, 1)])
+  @test arg1(b[Block(2, 1)]) isa DeltaMatrix
+  @test iszero(b[Block(1, 2)])
+  @test arg1(b[Block(1, 2)]) isa DeltaMatrix
+  @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
+  @test arg1(b[Block(2, 2)]) isa DeltaMatrix
 
   # Slicing
   r = blockrange([2 × 2, 3 × 3])
@@ -321,19 +367,18 @@ end
   @test eltype(v) === eltype(a)
   @test eltype(s) === real(eltype(a))
 
-  @test_broken false
-  ## r = blockrange([2 × 2, 3 × 3])
-  ## d = Dict(
-  ##   Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
-  ##   Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
-  ## )
-  ## a = dev(blocksparse(d, (r, r)))
-  ## if arrayt === Array
-  ##   @test Array(inv(a)) ≈ inv(Array(a))
-  ## else
-  ##   # Broken on GPU.
-  ##   @test_broken inv(a)
-  ## end
+  r = blockrange([2 × 2, 3 × 3])
+  d = Dict(
+    Block(1, 1) => dev(δ(elt, (2, 2)) ⊗ randn(elt, 2, 2)),
+    Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
+  )
+  a = dev(blocksparse(d, (r, r)))
+  if arrayt === Array
+    @test Array(inv(a)) ≈ inv(Array(a))
+  else
+    # Broken on GPU.
+    @test_broken inv(a)
+  end
 
   r = blockrange([2 × 2, 3 × 3])
   d = Dict(
@@ -341,11 +386,11 @@ end
     Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
   )
   a = dev(blocksparse(d, (r, r)))
-  # Broken operations
   b = a[Block.(1:2), Block(2)]
   @test b[Block(1)] == a[Block(1, 2)]
   @test b[Block(2)] == a[Block(2, 2)]
 
+  ## TODO: Broken, fix and re-enable.
   @test_broken false
   ## # svd_trunc
   ## dev = adapt(arrayt)

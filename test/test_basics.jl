@@ -90,23 +90,23 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
 
   a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
   b = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
-  c = @constinferred(a.a ⊗ b.b)
-  @test a isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
+  c = @constinferred(a.arg1 ⊗ b.arg2)
+  @test a isa KroneckerArray{elt,2,typeof(a.arg1),typeof(a.arg2)}
   @test similar(typeof(a), (2, 3)) isa Matrix{elt}
   @test size(similar(typeof(a), (2, 3))) == (2, 3)
   @test isreal(a) == (elt <: Real)
-  @test a[1 × 1, 1 × 1] == a.a[1, 1] * a.b[1, 1]
-  @test a[1 × 3, 2 × 1] == a.a[1, 2] * a.b[3, 1]
-  @test a[1 × (2:3), 2 × 1] == a.a[1, 2] * a.b[2:3, 1]
-  @test a[1 × :, (:) × 1] == a.a[1, :] ⊗ a.b[:, 1]
-  @test a[(1:2) × (2:3), (1:2) × (2:3)] == a.a[1:2, 1:2] ⊗ a.b[2:3, 2:3]
+  @test a[1 × 1, 1 × 1] == a.arg1[1, 1] * a.arg2[1, 1]
+  @test a[1 × 3, 2 × 1] == a.arg1[1, 2] * a.arg2[3, 1]
+  @test a[1 × (2:3), 2 × 1] == a.arg1[1, 2] * a.arg2[2:3, 1]
+  @test a[1 × :, (:) × 1] == a.arg1[1, :] ⊗ a.arg2[:, 1]
+  @test a[(1:2) × (2:3), (1:2) × (2:3)] == a.arg1[1:2, 1:2] ⊗ a.arg2[2:3, 2:3]
   v = randn(elt, 2) ⊗ randn(elt, 3)
-  @test v[1 × 1] == v.a[1] * v.b[1]
-  @test v[1 × 3] == v.a[1] * v.b[3]
-  @test v[(1:2) × 3] == v.a[1:2] * v.b[3]
-  @test v[(1:2) × (2:3)] == v.a[1:2] ⊗ v.b[2:3]
+  @test v[1 × 1] == v.arg1[1] * v.arg2[1]
+  @test v[1 × 3] == v.arg1[1] * v.arg2[3]
+  @test v[(1:2) × 3] == v.arg1[1:2] * v.arg2[3]
+  @test v[(1:2) × (2:3)] == v.arg1[1:2] ⊗ v.arg2[2:3]
   @test eltype(a) === elt
-  @test collect(a) == kron(collect(a.a), collect(a.b))
+  @test collect(a) == kron(collect(a.arg1), collect(a.arg2))
   @test size(a) == (6, 6)
   @test collect(a * b) ≈ collect(a) * collect(b)
   @test collect(-a) == -collect(a)
@@ -133,7 +133,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
 
   # Broadcasting
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-  style = KroneckerStyle(BroadcastStyle(typeof(a.a)), BroadcastStyle(typeof(a.b)))
+  style = KroneckerStyle(BroadcastStyle(typeof(a.arg1)), BroadcastStyle(typeof(a.arg2)))
   @test BroadcastStyle(typeof(a)) === style
   @test_throws "not supported" sin.(a)
   a′ = similar(a)
@@ -143,7 +143,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   @test collect(a′) ≈ 2 * collect(a)
   bc = broadcasted(+, a, a)
   @test bc.style === style
-  @test similar(bc, elt) isa KroneckerArray{elt,2,typeof(a.a),typeof(a.b)}
+  @test similar(bc, elt) isa KroneckerArray{elt,2,typeof(a.arg1),typeof(a.arg2)}
   @test collect(copy(bc)) ≈ 2 * collect(a)
   bc = broadcasted(*, 2, a)
   @test bc.style === style
@@ -204,21 +204,21 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   a′ = adapt(JLArray, a)
   @test a′ isa KroneckerArray{elt,2,JLArray{elt,2},JLArray{elt,2}}
-  @test a′.a isa JLArray{elt,2}
-  @test a′.b isa JLArray{elt,2}
-  @test Array(a′.a) == a.a
-  @test Array(a′.b) == a.b
+  @test a′.arg1 isa JLArray{elt,2}
+  @test a′.arg2 isa JLArray{elt,2}
+  @test Array(a′.arg1) == a.arg1
+  @test Array(a′.arg2) == a.arg2
 
   a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
-  @test collect(a) ≈ kron_nd(a.a, a.b)
-  @test a[1 × 1, 1 × 1, 1 × 1] == a.a[1, 1, 1] * a.b[1, 1, 1]
-  @test a[1 × 3, 2 × 1, 2 × 2] == a.a[1, 2, 2] * a.b[3, 1, 2]
+  @test collect(a) ≈ kron_nd(a.arg1, a.arg2)
+  @test a[1 × 1, 1 × 1, 1 × 1] == a.arg1[1, 1, 1] * a.arg2[1, 1, 1]
+  @test a[1 × 3, 2 × 1, 2 × 2] == a.arg1[1, 2, 2] * a.arg2[3, 1, 2]
   @test collect(a + a) ≈ 2 * collect(a)
   @test collect(2a) ≈ 2 * collect(a)
 
   a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
   b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-  c = a.a ⊗ b.b
+  c = a.arg1 ⊗ b.arg2
   U, S, V = svd(a)
   @test collect(U * diagonal(S) * V') ≈ collect(a)
   @test svdvals(a) ≈ S

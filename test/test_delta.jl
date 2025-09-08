@@ -91,16 +91,14 @@ using TestExtras: @constinferred
   @test a + a == δ(2, 2) ⊗ (2 * arg2(a))
   @test 2a == δ(2, 2) ⊗ (2 * arg2(a))
   @test a * a == δ(2, 2) ⊗ (arg2(a) * arg2(a))
-  @test_broken arg1(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
-  @test_broken arg1(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
-  @test_broken arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
-  @test_broken arg1(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
-  @test_broken arg1(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
-  @test_broken arg1(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡
+  @test arg1(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg1(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
+  @test arg1(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg1(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
     δ(2, 2)
-  @test_broken arg1(
-    view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))
-  ) ≡ δ(2, 2)
   @test arg1(adapt(JLArray, a)) ≡ δ(2, 2)
   @test arg2(adapt(JLArray, a)) == jl(arg2(a))
   @test arg2(adapt(JLArray, a)) isa JLArray
@@ -125,17 +123,15 @@ using TestExtras: @constinferred
   @test a + a == (2 * arg1(a)) ⊗ δ(2, 2)
   @test 2a == (2 * arg1(a)) ⊗ δ(2, 2)
   @test a * a == (arg1(a) * arg1(a)) ⊗ δ(2, 2)
-  @test_broken arg2(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
-  @test_broken arg2(view(a, (:) × (:), (:) × (:))) ≡ δ(2, 2)
-  @test_broken arg2(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
-  @test_broken arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
-  @test_broken arg2(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
-  @test_broken arg2(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
-  @test_broken arg2(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡
+  @test arg2(a[(:) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, (:) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg2(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:))) ≡ δ(2, 2)
+  @test arg2(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡ δ(2, 2)
+  @test arg2(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)]) ≡ δ(2, 2)
+  @test arg2(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))) ≡
     δ(2, 2)
-  @test_broken arg2(
-    view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:))
-  ) ≡ δ(2, 2)
   @test arg2(adapt(JLArray, a)) ≡ δ(2, 2)
   @test arg1(adapt(JLArray, a)) == jl(arg1(a))
   @test arg1(adapt(JLArray, a)) isa JLArray

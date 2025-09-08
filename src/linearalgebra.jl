@@ -1,3 +1,4 @@
+using DiagonalArrays: δ
 using LinearAlgebra:
   LinearAlgebra,
   Diagonal,
@@ -17,7 +18,7 @@ using LinearAlgebra:
 
 using LinearAlgebra: LinearAlgebra
 function KroneckerArray(J::LinearAlgebra.UniformScaling, ax::Tuple)
-  return Eye{eltype(J)}(arg1.(ax)) ⊗ Eye{eltype(J)}(arg2.(ax))
+  return δ(eltype(J), arg1.(ax)) ⊗ δ(eltype(J), arg2.(ax))
 end
 function Base.copyto!(a::KroneckerArray, J::LinearAlgebra.UniformScaling)
   copyto!(a, KroneckerArray(J, axes(a)))
@@ -26,21 +27,15 @@ end
 
 using LinearAlgebra: LinearAlgebra, pinv
 function LinearAlgebra.pinv(a::KroneckerArray; kwargs...)
-  return pinv(a.a; kwargs...) ⊗ pinv(a.b; kwargs...)
+  return pinv(arg1(a); kwargs...) ⊗ pinv(arg2(a); kwargs...)
 end
 
 function LinearAlgebra.diag(a::KroneckerArray)
   return copy(DiagonalArrays.diagview(a))
 end
 
-# Allows customizing multiplication for specific types
-# such as `Eye * Eye`, which doesn't return `Eye`.
-function _mul(a::AbstractArray, b::AbstractArray)
-  return a * b
-end
-
 function Base.:*(a::KroneckerArray, b::KroneckerArray)
-  return _mul(a.a, b.a) ⊗ _mul(a.b, b.b)
+  return (arg1(a) * arg1(b)) ⊗ (arg2(a) * arg2(b))
 end
 
 function LinearAlgebra.mul!(
@@ -53,17 +48,20 @@ function LinearAlgebra.mul!(
         "Can't multiple KroneckerArrays with nonzero β and nonzero destination."
       ),
     )
-  mul!(c.a, a.a, b.a)
-  mul!(c.b, a.b, b.b, α, β)
+  # TODO: Only perform in-place operation on the non-active argument(s).
+  mul!(arg1(c), arg1(a), arg1(b))
+  mul!(arg2(c), arg2(a), arg2(b), α, β)
   return c
 end
 
+using LinearAlgebra: tr
 function LinearAlgebra.tr(a::KroneckerArray)
-  return tr(a.a) ⊗ tr(a.b)
+  return tr(arg1(a)) * tr(arg2(a))
 end
 
+using LinearAlgebra: norm
 function LinearAlgebra.norm(a::KroneckerArray, p::Int=2)
-  return norm(a.a, p) ⊗ norm(a.b, p)
+  return norm(arg1(a), p) * norm(arg2(a), p)
 end
 
 # Matrix functions
@@ -113,45 +111,54 @@ for f in MATRIX_FUNCTIONS
   end
 end
 
-using LinearAlgebra: checksquare
+# `DiagonalArrays.issquare` and `DiagonalArrays.checksquare` are more general
+# than `LinearAlgebra.checksquare`, for example it compares axes and can check
+# that the codomain and domain are dual of each other.
+using DiagonalArrays: DiagonalArrays, checksquare, issquare
+function DiagonalArrays.issquare(a::KroneckerArray)
+  return issquare(arg1(a)) && issquare(arg2(a))
+end
+
+using LinearAlgebra: det
 function LinearAlgebra.det(a::KroneckerArray)
-  checksquare(a.a)
-  checksquare(a.b)
-  return det(a.a) ^ size(a.b, 1) * det(a.b) ^ size(a.a, 1)
+  checksquare(a)
+  return det(arg1(a)) ^ size(arg2(a), 1) * det(arg2(a)) ^ size(arg1(a), 1)
 end
 
 function LinearAlgebra.svd(a::KroneckerArray)
-  Fa = svd(a.a)
-  Fb = svd(a.b)
-  return SVD(Fa.U ⊗ Fb.U, Fa.S ⊗ Fb.S, Fa.Vt ⊗ Fb.Vt)
+  F1 = svd(arg1(a))
+  F2 = svd(arg2(a))
+  return SVD(F1.U ⊗ F2.U, F1.S ⊗ F2.S, F1.Vt ⊗ F2.Vt)
 end
 function LinearAlgebra.svdvals(a::KroneckerArray)
-  return svdvals(a.a) ⊗ svdvals(a.b)
+  return svdvals(arg1(a)) ⊗ svdvals(arg2(a))
 end
 function LinearAlgebra.eigen(a::KroneckerArray)
-  Fa = eigen(a.a)
-  Fb = eigen(a.b)
-  return Eigen(Fa.values ⊗ Fb.values, Fa.vectors ⊗ Fb.vectors)
+  F1 = eigen(arg1(a))
+  F2 = eigen(arg2(a))
+  return Eigen(F1.values ⊗ F2.values, F1.vectors ⊗ F2.vectors)
 end
 function LinearAlgebra.eigvals(a::KroneckerArray)
-  return eigvals(a.a) ⊗ eigvals(a.b)
+  return eigvals(arg1(a)) ⊗ eigvals(arg2(a))
 end
 
-struct KroneckerQ{A,B}
-  a::A
-  b::B
+struct KroneckerQ{A1,A2}
+  arg1::A1
+  arg2::A2
 end
+@inline arg1(a::KroneckerQ) = getfield(a, :arg1)
+@inline arg2(a::KroneckerQ) = getfield(a, :arg2)
 function Base.:*(a::KroneckerQ, b::KroneckerQ)
-  return (a.a * b.a) ⊗ (a.b * b.b)
+  return (arg1(a) * arg1(b)) ⊗ (arg2(a) * arg2(b))
 end
-function Base.:*(a::KroneckerQ, b::KroneckerArray)
-  return (a.a * b.a) ⊗ (a.b * b.b)
+function Base.:*(a1::KroneckerQ, a2::KroneckerArray)
+  return (arg1(a1) * arg1(a2)) ⊗ (arg2(a1) * arg2(a2))
 end
-function Base.:*(a::KroneckerArray, b::KroneckerQ)
-  return (a.a * b.a) ⊗ (a.b * b.b)
+function Base.:*(a1::KroneckerArray, a2::KroneckerQ)
+  return (arg1(a1) * arg1(a2)) ⊗ (arg2(a1) * arg2(a2))
 end
 function Base.adjoint(a::KroneckerQ)
-  return KroneckerQ(a.a', a.b')
+  return KroneckerQ(arg1(a)', arg2(a)')
 end
 
 struct KroneckerQR{QQ,RR}
@@ -165,8 +172,8 @@ function ⊗(a::LinearAlgebra.QRCompactWYQ, b::LinearAlgebra.QRCompactWYQ)
   return KroneckerQ(a, b)
 end
 function LinearAlgebra.qr(a::KroneckerArray)
-  Fa = qr(a.a)
-  Fb = qr(a.b)
+  Fa = qr(arg1(a))
+  Fb = qr(arg2(a))
   return KroneckerQR(Fa.Q ⊗ Fb.Q, Fa.R ⊗ Fb.R)
 end
 
@@ -181,7 +188,7 @@ function ⊗(a::LinearAlgebra.LQPackedQ, b::LinearAlgebra.LQPackedQ)
   return KroneckerQ(a, b)
 end
 function LinearAlgebra.lq(a::KroneckerArray)
-  Fa = lq(a.a)
-  Fb = lq(a.b)
+  Fa = lq(arg1(a))
+  Fb = lq(arg2(a))
   return KroneckerLQ(Fa.L ⊗ Fb.L, Fa.Q ⊗ Fb.Q)
 end

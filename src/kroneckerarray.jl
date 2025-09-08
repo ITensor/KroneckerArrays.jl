@@ -25,9 +25,10 @@ function _convert(A::Type{<:Diagonal}, a::AbstractMatrix)
   return isdiag(a) ? _construct(A, a) : throw(InexactError(:convert, A, a))
 end
 
-struct KroneckerArray{T,N,A<:AbstractArray{T,N},B<:AbstractArray{T,N}} <: AbstractArray{T,N}
-  a::A
-  b::B
+struct KroneckerArray{T,N,A1<:AbstractArray{T,N},A2<:AbstractArray{T,N}} <:
+       AbstractArray{T,N}
+  arg1::A1
+  arg2::A2
 end
 function KroneckerArray(a::AbstractArray, b::AbstractArray)
   if ndims(a) != ndims(b)
@@ -38,11 +39,15 @@ function KroneckerArray(a::AbstractArray, b::AbstractArray)
   elt = promote_type(eltype(a), eltype(b))
   return _convert(AbstractArray{elt}, a) ⊗ _convert(AbstractArray{elt}, b)
 end
-const KroneckerMatrix{T,A<:AbstractMatrix{T},B<:AbstractMatrix{T}} = KroneckerArray{T,2,A,B}
-const KroneckerVector{T,A<:AbstractVector{T},B<:AbstractVector{T}} = KroneckerArray{T,1,A,B}
+const KroneckerMatrix{T,A1<:AbstractMatrix{T},A2<:AbstractMatrix{T}} = KroneckerArray{
+  T,2,A1,A2
+}
+const KroneckerVector{T,A1<:AbstractVector{T},A2<:AbstractVector{T}} = KroneckerArray{
+  T,1,A1,A2
+}
 
-arg1(a::KroneckerArray) = a.a
-arg2(a::KroneckerArray) = a.b
+@inline arg1(a::KroneckerArray) = getfield(a, :arg1)
+@inline arg2(a::KroneckerArray) = getfield(a, :arg2)
 
 function mutate_active_args!(f!, f, dest, src)
   (isactive(arg1(dest)) || isactive(arg2(dest))) ||
@@ -81,8 +86,10 @@ function Base.copyto!(dest::KroneckerArray{<:Any,N}, src::KroneckerArray{<:Any,N
   return mutate_active_args!(copyto!, copy, dest, src)
 end
 
-function Base.convert(::Type{KroneckerArray{T,N,A,B}}, a::KroneckerArray) where {T,N,A,B}
-  return _convert(A, arg1(a)) ⊗ _convert(B, arg2(a))
+function Base.convert(
+  ::Type{KroneckerArray{T,N,A1,A2}}, a::KroneckerArray
+) where {T,N,A1,A2}
+  return _convert(A1, arg1(a)) ⊗ _convert(A2, arg2(a))
 end
 
 # Promote the element type if needed.
@@ -140,17 +147,17 @@ function Base.similar(
 end
 
 function Base.similar(
-  arrayt::Type{<:KroneckerArray{<:Any,<:Any,A,B}},
+  arrayt::Type{<:KroneckerArray{<:Any,<:Any,A1,A2}},
   axs::Tuple{
     CartesianProductUnitRange{<:Integer},Vararg{CartesianProductUnitRange{<:Integer}}
   },
-) where {A,B}
-  return similar(A, map(arg1, axs)) ⊗ similar(B, map(arg2, axs))
+) where {A1,A2}
+  return similar(A1, map(arg1, axs)) ⊗ similar(A2, map(arg2, axs))
 end
 function Base.similar(
-  ::Type{<:KroneckerArray{<:Any,<:Any,A,B}}, sz::Tuple{Int,Vararg{Int}}
-) where {A,B}
-  return similar(promote_type(A, B), sz)
+  ::Type{<:KroneckerArray{<:Any,<:Any,A1,A2}}, sz::Tuple{Int,Vararg{Int}}
+) where {A1,A2}
+  return similar(promote_type(A1, A2), sz)
 end
 
 function Base.similar(
@@ -243,7 +250,7 @@ end
 arguments(a::KroneckerArray) = (arg1(a), arg2(a))
 arguments(a::KroneckerArray, n::Int) = arguments(a)[n]
 argument_types(a::KroneckerArray) = argument_types(typeof(a))
-argument_types(::Type{<:KroneckerArray{<:Any,<:Any,A,B}}) where {A,B} = (A, B)
+argument_types(::Type{<:KroneckerArray{<:Any,<:Any,A1,A2}}) where {A1,A2} = (A1, A2)
 
 function Base.print_array(io::IO, a::KroneckerArray)
   Base.print_array(io, arg1(a))
@@ -362,10 +369,10 @@ function Base.reshape(
 end
 
 using Base.Broadcast: Broadcast, AbstractArrayStyle, BroadcastStyle, Broadcasted
-struct KroneckerStyle{N,A,B} <: AbstractArrayStyle{N} end
-arg1(::Type{<:KroneckerStyle{<:Any,A}}) where {A} = A
+struct KroneckerStyle{N,A1,A2} <: AbstractArrayStyle{N} end
+arg1(::Type{<:KroneckerStyle{<:Any,A1}}) where {A1} = A1
 arg1(style::KroneckerStyle) = arg1(typeof(style))
-arg2(::Type{<:KroneckerStyle{<:Any,B}}) where {B} = B
+arg2(::Type{<:KroneckerStyle{<:Any,<:Any,A2}}) where {A2} = A2
 arg2(style::KroneckerStyle) = arg2(typeof(style))
 function KroneckerStyle{N}(a::BroadcastStyle, b::BroadcastStyle) where {N}
   return KroneckerStyle{N,a,b}()
@@ -373,11 +380,11 @@ end
 function KroneckerStyle(a::AbstractArrayStyle{N}, b::AbstractArrayStyle{N}) where {N}
   return KroneckerStyle{N}(a, b)
 end
-function KroneckerStyle{N,A,B}(v::Val{M}) where {N,A,B,M}
-  return KroneckerStyle{M,typeof(A)(v),typeof(B)(v)}()
+function KroneckerStyle{N,A1,A2}(v::Val{M}) where {N,A1,A2,M}
+  return KroneckerStyle{M,typeof(A1)(v),typeof(A2)(v)}()
 end
-function Base.BroadcastStyle(::Type{<:KroneckerArray{<:Any,N,A,B}}) where {N,A,B}
-  return KroneckerStyle{N}(BroadcastStyle(A), BroadcastStyle(B))
+function Base.BroadcastStyle(::Type{<:KroneckerArray{<:Any,N,A1,A2}}) where {N,A1,A2}
+  return KroneckerStyle{N}(BroadcastStyle(A1), BroadcastStyle(A2))
 end
 function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N}) where {N}
   style_a = BroadcastStyle(arg1(style1), arg1(style2))
@@ -386,9 +393,11 @@ function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N
   (style_b isa Broadcast.Unknown) && return Broadcast.Unknown()
   return KroneckerStyle{N}(style_a, style_b)
 end
-function Base.similar(bc::Broadcasted{<:KroneckerStyle{N,A,B}}, elt::Type, ax) where {N,A,B}
-  bc_a = Broadcasted(A, bc.f, arg1.(bc.args), arg1.(ax))
-  bc_b = Broadcasted(B, bc.f, arg2.(bc.args), arg2.(ax))
+function Base.similar(
+  bc::Broadcasted{<:KroneckerStyle{N,A1,A2}}, elt::Type, ax
+) where {N,A1,A2}
+  bc_a = Broadcasted(A1, bc.f, arg1.(bc.args), arg1.(ax))
+  bc_b = Broadcasted(A2, bc.f, arg2.(bc.args), arg2.(ax))
   a = similar(bc_a, elt)
   b = similar(bc_b, elt)
   return a ⊗ b
@@ -497,12 +506,12 @@ using Base.Broadcast: broadcasted
 # Represents broadcast operations that can be applied Kronecker-wise,
 # i.e. independently to each argument of the Kronecker product.
 # Note that not all broadcast operations can be mapped to this.
-struct KroneckerBroadcasted{A,B}
-  a::A
-  b::B
+struct KroneckerBroadcasted{A1,A2}
+  arg1::A1
+  arg2::A2
 end
-arg1(a::KroneckerBroadcasted) = a.a
-arg2(a::KroneckerBroadcasted) = a.b
+@inline arg1(a::KroneckerBroadcasted) = getfield(a, :arg1)
+@inline arg2(a::KroneckerBroadcasted) = getfield(a, :arg2)
 ⊗(a::Broadcasted, b::Broadcasted) = KroneckerBroadcasted(a, b)
 ⊗(a::Broadcasted, b) = KroneckerBroadcasted(a, b)
 ⊗(a, b::Broadcasted) = KroneckerBroadcasted(a, b)
@@ -525,18 +534,20 @@ function Base.axes(a::KroneckerBroadcasted)
 end
 
 function Base.BroadcastStyle(
-  ::Type{<:KroneckerBroadcasted{A,B}}
-) where {StyleA,StyleB,A<:Broadcasted{StyleA},B<:Broadcasted{StyleB}}
-  @assert ndims(A) == ndims(B)
-  N = ndims(A)
-  return KroneckerStyle{N}(StyleA(), StyleB())
+  ::Type{<:KroneckerBroadcasted{A1,A2}}
+) where {StyleA1,StyleA2,A1<:Broadcasted{StyleA1},A2<:Broadcasted{StyleA2}}
+  @assert ndims(A1) == ndims(A2)
+  N = ndims(A1)
+  return KroneckerStyle{N}(StyleA1(), StyleA2())
 end
 
 # Operations that preserve the Kronecker structure.
 for f in [:identity, :conj]
   @eval begin
-    function Broadcast.broadcasted(::KroneckerStyle{<:Any,A,B}, ::typeof($f), a) where {A,B}
-      return broadcasted(A, $f, arg1(a)) ⊗ broadcasted(B, $f, arg2(a))
+    function Broadcast.broadcasted(
+      ::KroneckerStyle{<:Any,A1,A2}, ::typeof($f), a
+    ) where {A1,A2}
+      return broadcasted(A1, $f, arg1(a)) ⊗ broadcasted(A2, $f, arg2(a))
     end
   end
 end

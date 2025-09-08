@@ -57,12 +57,12 @@ function DiagonalArrays.diagview(a::KroneckerMatrix)
 end
 MatrixAlgebraKit.diagview(a::KroneckerMatrix) = diagview(a)
 
-struct KroneckerAlgorithm{A,B} <: AbstractAlgorithm
-  arg1::A
-  arg2::B
+struct KroneckerAlgorithm{A1,A2} <: AbstractAlgorithm
+  arg1::A1
+  arg2::A2
 end
-arg1(alg::KroneckerAlgorithm) = alg.arg1
-arg2(alg::KroneckerAlgorithm) = alg.arg2
+@inline arg1(alg::KroneckerAlgorithm) = getfield(alg, :arg1)
+@inline arg2(alg::KroneckerAlgorithm) = getfield(alg, :arg2)
 
 using MatrixAlgebraKit:
   copy_input,
@@ -208,17 +208,6 @@ using MatrixAlgebraKit: TruncationStrategy, findtruncated, truncate!
 struct KroneckerTruncationStrategy{T<:TruncationStrategy} <: TruncationStrategy
   strategy::T
 end
-
-## # Avoid instantiating the identity.
-## function Base.getindex(a::EyeKronecker, I::Vararg{CartesianProduct{Colon},2})
-##   return a.a ⊗ a.b[I[1].b, I[2].b]
-## end
-## function Base.getindex(a::KroneckerEye, I::Vararg{CartesianProduct{<:Any,Colon},2})
-##   return a.a[I[1].a, I[2].a] ⊗ a.b
-## end
-## function Base.getindex(a::EyeEye, I::Vararg{CartesianProduct{Colon,Colon},2})
-##   return a
-## end
 
 ## using FillArrays: OnesVector
 ## const OnesKroneckerVector{T,A<:OnesVector{T},B<:AbstractVector{T}} = KroneckerVector{T,A,B}
