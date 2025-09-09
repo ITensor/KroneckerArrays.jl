@@ -350,7 +350,7 @@ using TestExtras: @constinferred
 
   # Eye ⊗ Eye
   a = Eye(2) ⊗ Eye(2)
-  for f in KroneckerArrays.MATRIX_FUNCTIONS
+  for f in MATRIX_FUNCTIONS
     @eval begin
       @test $f($a) == arg1($a) ⊗ $f(arg2($a))
     end
