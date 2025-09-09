@@ -56,6 +56,8 @@ function block_axes(ax::NTuple{N,AbstractUnitRange{<:Integer}}, I::Block{N}) whe
   return block_axes(ax, Tuple(I)...)
 end
 
+using DiagonalArrays: ShapeInitializer
+
 ## TODO: Is this needed?
 function Base.getindex(
   a::ZeroBlocks{N,KroneckerArray{T,N,A1,A2}}, I::Vararg{Int,N}
@@ -69,9 +71,9 @@ function Base.getindex(
   return if isactive(A1) == isactive(A2)
     ZeroBlocks{N,A1}(ax_a1)[I...] ⊗ ZeroBlocks{N,A2}(ax_a2)[I...]
   elseif isactive(A1)
-    ZeroBlocks{N,A1}(ax_a1)[I...] ⊗ A2(block_ax_a2)
+    ZeroBlocks{N,A1}(ax_a1)[I...] ⊗ A2(ShapeInitializer(), block_ax_a2)
   elseif isactive(A2)
-    A1(block_ax_a1) ⊗ ZeroBlocks{N,A2}(ax_a2)[I...]
+    A1(ShapeInitializer(), block_ax_a1) ⊗ ZeroBlocks{N,A2}(ax_a2)[I...]
   end
 end
 
