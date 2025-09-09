@@ -121,7 +121,12 @@ herm(a) = parent(hermitianpart(a))
     left_orth, right_orth, left_polar, right_polar, qr_compact, lq_compact, qr_full, lq_full
   )
     a = δ(3, 3) ⊗ randn(3, 3)
-    x, y = @constinferred f($a)
+    if VERSION ≥ v"1.11-"
+      x, y = @constinferred f($a)
+    else
+      # Type inference fails in Julia 1.10.
+      x, y = f(a)
+    end
     @test x * y ≈ a
     @test arguments(x, 1) isa DeltaMatrix
     @test arguments(y, 1) isa DeltaMatrix

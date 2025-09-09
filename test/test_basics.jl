@@ -88,8 +88,9 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
   end
   @test x == y
 
-  a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
-  b = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
+  rng = StableRNG(123)
+  a = @constinferred(randn(rng, elt, 2, 2) ⊗ randn(rng, elt, 3, 3))
+  b = @constinferred(randn(rng, elt, 2, 2) ⊗ randn(rng, elt, 3, 3))
   c = @constinferred(a.arg1 ⊗ b.arg2)
   @test a isa KroneckerArray{elt,2,typeof(a.arg1),typeof(a.arg2)}
   @test similar(typeof(a), (2, 3)) isa Matrix{elt}
