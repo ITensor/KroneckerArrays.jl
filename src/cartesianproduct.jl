@@ -1,17 +1,17 @@
-struct CartesianPair{A,B}
-  a::A
-  b::B
+struct CartesianPair{A1,A2}
+  arg1::A1
+  arg2::A2
 end
-arguments(a::CartesianPair) = (a.a, a.b)
+arguments(a::CartesianPair) = (arg1(a), arg2(a))
 arguments(a::CartesianPair, n::Int) = arguments(a)[n]
 
-arg1(a::CartesianPair) = a.a
-arg2(a::CartesianPair) = a.b
+arg1(a::CartesianPair) = getfield(a, :arg1)
+arg2(a::CartesianPair) = getfield(a, :arg2)
 
-×(a, b) = CartesianPair(a, b)
+×(a1, a2) = CartesianPair(a1, a2)
 
 function Base.show(io::IO, a::CartesianPair)
-  print(io, a.a, " × ", a.b)
+  print(io, arg1(a), " × ", arg2(a))
   return nothing
 end
 
@@ -20,16 +20,16 @@ struct CartesianProduct{TA,TB,A<:AbstractVector{TA},B<:AbstractVector{TB}} <:
   a::A
   b::B
 end
-arguments(a::CartesianProduct) = (a.a, a.b)
+arguments(a::CartesianProduct) = (arg1(a), arg2(a))
 arguments(a::CartesianProduct, n::Int) = arguments(a)[n]
 
-arg1(a::CartesianProduct) = a.a
-arg2(a::CartesianProduct) = a.b
+arg1(a::CartesianProduct) = getfield(a, :a)
+arg2(a::CartesianProduct) = getfield(a, :b)
 
 Base.copy(a::CartesianProduct) = copy(arg1(a)) × copy(arg2(a))
 
 function Base.show(io::IO, a::CartesianProduct)
-  print(io, a.a, " × ", a.b)
+  print(io, arg1(a), " × ", arg2(a))
   return nothing
 end
 function Base.show(io::IO, ::MIME"text/plain", a::CartesianProduct)
@@ -37,8 +37,8 @@ function Base.show(io::IO, ::MIME"text/plain", a::CartesianProduct)
   return nothing
 end
 
-×(a::AbstractVector, b::AbstractVector) = CartesianProduct(a, b)
-Base.length(a::CartesianProduct) = length(a.a) * length(a.b)
+×(a1::AbstractVector, a2::AbstractVector) = CartesianProduct(a1, a2)
+Base.length(a::CartesianProduct) = length(arg1(a)) * length(arg2(a))
 Base.size(a::CartesianProduct) = (length(a),)
 
 function Base.getindex(a::CartesianProduct, i::CartesianProduct)
@@ -118,12 +118,12 @@ end
 function CartesianProductUnitRange(p::CartesianProduct)
   return CartesianProductUnitRange(p, Base.OneTo(length(p)))
 end
-function CartesianProductUnitRange(a, b)
-  return CartesianProductUnitRange(a × b)
+function CartesianProductUnitRange(a1, a2)
+  return CartesianProductUnitRange(a1 × a2)
 end
 to_product_indices(a::AbstractVector) = a
 to_product_indices(i::Integer) = Base.OneTo(i)
-cartesianrange(a, b) = cartesianrange(to_product_indices(a) × to_product_indices(b))
+cartesianrange(a1, a2) = cartesianrange(to_product_indices(a1) × to_product_indices(a2))
 function cartesianrange(p::CartesianPair)
   p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
   return cartesianrange(p′)

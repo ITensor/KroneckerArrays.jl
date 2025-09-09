@@ -36,8 +36,7 @@ end
 
 using BlockArrays: AbstractBlockedUnitRange
 using BlockSparseArrays: Block, ZeroBlocks, eachblockaxis, mortar_axis
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2, _similar
-using BlockSparseArrays.TypeParameterAccessors: unwrap_array_type
+using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2, isactive
 
 function KroneckerArrays.arg1(r::AbstractBlockedUnitRange)
   return mortar_axis(arg1.(eachblockaxis(r)))
@@ -57,30 +56,25 @@ function block_axes(ax::NTuple{N,AbstractUnitRange{<:Integer}}, I::Block{N}) whe
   return block_axes(ax, Tuple(I)...)
 end
 
+using DiagonalArrays: ShapeInitializer
+
 ## TODO: Is this needed?
 function Base.getindex(
-  a::ZeroBlocks{N,KroneckerArray{T,N,A,B}}, I::Vararg{Int,N}
-) where {T,N,A<:AbstractArray{T,N},B<:AbstractArray{T,N}}
+  a::ZeroBlocks{N,KroneckerArray{T,N,A1,A2}}, I::Vararg{Int,N}
+) where {T,N,A1<:AbstractArray{T,N},A2<:AbstractArray{T,N}}
   ax_a1 = map(arg1, a.parentaxes)
   ax_a2 = map(arg2, a.parentaxes)
-  # TODO: Instead of mutability, maybe have a trait like
-  # `isstructural` or `isdata`.
-  ismut1 = ismutabletype(unwrap_array_type(A))
-  ismut2 = ismutabletype(unwrap_array_type(B))
-  (ismut1 || ismut2) || error("Can't get zero block.")
-  a1 = if ismut1
-    ZeroBlocks{N,A}(ax_a1)[I...]
-  else
-    block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
-    _similar(A, block_ax_a1)
+  block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
+  block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
+  # TODO: Is this a good definition? It is similar to
+  # the definition of `similar` and `adapt_structure`.
+  return if isactive(A1) == isactive(A2)
+    ZeroBlocks{N,A1}(ax_a1)[I...] ⊗ ZeroBlocks{N,A2}(ax_a2)[I...]
+  elseif isactive(A1)
+    ZeroBlocks{N,A1}(ax_a1)[I...] ⊗ A2(ShapeInitializer(), block_ax_a2)
+  elseif isactive(A2)
+    A1(ShapeInitializer(), block_ax_a1) ⊗ ZeroBlocks{N,A2}(ax_a2)[I...]
   end
-  a2 = if ismut2
-    ZeroBlocks{N,B}(ax_a2)[I...]
-  else
-    block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
-    a2 = _similar(B, block_ax_a2)
-  end
-  return a1 ⊗ a2
 end
 
 using BlockSparseArrays: BlockSparseArrays
