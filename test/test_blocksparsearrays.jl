@@ -395,24 +395,22 @@ end
   @test b[Block(1)] == a[Block(1, 2)]
   @test b[Block(2)] == a[Block(2, 2)]
 
-  ## TODO: Broken, fix and re-enable.
-  @test_broken false
-  ## # svd_trunc
-  ## dev = adapt(arrayt)
-  ## r = @constinferred blockrange([2 × 2, 3 × 3])
-  ## rng = StableRNG(1234)
-  ## d = Dict(
-  ##   Block(1, 1) => δ(elt, (2, 2)) ⊗ randn(rng, elt, 2, 2),
-  ##   Block(2, 2) => δ(elt, (3, 3)) ⊗ randn(rng, elt, 3, 3),
-  ## )
-  ## a = @constinferred dev(blocksparse(d, (r, r)))
-  ## if arrayt === Array
-  ##   u, s, v = svd_trunc(a; trunc=(; maxrank=6))
-  ##   u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=5))
-  ##   @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  ## else
-  ##   @test_broken svd_trunc(a; trunc=(; maxrank=6))
-  ## end
+  # svd_trunc
+  dev = adapt(arrayt)
+  r = @constinferred blockrange([2 × 2, 3 × 3])
+  rng = StableRNG(1234)
+  d = Dict(
+    Block(1, 1) => δ(elt, (2, 2)) ⊗ randn(rng, elt, 2, 2),
+    Block(2, 2) => δ(elt, (3, 3)) ⊗ randn(rng, elt, 3, 3),
+  )
+  a = @constinferred dev(blocksparse(d, (r, r)))
+  if arrayt === Array
+    u, s, v = svd_trunc(a; trunc=(; maxrank=6))
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=5))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+  else
+    @test_broken svd_trunc(a; trunc=(; maxrank=6))
+  end
 
   @testset "Block deficient" begin
     da = Dict(Block(1, 1) => δ(elt, (2, 2)) ⊗ dev(randn(elt, 2, 2)))

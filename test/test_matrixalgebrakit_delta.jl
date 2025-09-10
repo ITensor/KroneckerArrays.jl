@@ -73,27 +73,26 @@ herm(a) = parent(hermitianpart(a))
     @test arguments(v, 2) isa DeltaMatrix{elt}
   end
 
-  ## TODO: Broken, need to fix truncation.
-  ## for f in (eig_trunc, eigh_trunc)
-  ##   a = δ(3, 3) ⊗ parent(hermitianpart(randn(3, 3)))
-  ##   d, v = f(a; trunc=(; maxrank=7))
-  ##   @test a * v ≈ v * d
-  ##   @test arguments(d, 1) isa DeltaMatrix
-  ##   @test arguments(v, 1) isa DeltaMatrix
-  ##   @test size(d) == (6, 6)
-  ##   @test size(v) == (9, 6)
+  for f in (eig_trunc, eigh_trunc)
+    a = δ(3, 3) ⊗ parent(hermitianpart(randn(3, 3)))
+    d, v = f(a; trunc=(; maxrank=7))
+    @test a * v ≈ v * d
+    @test arguments(d, 1) isa DeltaMatrix
+    @test arguments(v, 1) isa DeltaMatrix
+    @test size(d) == (6, 6)
+    @test size(v) == (9, 6)
 
-  ##   a = parent(hermitianpart(randn(3, 3))) ⊗ δ(3, 3)
-  ##   d, v = f(a; trunc=(; maxrank=7))
-  ##   @test a * v ≈ v * d
-  ##   @test arguments(d, 2) isa DeltaMatrix
-  ##   @test arguments(v, 2) isa DeltaMatrix
-  ##   @test size(d) == (6, 6)
-  ##   @test size(v) == (9, 6)
+    a = parent(hermitianpart(randn(3, 3))) ⊗ δ(3, 3)
+    d, v = f(a; trunc=(; maxrank=7))
+    @test a * v ≈ v * d
+    @test arguments(d, 2) isa DeltaMatrix
+    @test arguments(v, 2) isa DeltaMatrix
+    @test size(d) == (6, 6)
+    @test size(v) == (9, 6)
 
-  ##   a = δ(3, 3) ⊗ δ(3, 3)
-  ##   @test_throws ArgumentError f(a)
-  ## end
+    a = δ(3, 3) ⊗ δ(3, 3)
+    @test_throws ArgumentError f(a)
+  end
 
   for f in (eig_vals, eigh_vals)
     a = δ(3, 3) ⊗ parent(hermitianpart(randn(3, 3)))
@@ -183,46 +182,44 @@ herm(a) = parent(hermitianpart(a))
     end
   end
 
-  ## TODO: Need to implement truncation.
-  ## # svd_trunc
-  ## for elt in (Float32, ComplexF32)
-  ##   a = δ(elt, 3, 3) ⊗ randn(elt, 3, 3)
-  ##   # TODO: Type inference is broken for `svd_trunc`,
-  ##   # look into fixing it.
-  ##   # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
-  ##   u, s, v = svd_trunc(a; trunc=(; maxrank=7))
-  ##   @test eltype(u) === elt
-  ##   @test eltype(s) === real(elt)
-  ##   @test eltype(v) === elt
-  ##   u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
-  ##   @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  ##   @test arguments(u, 1) isa DeltaMatrix{elt}
-  ##   @test arguments(s, 1) isa DeltaMatrix{real(elt)}
-  ##   @test arguments(v, 1) isa DeltaMatrix{elt}
-  ##   @test size(u) == (9, 6)
-  ##   @test size(s) == (6, 6)
-  ##   @test size(v) == (6, 9)
-  ## end
+  # svd_trunc
+  for elt in (Float32, ComplexF32)
+    a = δ(elt, 3, 3) ⊗ randn(elt, 3, 3)
+    # TODO: Type inference is broken for `svd_trunc`,
+    # look into fixing it.
+    # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
+    u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+    @test eltype(u) === elt
+    @test eltype(s) === real(elt)
+    @test eltype(v) === elt
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+    @test arguments(u, 1) isa DeltaMatrix{elt}
+    @test arguments(s, 1) isa DeltaMatrix{real(elt)}
+    @test arguments(v, 1) isa DeltaMatrix{elt}
+    @test size(u) == (9, 6)
+    @test size(s) == (6, 6)
+    @test size(v) == (6, 9)
+  end
 
-  ## TODO: Need to implement truncation.
-  ## for elt in (Float32, ComplexF32)
-  ##   a = randn(elt, 3, 3) ⊗ δ(elt, 3, 3)
-  ##   # TODO: Type inference is broken for `svd_trunc`,
-  ##   # look into fixing it.
-  ##   # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
-  ##   u, s, v = svd_trunc(a; trunc=(; maxrank=7))
-  ##   @test eltype(u) === elt
-  ##   @test eltype(s) === real(elt)
-  ##   @test eltype(v) === elt
-  ##   u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
-  ##   @test Matrix(u * s * v) ≈ u′ * s′ * v′
-  ##   @test arguments(u, 2) isa DeltaMatrix{elt}
-  ##   @test arguments(s, 2) isa DeltaMatrix{real(elt)}
-  ##   @test arguments(v, 2) isa DeltaMatrix{elt}
-  ##   @test size(u) == (9, 6)
-  ##   @test size(s) == (6, 6)
-  ##   @test size(v) == (6, 9)
-  ## end
+  for elt in (Float32, ComplexF32)
+    a = randn(elt, 3, 3) ⊗ δ(elt, 3, 3)
+    # TODO: Type inference is broken for `svd_trunc`,
+    # look into fixing it.
+    # u, s, v = @constinferred svd_trunc(a; trunc=(; maxrank=7))
+    u, s, v = svd_trunc(a; trunc=(; maxrank=7))
+    @test eltype(u) === elt
+    @test eltype(s) === real(elt)
+    @test eltype(v) === elt
+    u′, s′, v′ = svd_trunc(Matrix(a); trunc=(; maxrank=6))
+    @test Matrix(u * s * v) ≈ u′ * s′ * v′
+    @test arguments(u, 2) isa DeltaMatrix{elt}
+    @test arguments(s, 2) isa DeltaMatrix{real(elt)}
+    @test arguments(v, 2) isa DeltaMatrix{elt}
+    @test size(u) == (9, 6)
+    @test size(s) == (6, 6)
+    @test size(v) == (6, 9)
+  end
 
   a = δ(3, 3) ⊗ δ(3, 3)
   @test_broken svd_trunc(a)
