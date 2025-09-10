@@ -209,36 +209,40 @@ struct KroneckerTruncationStrategy{T<:TruncationStrategy} <: TruncationStrategy
   strategy::T
 end
 
-## using FillArrays: OnesVector
-## const OnesKroneckerVector{T,A<:OnesVector{T},B<:AbstractVector{T}} = KroneckerVector{T,A,B}
-## const KroneckerOnesVector{T,A<:AbstractVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
-## const OnesVectorOnesVector{T,A<:OnesVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
+using FillArrays: OnesVector
+const OnesKroneckerVector{T,A<:OnesVector{T},B<:AbstractVector{T}} = KroneckerVector{T,A,B}
+const KroneckerOnesVector{T,A<:AbstractVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
+const OnesVectorOnesVector{T,A<:OnesVector{T},B<:OnesVector{T}} = KroneckerVector{T,A,B}
 
 axis(a) = only(axes(a))
 
-## # Convert indices determined with a generic call to `findtruncated` to indices
-## # more suited for a KroneckerVector.
-## function to_truncated_indices(values::OnesKroneckerVector, I)
-##   prods = cartesianproduct(axis(values))[I]
-##   I_id = only(to_indices(arg1(values), (:,)))
-##   I_data = unique(arg2.(prods))
-##   # Drop truncations that occur within the identity.
-##   I_data = filter(I_data) do i
-##     return count(x -> arg2(x) == i, prods) == length(arg2(values))
-##   end
-##   return I_id × I_data
-## end
-## function to_truncated_indices(values::KroneckerOnesVector, I)
-##   #I = findtruncated(Vector(values), strategy.strategy)
-##   prods = cartesianproduct(axis(values))[I]
-##   I_data = unique(arg1.(prods))
-##   # Drop truncations that occur within the identity.
-##   I_data = filter(I_data) do i
-##     return count(x -> arg1(x) == i, prods) == length(arg2(values))
-##   end
-##   I_id = only(to_indices(arg2(values), (:,)))
-##   return I_data × I_id
-## end
+# Convert indices determined with a generic call to `findtruncated` to indices
+# more suited for a KroneckerVector.
+function to_truncated_indices(values::OnesKroneckerVector, I)
+  prods = cartesianproduct(axis(values))[I]
+  I_id = only(to_indices(arg1(values), (:,)))
+  I_data = unique(arg2.(prods))
+  # Drop truncations that occur within the identity.
+  I_data = filter(I_data) do i
+    return count(x -> arg2(x) == i, prods) == length(arg2(values))
+  end
+  return I_id × I_data
+end
+function to_truncated_indices(values::KroneckerOnesVector, I)
+  #I = findtruncated(Vector(values), strategy.strategy)
+  prods = cartesianproduct(axis(values))[I]
+  I_data = unique(arg1.(prods))
+  # Drop truncations that occur within the identity.
+  I_data = filter(I_data) do i
+    return count(x -> arg1(x) == i, prods) == length(arg2(values))
+  end
+  I_id = only(to_indices(arg2(values), (:,)))
+  return I_data × I_id
+end
+# Fix ambiguity error.
+function to_truncated_indices(values::OnesVectorOnesVector, I)
+  return throw(ArgumentError("Not implemented"))
+end
 function to_truncated_indices(values::KroneckerVector, I)
   return throw(ArgumentError("Not implemented"))
 end
