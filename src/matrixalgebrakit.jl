@@ -49,7 +49,7 @@ using MatrixAlgebraKit:
     svd_trunc,
     svd_vals!,
     svd_vals,
-    truncate!
+    truncate
 
 using DiagonalArrays: DiagonalArrays, diagview
 function DiagonalArrays.diagview(a::KroneckerMatrix)
@@ -203,7 +203,7 @@ end
 
 # Truncation
 
-using MatrixAlgebraKit: TruncationStrategy, findtruncated, truncate!
+using MatrixAlgebraKit: TruncationStrategy, findtruncated, truncate
 
 struct KroneckerTruncationStrategy{T <: TruncationStrategy} <: TruncationStrategy
     strategy::T
@@ -256,30 +256,30 @@ end
 
 for f in [:eig_trunc!, :eigh_trunc!]
     @eval begin
-        function MatrixAlgebraKit.truncate!(
+        function MatrixAlgebraKit.truncate(
                 ::typeof($f), DV::NTuple{2, KroneckerMatrix}, strategy::TruncationStrategy
             )
-            return truncate!($f, DV, KroneckerTruncationStrategy(strategy))
+            return truncate($f, DV, KroneckerTruncationStrategy(strategy))
         end
-        function MatrixAlgebraKit.truncate!(
+        function MatrixAlgebraKit.truncate(
                 ::typeof($f), (D, V)::NTuple{2, KroneckerMatrix}, strategy::KroneckerTruncationStrategy
             )
             I = findtruncated(diagview(D), strategy)
-            return (D[I, I], V[(:) × (:), I])
+            return (D[I, I], V[(:) × (:), I]), I
         end
     end
 end
 
-function MatrixAlgebraKit.truncate!(
+function MatrixAlgebraKit.truncate(
         f::typeof(svd_trunc!), USVᴴ::NTuple{3, KroneckerMatrix}, strategy::TruncationStrategy
     )
-    return truncate!(f, USVᴴ, KroneckerTruncationStrategy(strategy))
+    return truncate(f, USVᴴ, KroneckerTruncationStrategy(strategy))
 end
-function MatrixAlgebraKit.truncate!(
+function MatrixAlgebraKit.truncate(
         ::typeof(svd_trunc!),
         (U, S, Vᴴ)::NTuple{3, KroneckerMatrix},
         strategy::KroneckerTruncationStrategy,
     )
     I = findtruncated(diagview(S), strategy)
-    return (U[(:) × (:), I], S[I, I], Vᴴ[I, (:) × (:)])
+    return (U[(:) × (:), I], S[I, I], Vᴴ[I, (:) × (:)]), I
 end
