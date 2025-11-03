@@ -6,6 +6,9 @@ i.e. that can be written as `AB = A ⊗ B`.
 """
 abstract type AbstractKroneckerArray{T, N} <: AbstractArray{T, N} end
 
+const AbstractKroneckerVector{T} = AbstractKroneckerArray{T, 1}
+const AbstractKroneckerMatrix{T} = AbstractKroneckerArray{T, 2}
+
 @doc """
     arg1(AB::AbstractKroneckerArray{T, N})
 
