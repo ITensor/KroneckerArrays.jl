@@ -4,14 +4,13 @@ using BlockArrays: Block
 using BlockSparseArrays: BlockIndexVector, GenericBlockIndex
 using KroneckerArrays: CartesianPair, CartesianProduct
 function Base.getindex(
-        b::Block,
-        I1::Union{CartesianPair, CartesianProduct},
-        Irest::Union{CartesianPair, CartesianProduct}...,
-    )
-    return GenericBlockIndex(b, (I1, Irest...))
+        b::Block{N},
+        I::Vararg{Union{CartesianPair, CartesianProduct}, N}
+    ) where {N}
+    return GenericBlockIndex(b, I)
 end
-function Base.getindex(b::Block, I1::CartesianProduct, Irest::CartesianProduct...)
-    return BlockIndexVector(b, (I1, Irest...))
+function Base.getindex(b::Block{N}, I::Vararg{CartesianProduct, N}) where {N}
+    return BlockIndexVector(b, I)
 end
 
 using BlockSparseArrays: BlockSparseArrays, blockrange
