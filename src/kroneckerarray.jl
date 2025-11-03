@@ -1,3 +1,28 @@
+"""
+    abstract type AbstractKroneckerArray{T, N} <: AbstractArray{T, N} end
+
+Abstract supertype for arrays that have a kronecker product structure,
+i.e. that can be written as `AB = A ⊗ B`.
+"""
+abstract type AbstractKroneckerArray{T, N} <: AbstractArray{T, N} end
+
+@doc """
+    arg1(AB::AbstractKroneckerArray{T, N})
+
+Extract the first factor (`A`) of the Kronecker array `AB = A ⊗ B`.
+""" arg1
+
+@doc """
+    arg2(AB::AbstractKroneckerArray{T, N})
+
+Extract the second factor (`B`) of the Kronecker array `AB = A ⊗ B`.
+""" arg2
+
+arg1type(x::AbstractKroneckerArray) = arg1type(typeof(x))
+arg1type(::Type{<:AbstractKroneckerArray}) = error("`AbstractKroneckerArray` subtypes have to implement `arg1type`.")
+arg2type(x::AbstractKroneckerArray) = arg2type(typeof(x))
+arg2type(::Type{<:AbstractKroneckerArray}) = error("`AbstractKroneckerArray` subtypes have to implement `arg2type`.")
+
 function unwrap_array(a::AbstractArray)
     p = parent(a)
     p ≡ a && return a
@@ -26,7 +51,7 @@ function _convert(A::Type{<:Diagonal}, a::AbstractMatrix)
 end
 
 struct KroneckerArray{T, N, A1 <: AbstractArray{T, N}, A2 <: AbstractArray{T, N}} <:
-    AbstractArray{T, N}
+    AbstractKroneckerArray{T, N, A1, A2}
     arg1::A1
     arg2::A2
 end
@@ -48,6 +73,8 @@ const KroneckerVector{T, A1 <: AbstractVector{T}, A2 <: AbstractVector{T}} = Kro
 
 @inline arg1(a::KroneckerArray) = getfield(a, :arg1)
 @inline arg2(a::KroneckerArray) = getfield(a, :arg2)
+arg1type(::Type{KroneckerArray{T, N, A1, A2}}) where {T, N, A1, A2} = A1
+arg2type(::Type{KroneckerArray{T, N, A1, A2}}) where {T, N, A1, A2} = A2
 
 function mutate_active_args!(f!, f, dest, src)
     (isactive(arg1(dest)) || isactive(arg2(dest))) ||
