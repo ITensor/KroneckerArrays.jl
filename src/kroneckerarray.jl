@@ -375,8 +375,6 @@ function Base.isapprox(
     return iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
 end
 
-function Base.iszero(a::KroneckerArray)
-
 function Base.iszero(a::AbstractKroneckerArray)
     return iszero(arg1(a)) || iszero(arg2(a))
 end
