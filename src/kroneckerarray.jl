@@ -320,9 +320,25 @@ Base.view(a::KroneckerArray{<:Any, 0}) = view(arg1(a)) ⊗ view(arg2(a))
 function Base.:(==)(a::KroneckerArray, b::KroneckerArray)
     return arg1(a) == arg1(b) && arg2(a) == arg2(b)
 end
-function Base.isapprox(a::KroneckerArray, b::KroneckerArray; kwargs...)
-    return isapprox(arg1(a), arg1(b); kwargs...) && isapprox(arg2(a), arg2(b); kwargs...)
+
+using LinearAlgebra: promote_leaf_eltypes
+function Base.isapprox(
+        a::KroneckerArray, b::KroneckerArray;
+        atol::Real = 0,
+        rtol::Real = Base.rtoldefault(promote_leaf_eltypes(a), promote_leaf_eltypes(b), atol),
+        norm::Function = norm
+    )
+    a1, a2 = arg1(a), arg2(a)
+    b1, b2 = arg1(b), arg2(b)
+    # Approximation of:
+    # norm(a - b) = norm(a1 ⊗ a2 - b1 ⊗ b2)
+    #             = norm((a1 - b1) ⊗ a2 + b1 ⊗ (a2 - b2) + (a1 - b1) ⊗ (a2 - b2))
+    diff1 = norm(a1 - b1)
+    diff2 = norm(a2 - b2)
+    d = diff1 * norm(a2) + norm(b1) * diff2 + diff1 * diff2
+    return iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
 end
+
 function Base.iszero(a::KroneckerArray)
     return iszero(arg1(a)) || iszero(arg2(a))
 end
