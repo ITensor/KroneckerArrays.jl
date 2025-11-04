@@ -357,6 +357,25 @@ function Base.:(==)(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
     return arg1(a) == arg1(b) && arg2(a) == arg2(b)
 end
 
+# norm(a - b) = norm(a1 ⊗ a2 - b1 ⊗ b2)
+#             = norm((a1 - b1) ⊗ a2 + b1 ⊗ (a2 - b2) + (a1 - b1) ⊗ (a2 - b2))
+function dist(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
+    a1, a2 = arg1(a), arg2(a)
+    b1, b2 = arg1(b), arg2(b)
+    diff1 = a1 - b1
+    diff2 = a2 - b2
+    # x = (a1 - b1) ⊗ a2
+    # y = b1 ⊗ (a2 - b2)
+    # z = (a1 - b1) ⊗ (a2 - b2)
+    xx = norm(diff1)^2 * norm(a2)^2
+    yy = norm(b1)^2 * norm(diff2)^2
+    zz = norm(diff1)^2 * norm(diff2)^2
+    xy = real(dot(diff1, b1) * dot(a2, diff2))
+    xz = real(dot(diff1, diff1) * dot(a2, diff2))
+    yz = real(dot(b1, diff1) * dot(diff2, diff2))
+    return sqrt(abs(xx + yy + zz + 2 * (xy + xz + yz)))
+end
+
 using LinearAlgebra: dot, promote_leaf_eltypes
 function Base.isapprox(
         a::AbstractKroneckerArray, b::AbstractKroneckerArray;
@@ -366,12 +385,18 @@ function Base.isapprox(
     )
     a1, a2 = arg1(a), arg2(a)
     b1, b2 = arg1(b), arg2(b)
-    # Approximation of:
-    # norm(a - b) = norm(a1 ⊗ a2 - b1 ⊗ b2)
-    #             = norm((a1 - b1) ⊗ a2 + b1 ⊗ (a2 - b2) + (a1 - b1) ⊗ (a2 - b2))
-    diff1 = a1 - b1
-    diff2 = a2 - b2
-    d = sqrt(norm(diff1)^2 * norm(a2)^2 + norm(b1)^2 * norm(diff2)^2 + 2 * real(dot(diff1, b1) * dot(b2, diff2)))
+    d = if a1 == b1
+        norm(b1) * norm(a2 - b2)
+    elseif a2 == b2
+        norm(a1 - b1) * norm(b2)
+    else
+        # This could be defined as `KroneckerArrays.dist(a, b)`, but that might have
+        # numerical precision issues so for now we just error.
+        error(
+            "`isapprox` not implemented for KroneckerArrays where both arguments differ. " *
+                "In those cases, you can use `isapprox(collect(a), collect(b); kwargs...)`."
+        )
+    end
     return iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
 end
 
