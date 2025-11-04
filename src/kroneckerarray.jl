@@ -357,7 +357,7 @@ function Base.:(==)(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
     return arg1(a) == arg1(b) && arg2(a) == arg2(b)
 end
 
-using LinearAlgebra: promote_leaf_eltypes
+using LinearAlgebra: dot, promote_leaf_eltypes
 function Base.isapprox(
         a::KroneckerArray, b::KroneckerArray;
         atol::Real = 0,
@@ -369,9 +369,9 @@ function Base.isapprox(
     # Approximation of:
     # norm(a - b) = norm(a1 ⊗ a2 - b1 ⊗ b2)
     #             = norm((a1 - b1) ⊗ a2 + b1 ⊗ (a2 - b2) + (a1 - b1) ⊗ (a2 - b2))
-    diff1 = norm(a1 - b1)
-    diff2 = norm(a2 - b2)
-    d = diff1 * norm(a2) + norm(b1) * diff2 + diff1 * diff2
+    diff1 = a1 - b1
+    diff2 = a2 - b2
+    d = sqrt(norm(diff1)^2 * norm(a2)^2 + norm(b1)^2 * norm(diff2)^2 + 2 * real(dot(diff1, b1) * dot(b2, diff2)))
     return iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
 end
 
