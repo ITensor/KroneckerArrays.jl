@@ -359,7 +359,7 @@ end
 
 using LinearAlgebra: dot, promote_leaf_eltypes
 function Base.isapprox(
-        a::KroneckerArray, b::KroneckerArray;
+        a::AbstractKroneckerArray, b::AbstractKroneckerArray;
         atol::Real = 0,
         rtol::Real = Base.rtoldefault(promote_leaf_eltypes(a), promote_leaf_eltypes(b), atol),
         norm::Function = norm
