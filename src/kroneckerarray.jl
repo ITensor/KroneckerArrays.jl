@@ -386,7 +386,7 @@ function Base.isapprox(
     a1, a2 = arg1(a), arg2(a)
     b1, b2 = arg1(b), arg2(b)
     d = if a1 == b1
-        norm(b1) * norm(a2 - b2)
+        norm(a1) * norm(a2 - b2)
     elseif a2 == b2
         norm(a1 - b1) * norm(b2)
     else
