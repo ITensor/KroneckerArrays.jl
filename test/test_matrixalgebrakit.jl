@@ -136,5 +136,7 @@ herm(a) = parent(hermitianpart(a))
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     s = svd_vals(a)
-    @test s ≈ diag(svd_compact(a)[2])
+    s′ = diag(svd_compact(a)[2])
+    @test arg1(s) ≈ arg1(s′)
+    @test arg2(s) ≈ arg2(s′)
 end

@@ -359,7 +359,7 @@ end
 
 # norm(a - b) = norm(a1 ⊗ a2 - b1 ⊗ b2)
 #             = norm((a1 - b1) ⊗ a2 + b1 ⊗ (a2 - b2) + (a1 - b1) ⊗ (a2 - b2))
-function dist(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
+function dist_kronecker(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
     a1, a2 = arg1(a), arg2(a)
     b1, b2 = arg1(b), arg2(b)
     diff1 = a1 - b1
@@ -390,7 +390,7 @@ function Base.isapprox(
     elseif a2 == b2
         norm(a1 - b1) * norm(b2)
     else
-        # This could be defined as `KroneckerArrays.dist(a, b)`, but that might have
+        # This could be defined as `KroneckerArrays.dist_kronecker(a, b)`, but that might have
         # numerical precision issues so for now we just error.
         error(
             "`isapprox` not implemented for KroneckerArrays where both arguments differ. " *

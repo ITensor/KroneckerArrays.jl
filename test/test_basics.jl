@@ -241,5 +241,5 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     rng = StableRNG(123)
     a = randn(rng, 100, 100) ⊗ randn(rng, 100, 100)
     b = (arg1(a) + 1.0e-1 * randn(rng, size(arg1(a)))) ⊗ (arg2(a) + 1.0e-1 * randn(rng, size(arg2(a))))
-    @test KroneckerArrays.dist(a, b) ≈ norm(collect(a) - collect(b)) rtol = 1.0e-2
+    @test KroneckerArrays.dist_kronecker(a, b) ≈ norm(collect(a) - collect(b)) rtol = 1.0e-2
 end
