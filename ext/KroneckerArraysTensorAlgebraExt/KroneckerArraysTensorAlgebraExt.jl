@@ -1,6 +1,6 @@
 module KroneckerArraysTensorAlgebraExt
 
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2
+using KroneckerArrays: KroneckerArrays, AbstractKroneckerArray, ⊗, arg1, arg2
 using TensorAlgebra:
     TensorAlgebra, AbstractBlockPermutation, FusionStyle, matricize, unmatricize
 
@@ -10,7 +10,7 @@ struct KroneckerFusion{A <: FusionStyle, B <: FusionStyle} <: FusionStyle
 end
 KroneckerArrays.arg1(style::KroneckerFusion) = style.a
 KroneckerArrays.arg2(style::KroneckerFusion) = style.b
-function TensorAlgebra.FusionStyle(a::KroneckerArray)
+function TensorAlgebra.FusionStyle(a::AbstractKroneckerArray)
     return KroneckerFusion(FusionStyle(arg1(a)), FusionStyle(arg2(a)))
 end
 function matricize_kronecker(
