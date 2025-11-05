@@ -378,26 +378,29 @@ end
 
 using LinearAlgebra: dot, promote_leaf_eltypes
 function Base.isapprox(
-        a::AbstractKroneckerArray, b::AbstractKroneckerArray;
-        atol::Real = 0,
+        a::AbstractKroneckerArray, b::AbstractKroneckerArray; atol::Real = 0,
         rtol::Real = Base.rtoldefault(promote_leaf_eltypes(a), promote_leaf_eltypes(b), atol),
-        norm::Function = norm
     )
     a1, a2 = arg1(a), arg2(a)
     b1, b2 = arg1(b), arg2(b)
-    d = if a1 == b1
-        norm(a1) * norm(a2 - b2)
+    if a1 == b1
+        return isapprox(a2, b2; atol = atol / norm(a1), rtol)
     elseif a2 == b2
-        norm(a1 - b1) * norm(b2)
+        return isapprox(a1, b1; atol = atol / norm(a2), rtol)
     else
-        # This could be defined as `KroneckerArrays.dist_kronecker(a, b)`, but that might have
-        # numerical precision issues so for now we just error.
-        error(
-            "`isapprox` not implemented for KroneckerArrays where both arguments differ. " *
-                "In those cases, you can use `isapprox(collect(a), collect(b); kwargs...)`."
+        # This could be defined as:
+        # ```julia
+        # d = KroneckerArrays.dist_kronecker(a, b)
+        # iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
+        # ```
+        # but that might have numerical precision issues so for now we just error.
+        throw(
+            ArgumentError(
+                "`isapprox` not implemented for KroneckerArrays where both arguments differ. " *
+                    "In those cases, you can use `isapprox(collect(a), collect(b); kwargs...)`."
+            )
         )
     end
-    return iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
 end
 
 function Base.iszero(a::AbstractKroneckerArray)

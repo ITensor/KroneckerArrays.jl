@@ -237,9 +237,47 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
         end
     end
 
-    # KroneckerArrays.dist
+    # isapprox
+
     rng = StableRNG(123)
-    a = randn(rng, 100, 100) ⊗ randn(rng, 100, 100)
-    b = (arg1(a) + 1.0e-1 * randn(rng, size(arg1(a)))) ⊗ (arg2(a) + 1.0e-1 * randn(rng, size(arg2(a))))
+    a1 = randn(rng, elt, (2, 2))
+    a = a1 ⊗ randn(rng, elt, (3, 3))
+    b = a1 ⊗ randn(rng, elt, (3, 3))
+    @test isapprox(a, b; atol = norm(a - b) * (1 + 2eps(real(elt))))
+    @test !isapprox(a, b; atol = norm(a - b) * (1 - 2eps(real(elt))))
+    @test isapprox(
+        a, b;
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 + 2eps(real(elt)))
+    )
+    @test !isapprox(
+        a, b;
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 - 2eps(real(elt)))
+    )
+    @test isapprox(
+        a, b; atol = norm(a - b) * (1 + 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 + 2eps(real(elt)))
+    )
+    @test isapprox(
+        a, b; atol = norm(a - b) * (1 + 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 - 2eps(real(elt)))
+    )
+    @test isapprox(
+        a, b; atol = norm(a - b) * (1 - 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 + 2eps(real(elt)))
+    )
+    @test !isapprox(
+        a, b; atol = norm(a - b) * (1 - 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 - 2eps(real(elt)))
+    )
+
+    a = randn(elt, (2, 2)) ⊗ randn(elt, (3, 3))
+    b = randn(elt, (2, 2)) ⊗ randn(elt, (3, 3))
+    @test_throws ArgumentError isapprox(a, b)
+
+    # KroneckerArrays.dist_kronecker
+    rng = StableRNG(123)
+    a = randn(rng, (100, 100)) ⊗ randn(rng, (100, 100))
+    b = (arg1(a) + randn(rng, size(arg1(a))) / 10) ⊗
+        (arg2(a) + randn(rng, size(arg2(a))) / 10)
     @test KroneckerArrays.dist_kronecker(a, b) ≈ norm(collect(a) - collect(b)) rtol = 1.0e-2
 end
