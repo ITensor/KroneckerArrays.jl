@@ -373,6 +373,7 @@ function dist_kronecker(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
     xy = real(dot(diff1, b1) * dot(a2, diff2))
     xz = real(dot(diff1, diff1) * dot(a2, diff2))
     yz = real(dot(b1, diff1) * dot(diff2, diff2))
+    # `abs` is used in case there are negative values due to floating point roundoff errors.
     return sqrt(abs(xx + yy + zz + 2 * (xy + xz + yz)))
 end
 
