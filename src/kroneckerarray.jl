@@ -357,11 +357,53 @@ function Base.:(==)(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
     return arg1(a) == arg1(b) && arg2(a) == arg2(b)
 end
 
-# TODO: this definition doesn't fully retain the original meaning:
-# ‖a - b‖ < atol could be true even if the following check isn't
-function Base.isapprox(a::AbstractKroneckerArray, b::AbstractKroneckerArray; kwargs...)
-    return isapprox(arg1(a), arg1(b); kwargs...) && isapprox(arg2(a), arg2(b); kwargs...)
+# norm(a - b) = norm(a1 ⊗ a2 - b1 ⊗ b2)
+#             = norm((a1 - b1) ⊗ a2 + b1 ⊗ (a2 - b2) + (a1 - b1) ⊗ (a2 - b2))
+function dist_kronecker(a::AbstractKroneckerArray, b::AbstractKroneckerArray)
+    a1, a2 = arg1(a), arg2(a)
+    b1, b2 = arg1(b), arg2(b)
+    diff1 = a1 - b1
+    diff2 = a2 - b2
+    # x = (a1 - b1) ⊗ a2
+    # y = b1 ⊗ (a2 - b2)
+    # z = (a1 - b1) ⊗ (a2 - b2)
+    xx = norm(diff1)^2 * norm(a2)^2
+    yy = norm(b1)^2 * norm(diff2)^2
+    zz = norm(diff1)^2 * norm(diff2)^2
+    xy = real(dot(diff1, b1) * dot(a2, diff2))
+    xz = real(dot(diff1, diff1) * dot(a2, diff2))
+    yz = real(dot(b1, diff1) * dot(diff2, diff2))
+    # `abs` is used in case there are negative values due to floating point roundoff errors.
+    return sqrt(abs(xx + yy + zz + 2 * (xy + xz + yz)))
 end
+
+using LinearAlgebra: dot, promote_leaf_eltypes
+function Base.isapprox(
+        a::AbstractKroneckerArray, b::AbstractKroneckerArray; atol::Real = 0,
+        rtol::Real = Base.rtoldefault(promote_leaf_eltypes(a), promote_leaf_eltypes(b), atol),
+    )
+    a1, a2 = arg1(a), arg2(a)
+    b1, b2 = arg1(b), arg2(b)
+    if a1 == b1
+        return isapprox(a2, b2; atol = atol / norm(a1), rtol)
+    elseif a2 == b2
+        return isapprox(a1, b1; atol = atol / norm(a2), rtol)
+    else
+        # This could be defined as:
+        # ```julia
+        # d = KroneckerArrays.dist_kronecker(a, b)
+        # iszero(rtol) ? d <= atol : d <= max(atol, rtol * max(norm(a), norm(b)))
+        # ```
+        # but that might have numerical precision issues so for now we just error.
+        throw(
+            ArgumentError(
+                "`isapprox` not implemented for KroneckerArrays where both arguments differ. " *
+                    "In those cases, you can use `isapprox(collect(a), collect(b); kwargs...)`."
+            )
+        )
+    end
+end
+
 function Base.iszero(a::AbstractKroneckerArray)
     return iszero(arg1(a)) || iszero(arg2(a))
 end

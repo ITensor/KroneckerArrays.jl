@@ -58,7 +58,7 @@ function LinearAlgebra.tr(a::AbstractKroneckerArray)
 end
 
 using LinearAlgebra: norm
-function LinearAlgebra.norm(a::AbstractKroneckerArray, p::Int = 2)
+function LinearAlgebra.norm(a::AbstractKroneckerArray, p::Real = 2)
     return norm(arg1(a), p) * norm(arg2(a), p)
 end
 

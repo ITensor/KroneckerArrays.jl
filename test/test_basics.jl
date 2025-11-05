@@ -4,20 +4,9 @@ using DerivableInterfaces: zero!
 using DiagonalArrays: diagonal
 using GPUArraysCore: @allowscalar
 using JLArrays: JLArray
-using KroneckerArrays:
-    KroneckerArrays,
-    KroneckerArray,
-    KroneckerStyle,
-    CartesianProductUnitRange,
-    CartesianProductVector,
-    ⊗,
-    ×,
-    arg1,
-    arg2,
-    cartesianproduct,
-    cartesianrange,
-    kron_nd,
-    unproduct
+using KroneckerArrays: KroneckerArrays, KroneckerArray, KroneckerStyle,
+    CartesianProductUnitRange, CartesianProductVector, ⊗, ×, arg1, arg2, cartesianproduct,
+    cartesianrange, kron_nd, unproduct
 using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, svdvals, tr
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
@@ -219,10 +208,11 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-    c = a.arg1 ⊗ b.arg2
+    c = arg1(a) ⊗ arg2(b)
     U, S, V = svd(a)
     @test collect(U * diagonal(S) * V') ≈ collect(a)
-    @test svdvals(a) ≈ S
+    @test arg1(svdvals(a)) ≈ arg1(S)
+    @test arg2(svdvals(a)) ≈ arg2(S)
     @test sort(collect(S); rev = true) ≈ svdvals(collect(a))
     @test collect(U'U) ≈ I
     @test collect(V * V') ≈ I
@@ -246,4 +236,48 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
             @test_throws ArgumentError $f($a)
         end
     end
+
+    # isapprox
+
+    rng = StableRNG(123)
+    a1 = randn(rng, elt, (2, 2))
+    a = a1 ⊗ randn(rng, elt, (3, 3))
+    b = a1 ⊗ randn(rng, elt, (3, 3))
+    @test isapprox(a, b; atol = norm(a - b) * (1 + 2eps(real(elt))))
+    @test !isapprox(a, b; atol = norm(a - b) * (1 - 2eps(real(elt))))
+    @test isapprox(
+        a, b;
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 + 2eps(real(elt)))
+    )
+    @test !isapprox(
+        a, b;
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 - 2eps(real(elt)))
+    )
+    @test isapprox(
+        a, b; atol = norm(a - b) * (1 + 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 + 2eps(real(elt)))
+    )
+    @test isapprox(
+        a, b; atol = norm(a - b) * (1 + 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 - 2eps(real(elt)))
+    )
+    @test isapprox(
+        a, b; atol = norm(a - b) * (1 - 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 + 2eps(real(elt)))
+    )
+    @test !isapprox(
+        a, b; atol = norm(a - b) * (1 - 2eps(real(elt))),
+        rtol = norm(a - b) / max(norm(a), norm(b)) * (1 - 2eps(real(elt)))
+    )
+
+    a = randn(elt, (2, 2)) ⊗ randn(elt, (3, 3))
+    b = randn(elt, (2, 2)) ⊗ randn(elt, (3, 3))
+    @test_throws ArgumentError isapprox(a, b)
+
+    # KroneckerArrays.dist_kronecker
+    rng = StableRNG(123)
+    a = randn(rng, (100, 100)) ⊗ randn(rng, (100, 100))
+    b = (arg1(a) + randn(rng, size(arg1(a))) / 10) ⊗
+        (arg2(a) + randn(rng, size(arg2(a))) / 10)
+    @test KroneckerArrays.dist_kronecker(a, b) ≈ norm(collect(a) - collect(b)) rtol = 1.0e-2
 end
