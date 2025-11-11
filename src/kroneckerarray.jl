@@ -121,7 +121,7 @@ end
 
 # TODO: copyto! is typically reserved for contiguous copies (i.e. also for copying from a
 # vector into an array), it might be better to not define that here.
-function Base.copyto!(dest::KroneckerArray{<:Any, N}, src::KroneckerArray{<:Any, N}) where {N}
+function Base.copyto!(dest::AbstractKroneckerArray{<:Any, N}, src::AbstractKroneckerArray{<:Any, N}) where {N}
     return mutate_active_args!(copyto!, copy, dest, src)
 end
 
@@ -275,7 +275,7 @@ function DerivableInterfaces.zero!(a::AbstractKroneckerArray)
 end
 
 function Base.Array{T, N}(a::AbstractKroneckerArray{S, N}) where {T, S, N}
-    return convert(Array{T, N}, collect(T, a))
+    return convert(Array{T, N}, collect(a))
 end
 
 Base.size(a::AbstractKroneckerArray) = size(arg1(a)) .* size(arg2(a))
@@ -311,7 +311,7 @@ function Base.getindex(a::KroneckerArray, i::Integer)
 end
 
 using GPUArraysCore: GPUArraysCore
-function Base.getindex(a::KroneckerArray{<:Any, N}, I::Vararg{Integer, N}) where {N}
+function Base.getindex(a::AbstractKroneckerArray{<:Any, N}, I::Vararg{Integer, N}) where {N}
     GPUArraysCore.assertscalar("getindex")
     I′ = ntuple(Val(N)) do dim
         return cartesianproduct(axes(a, dim))[I[dim]]
@@ -600,7 +600,7 @@ Broadcast.materialize(a::KroneckerBroadcasted) = copy(a)
 Broadcast.materialize!(dest, a::KroneckerBroadcasted) = copyto!(dest, a)
 Broadcast.broadcastable(a::KroneckerBroadcasted) = a
 Base.copy(a::KroneckerBroadcasted) = copy(arg1(a)) ⊗ copy(arg2(a))
-function Base.copyto!(dest::KroneckerArray, src::KroneckerBroadcasted)
+function Base.copyto!(dest::AbstractKroneckerArray, src::KroneckerBroadcasted)
     return mutate_active_args!(copyto!, copy, dest, src)
 end
 function Base.eltype(a::KroneckerBroadcasted)
