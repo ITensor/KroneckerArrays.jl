@@ -1,8 +1,6 @@
 using MatrixAlgebraKit:
     MatrixAlgebraKit,
     AbstractAlgorithm, TruncationStrategy,
-    default_eig_algorithm, default_eigh_algorithm, default_lq_algorithm,
-    default_polar_algorithm, default_qr_algorithm, default_svd_algorithm,
     eig_full!, eig_full, eig_trunc!, eig_trunc, eig_vals!, eig_vals,
     eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eigh_vals!, eigh_vals,
     initialize_output,
@@ -12,137 +10,99 @@ using MatrixAlgebraKit:
     right_null!, right_null, right_orth!, right_orth, right_polar!, right_polar,
     svd_compact!, svd_compact, svd_full!, svd_full, svd_trunc!, svd_trunc, svd_vals!, svd_vals,
     truncate
-
-using DiagonalArrays: DiagonalArrays, diagview
-function DiagonalArrays.diagview(a::AbstractKroneckerMatrix)
-    return diagview(arg1(a)) ⊗ diagview(arg2(a))
-end
-MatrixAlgebraKit.diagview(a::AbstractKroneckerMatrix) = diagview(a)
-
-struct KroneckerAlgorithm{A1, A2} <: AbstractAlgorithm
-    arg1::A1
-    arg2::A2
-end
-@inline arg1(alg::KroneckerAlgorithm) = getfield(alg, :arg1)
-@inline arg2(alg::KroneckerAlgorithm) = getfield(alg, :arg2)
-
 using MatrixAlgebraKit:
-    copy_input,
     eig_full, eig_vals, eigh_full, eigh_vals,
     qr_compact, qr_full,
     left_null, left_orth, left_polar,
     lq_compact, lq_full,
     right_null, right_orth, right_polar,
     svd_compact, svd_full
+using MatrixAlgebraKit: TruncationStrategy, findtruncated, truncate
+import MatrixAlgebraKit as MAK
 
-for f in [
+DiagonalArrays.diagview(a::AbstractKroneckerMatrix) = ⊗(DiagonalArrays.diagview.(kroneckerfactors(a))...)
+MatrixAlgebraKit.diagview(a::AbstractKroneckerMatrix) = DiagonalArrays.diagview(a)
+
+struct KroneckerAlgorithm{A, B} <: AbstractAlgorithm
+    a::A
+    b::B
+end
+
+kroneckerfactors(alg::KroneckerAlgorithm) = alg.a, alg.b
+kroneckerfactortypes(::Type{KroneckerAlgorithm{A, B}}) where {A, B} = (A, B)
+
+for f in (
         :eig_full, :eigh_full,
         :qr_compact, :qr_full,
         :lq_compact, :lq_full,
         :left_polar, :right_polar,
         :svd_compact, :svd_full,
-    ]
-    @eval begin
-        function MatrixAlgebraKit.copy_input(::typeof($f), a::AbstractKroneckerMatrix)
-            return copy_input($f, arg1(a)) ⊗ copy_input($f, arg2(a))
-        end
-    end
+    )
+    @eval MAK.copy_input(::typeof($f), a::AbstractKroneckerMatrix) =
+        ⊗(MAK.copy_input.(($f,), kroneckerfactors(a))...)
 end
 
-for f in [
+for f in (
         :default_eig_algorithm, :default_eigh_algorithm,
         :default_lq_algorithm, :default_qr_algorithm,
         :default_polar_algorithm, :default_svd_algorithm,
-    ]
-    @eval begin
-        function MatrixAlgebraKit.$f(
-                A::Type{<:AbstractKroneckerMatrix}; kwargs1 = (;), kwargs2 = (;), kwargs...
-            )
-            A1, A2 = argument_types(A)
-            return KroneckerAlgorithm(
-                $f(A1; kwargs..., kwargs1...), $f(A2; kwargs..., kwargs2...)
-            )
-        end
+    )
+    @eval function MAK.$f(A::Type{<:AbstractKroneckerMatrix}; kwargs1 = (;), kwargs2 = (;), kwargs...)
+        A, B = kroneckerfactortypes(A)
+        return KroneckerAlgorithm(
+            MAK.$f(A; kwargs..., kwargs1...),
+            MAK.$f(B; kwargs..., kwargs2...)
+        )
     end
 end
 
-for f in [
+for f in (
         :eig_full, :eigh_full,
         :left_polar, :right_polar,
         :lq_compact, :lq_full,
         :qr_compact, :qr_full,
         :svd_compact, :svd_full,
-    ]
+    )
     f! = Symbol(f, :!)
-    @eval begin
-        function MatrixAlgebraKit.initialize_output(
-                ::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm
-            )
-            return nothing
-        end
-        function MatrixAlgebraKit.$f!(
-                a::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm
-            )
-            a1 = $f(arg1(a), arg1(alg))
-            a2 = $f(arg2(a), arg2(alg))
-            return a1 .⊗ a2
-        end
+    @eval MAK.initialize_output(::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm) = nothing
+    @eval MAK.$f!(a::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm) =
+        otimes.(MAK.$f.(kroneckerfactors(a), kroneckerfactors(alg))...)
+end
+
+for f in (:eig_vals, :eigh_vals, :svd_vals)
+    f! = Symbol(f, :!)
+    @eval MAK.initialize_output(::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm) = nothing
+    @eval function MAK.$f!(a::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm)
+        d1 = MAK.$f(kroneckerfactors(a, 1), kroneckerfactors(alg, 1))
+        d2 = MAK.$f(kroneckerfactors(a, 2), kroneckerfactors(alg, 2))
+        return d1 ⊗ d2
     end
 end
 
-for f in [:eig_vals, :eigh_vals, :svd_vals]
+for f in (:left_orth, :right_orth)
     f! = Symbol(f, :!)
-    @eval begin
-        function MatrixAlgebraKit.initialize_output(
-                ::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm
-            )
-            return nothing
-        end
-        function MatrixAlgebraKit.$f!(
-                a::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm
-            )
-            a1 = $f(arg1(a), arg1(alg))
-            a2 = $f(arg2(a), arg2(alg))
-            return a1 ⊗ a2
-        end
-    end
-end
-
-for f in [:left_orth, :right_orth]
-    f! = Symbol(f, :!)
-    @eval begin
-        function MatrixAlgebraKit.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix)
-            return nothing
-        end
-        function MatrixAlgebraKit.$f!(
-                a::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...
-            )
-            a1 = $f(arg1(a); kwargs..., kwargs1...)
-            a2 = $f(arg2(a); kwargs..., kwargs2...)
-            return a1 .⊗ a2
-        end
+    @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) =
+        nothing
+    @eval function MAK.$f!(a::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
+        a1 = MAK.$f(kroneckerfactors(a, 1); kwargs..., kwargs1...)
+        a2 = MAK.$f(kroneckerfactors(a, 2); kwargs..., kwargs2...)
+        return a1 .⊗ a2
     end
 end
 
 for f in [:left_null, :right_null]
     f! = Symbol(f, :!)
-    @eval begin
-        function MatrixAlgebraKit.initialize_output(::typeof($f), a::AbstractKroneckerMatrix)
-            return nothing
-        end
-        function MatrixAlgebraKit.$f!(
-                a::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...
-            )
-            a1 = $f(arg1(a); kwargs..., kwargs1...)
-            a2 = $f(arg2(a); kwargs..., kwargs2...)
-            return a1 ⊗ a2
-        end
+    @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) =
+        nothing
+    @eval function MAK.$f!(a::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
+        a1 = MAK.$f(kroneckerfactors(a, 1); kwargs..., kwargs1...)
+        a2 = MAK.$f(kroneckerfactors(a, 2); kwargs..., kwargs2...)
+        return a1 ⊗ a2
     end
 end
 
 # Truncation
 
-using MatrixAlgebraKit: TruncationStrategy, findtruncated, truncate
 
 struct KroneckerTruncationStrategy{T <: TruncationStrategy} <: TruncationStrategy
     strategy::T
@@ -158,24 +118,24 @@ axis(a) = only(axes(a))
 # Convert indices determined with a generic call to `findtruncated` to indices
 # more suited for a KroneckerVector.
 function to_truncated_indices(values::OnesKroneckerVector, I)
-    prods = cartesianproduct(axis(values))[I]
-    I_id = only(to_indices(arg1(values), (:,)))
-    I_data = unique(arg2.(prods))
+    prods = cartesianproduct(kroneckerfactors(axis(values))...)[I]
+    I_id = only(to_indices(kroneckerfactors(values, 1), (:,)))
+    I_data = unique(kroneckerfactors.(prods, 2))
     # Drop truncations that occur within the identity.
     I_data = filter(I_data) do i
-        return count(x -> arg2(x) == i, prods) == length(arg2(values))
+        return count(x -> kroneckerfactors(x, 2) == i, prods) == length(kroneckerfactors(values, 2))
     end
     return I_id × I_data
 end
 function to_truncated_indices(values::KroneckerOnesVector, I)
     #I = findtruncated(Vector(values), strategy.strategy)
-    prods = cartesianproduct(axis(values))[I]
-    I_data = unique(arg1.(prods))
+    prods = cartesianproduct(kroneckerfactors(axis(values))...)[I]
+    I_data = unique(kroneckerfactors.(prods, 1))
     # Drop truncations that occur within the identity.
     I_data = filter(I_data) do i
-        return count(x -> arg1(x) == i, prods) == length(arg2(values))
+        return count(x -> kroneckerfactors(x, 1) == i, prods) == length(kroneckerfactors(values, 2))
     end
-    I_id = only(to_indices(arg2(values), (:,)))
+    I_id = only(to_indices(kroneckerfactors(values, 2), (:,)))
     return I_data × I_id
 end
 # Fix ambiguity error.
@@ -186,39 +146,32 @@ function to_truncated_indices(values::KroneckerVector, I)
     return throw(ArgumentError("Not implemented"))
 end
 
-function MatrixAlgebraKit.findtruncated(
+function MAK.findtruncated(
         values::AbstractKroneckerVector, strategy::KroneckerTruncationStrategy
     )
     I = findtruncated(Vector(values), strategy.strategy)
     return to_truncated_indices(values, I)
 end
 
-for f in [:eig_trunc!, :eigh_trunc!]
-    @eval begin
-        function MatrixAlgebraKit.truncate(
-                ::typeof($f), DV::NTuple{2, AbstractKroneckerMatrix}, strategy::TruncationStrategy
-            )
-            return truncate($f, DV, KroneckerTruncationStrategy(strategy))
-        end
-        function MatrixAlgebraKit.truncate(
-                ::typeof($f), (D, V)::NTuple{2, AbstractKroneckerMatrix}, strategy::KroneckerTruncationStrategy
-            )
-            I = findtruncated(diagview(D), strategy)
-            return (D[I, I], V[(:) × (:), I]), I
-        end
+for f in (:eig_trunc!, :eigh_trunc!)
+    @eval function MAK.truncate(
+            ::typeof($f), DV::NTuple{2, AbstractKroneckerMatrix}, strategy::TruncationStrategy
+        )
+        return MAK.truncate($f, DV, KroneckerTruncationStrategy(strategy))
+    end
+    @eval function MAK.truncate(
+            ::typeof($f), (D, V)::NTuple{2, AbstractKroneckerMatrix}, strategy::KroneckerTruncationStrategy
+        )
+        I = MAK.findtruncated(MAK.diagview(D), strategy)
+        return (D[I, I], V[(:) × (:), I]), I
     end
 end
 
-function MatrixAlgebraKit.truncate(
-        f::typeof(svd_trunc!), USVᴴ::NTuple{3, AbstractKroneckerMatrix}, strategy::TruncationStrategy
+MAK.truncate(f::typeof(svd_trunc!), USVᴴ::NTuple{3, AbstractKroneckerMatrix}, strategy::TruncationStrategy) =
+    MAK.truncate(f, USVᴴ, KroneckerTruncationStrategy(strategy))
+function MAK.truncate(
+        ::typeof(svd_trunc!), (U, S, Vᴴ)::NTuple{3, AbstractKroneckerMatrix}, strategy::KroneckerTruncationStrategy,
     )
-    return truncate(f, USVᴴ, KroneckerTruncationStrategy(strategy))
-end
-function MatrixAlgebraKit.truncate(
-        ::typeof(svd_trunc!),
-        (U, S, Vᴴ)::NTuple{3, AbstractKroneckerMatrix},
-        strategy::KroneckerTruncationStrategy,
-    )
-    I = findtruncated(diagview(S), strategy)
+    I = MAK.findtruncated(MAK.diagview(S), strategy)
     return (U[(:) × (:), I], S[I, I], Vᴴ[I, (:) × (:)]), I
 end
