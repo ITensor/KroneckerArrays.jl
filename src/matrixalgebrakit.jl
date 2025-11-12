@@ -38,8 +38,12 @@ for f in (
         :left_polar, :right_polar,
         :svd_compact, :svd_full,
     )
-    @eval MAK.copy_input(::typeof($f), a::AbstractKroneckerMatrix) =
-        ⊗(MAK.copy_input.(($f,), kroneckerfactors(a))...)
+    @eval function MAK.copy_input(::typeof($f), ab::AbstractKroneckerMatrix)
+        a, b = kroneckerfactors(ab)
+        ac = MAK.copy_input($f, a)
+        bc = MAK.copy_input($f, b)
+        return ac ⊗ bc
+    end
 end
 
 for f in (
@@ -65,28 +69,33 @@ for f in (
     )
     f! = Symbol(f, :!)
     @eval MAK.initialize_output(::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm) = nothing
-    @eval MAK.$f!(a::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm) =
-        otimes.(MAK.$f.(kroneckerfactors(a), kroneckerfactors(alg))...)
+    @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm)
+        a, b = kroneckerfactors(ab)
+        algA, algB = kroneckerfactors(alg)
+        Fa = MAK.$f(a, algA)
+        Fb = MAK.$f(b, algB)
+        return Fa .⊗ Fb
+    end
 end
 
 for f in (:eig_vals, :eigh_vals, :svd_vals)
     f! = Symbol(f, :!)
     @eval MAK.initialize_output(::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm) = nothing
-    @eval function MAK.$f!(a::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm)
-        d1 = MAK.$f(kroneckerfactors(a, 1), kroneckerfactors(alg, 1))
-        d2 = MAK.$f(kroneckerfactors(a, 2), kroneckerfactors(alg, 2))
-        return d1 ⊗ d2
+    @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm)
+        a, b = kroneckerfactors(ab)
+        algA, algB = kroneckerfactors(alg)
+        return MAK.$f(a, algA) ⊗ MAK.$f(b, algB)
     end
 end
 
 for f in (:left_orth, :right_orth)
     f! = Symbol(f, :!)
-    @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) =
-        nothing
-    @eval function MAK.$f!(a::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
-        a1 = MAK.$f(kroneckerfactors(a, 1); kwargs..., kwargs1...)
-        a2 = MAK.$f(kroneckerfactors(a, 2); kwargs..., kwargs2...)
-        return a1 .⊗ a2
+    @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) = nothing
+    @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
+        a, b = kroneckerfactors(ab)
+        Fa = MAK.$f(a; kwargs..., kwargs1...)
+        Fb = MAK.$f(b; kwargs..., kwargs2...)
+        return Fa .⊗ Fb
     end
 end
 
@@ -94,10 +103,11 @@ for f in [:left_null, :right_null]
     f! = Symbol(f, :!)
     @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) =
         nothing
-    @eval function MAK.$f!(a::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
-        a1 = MAK.$f(kroneckerfactors(a, 1); kwargs..., kwargs1...)
-        a2 = MAK.$f(kroneckerfactors(a, 2); kwargs..., kwargs2...)
-        return a1 ⊗ a2
+    @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
+        a, b = kroneckerfactors(ab)
+        Na = MAK.$f(a; kwargs..., kwargs1...)
+        Nb = MAK.$f(b; kwargs..., kwargs2...)
+        return Na ⊗ Nb
     end
 end
 
