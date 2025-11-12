@@ -1,4 +1,4 @@
-using KroneckerArrays: ⊗, arg1, arg2
+using KroneckerArrays: ⊗, kroneckerfactors
 using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
 using MatrixAlgebraKit: eig_full, eig_trunc, eig_vals, eigh_full, eigh_trunc,
     eigh_vals, left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
@@ -16,8 +16,8 @@ herm(a) = parent(hermitianpart(a))
     d, v = eig_full(a)
     av = a * v
     vd = v * d
-    @test arg1(av) ≈ arg1(vd)
-    @test arg2(av) ≈ arg2(vd)
+    @test kroneckerfactors(av, 1) ≈ kroneckerfactors(vd, 1)
+    @test kroneckerfactors(av, 2) ≈ kroneckerfactors(vd, 2)
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     @test_throws ArgumentError eig_trunc(a)
@@ -25,15 +25,15 @@ herm(a) = parent(hermitianpart(a))
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     d = eig_vals(a)
     d′ = diag(eig_full(a)[1])
-    @test arg1(d) ≈ arg1(d′)
-    @test arg2(d) ≈ arg2(d′)
+    @test kroneckerfactors(d, 1) ≈ kroneckerfactors(d′, 1)
+    @test kroneckerfactors(d, 2) ≈ kroneckerfactors(d′, 2)
 
     a = herm(randn(elt, 2, 2)) ⊗ herm(randn(elt, 3, 3))
     d, v = eigh_full(a)
     av = a * v
     vd = v * d
-    @test arg1(av) ≈ arg1(vd)
-    @test arg2(av) ≈ arg2(vd)
+    @test kroneckerfactors(av, 1) ≈ kroneckerfactors(vd, 1)
+    @test kroneckerfactors(av, 2) ≈ kroneckerfactors(vd, 2)
     @test eltype(d) === real(elt)
     @test eltype(v) === elt
 
@@ -48,29 +48,29 @@ herm(a) = parent(hermitianpart(a))
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     u, c = qr_compact(a)
     uc = u * c
-    @test arg1(uc) ≈ arg1(a)
-    @test arg2(uc) ≈ arg2(a)
+    @test kroneckerfactors(uc, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(uc, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u'u) ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     u, c = qr_full(a)
     uc = u * c
-    @test arg1(uc) ≈ arg1(a)
-    @test arg2(uc) ≈ arg2(a)
+    @test kroneckerfactors(uc, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(uc, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u'u) ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     c, u = lq_compact(a)
     cu = c * u
-    @test arg1(cu) ≈ arg1(a)
-    @test arg2(cu) ≈ arg2(a)
+    @test kroneckerfactors(cu, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(cu, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u * u') ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     c, u = lq_full(a)
     cu = c * u
-    @test arg1(cu) ≈ arg1(a)
-    @test arg2(cu) ≈ arg2(a)
+    @test kroneckerfactors(cu, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(cu, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u * u') ≈ I
 
     a = randn(elt, 3, 2) ⊗ randn(elt, 4, 3)
@@ -84,36 +84,36 @@ herm(a) = parent(hermitianpart(a))
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     u, c = left_orth(a)
     uc = u * c
-    @test arg1(uc) ≈ arg1(a)
-    @test arg2(uc) ≈ arg2(a)
+    @test kroneckerfactors(uc, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(uc, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u'u) ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     c, u = right_orth(a)
     cu = c * u
-    @test arg1(cu) ≈ arg1(a)
-    @test arg2(cu) ≈ arg2(a)
+    @test kroneckerfactors(cu, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(cu, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u * u') ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     u, c = left_polar(a)
     uc = u * c
-    @test arg1(uc) ≈ arg1(a)
-    @test arg2(uc) ≈ arg2(a)
+    @test kroneckerfactors(uc, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(uc, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u'u) ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     c, u = right_polar(a)
     cu = c * u
-    @test arg1(cu) ≈ arg1(a)
-    @test arg2(cu) ≈ arg2(a)
+    @test kroneckerfactors(cu, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(cu, 2) ≈ kroneckerfactors(a, 2)
     @test collect(u * u') ≈ I
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     u, s, v = svd_compact(a)
     usv = u * s * v
-    @test arg1(usv) ≈ arg1(a)
-    @test arg2(usv) ≈ arg2(a)
+    @test kroneckerfactors(usv, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(usv, 2) ≈ kroneckerfactors(a, 2)
     @test eltype(u) === elt
     @test eltype(s) === real(elt)
     @test eltype(v) === elt
@@ -123,8 +123,8 @@ herm(a) = parent(hermitianpart(a))
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     u, s, v = svd_full(a)
     usv = u * s * v
-    @test arg1(usv) ≈ arg1(a)
-    @test arg2(usv) ≈ arg2(a)
+    @test kroneckerfactors(usv, 1) ≈ kroneckerfactors(a, 1)
+    @test kroneckerfactors(usv, 2) ≈ kroneckerfactors(a, 2)
     @test eltype(u) === elt
     @test eltype(s) === real(elt)
     @test eltype(v) === elt
@@ -137,6 +137,6 @@ herm(a) = parent(hermitianpart(a))
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     s = svd_vals(a)
     s′ = diag(svd_compact(a)[2])
-    @test arg1(s) ≈ arg1(s′)
-    @test arg2(s) ≈ arg2(s′)
+    @test kroneckerfactors(s, 1) ≈ kroneckerfactors(s′, 1)
+    @test kroneckerfactors(s, 2) ≈ kroneckerfactors(s′, 2)
 end

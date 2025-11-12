@@ -5,8 +5,8 @@ using DiagonalArrays: diagonal
 using GPUArraysCore: @allowscalar
 using JLArrays: JLArray
 using KroneckerArrays: KroneckerArrays, KroneckerArray, KroneckerStyle,
-    CartesianProductUnitRange, CartesianProductVector, ⊗, ×, arg1, arg2, cartesianproduct,
-    cartesianrange, kron_nd, unproduct
+    CartesianProductUnitRange, CartesianProductVector, ⊗, ×, kroneckerfactors, kroneckerfactortypes,
+    cartesianproduct, cartesianrange, kron_nd, unproduct
 using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, svdvals, tr
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
@@ -22,8 +22,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     @test r ===
         @constinferred(cartesianrange(2 × 3)) ===
         @constinferred(cartesianrange(Base.OneTo(2), Base.OneTo(3))) ===
-        @constinferred(cartesianrange(Base.OneTo(2) × Base.OneTo(3)))
-    @test @constinferred(cartesianproduct(r)) === Base.OneTo(2) × Base.OneTo(3)
+        @constinferred(Base.OneTo(2) × Base.OneTo(3))
     @test unproduct(r) === Base.OneTo(6)
     @test length(r) == 6
     @test first(r) == 1
@@ -35,28 +34,27 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     @test r[2 × 2] == 5
     @test r[2 × 3] == 6
 
-    @test sprint(show, "text/plain", cartesianrange(2 × 3)) ==
-        "Base.OneTo(2) × Base.OneTo(3)\nBase.OneTo(6)"
-    @test sprint(show, cartesianrange(2 × 3)) == "Base.OneTo(6)"
+    @test sprint(show, cartesianrange(2, 3)) == "(Base.OneTo(2) × Base.OneTo(3))"
+    @test sprint(show, cartesianrange(2, 3, 2:7)) == "cartesianrange(Base.OneTo(2), Base.OneTo(3), 2:7)"
 
     # CartesianProductUnitRange axes
-    r = cartesianrange((2:3) × (3:4), 2:5)
-    @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
+    r = cartesianrange(2:3, 3:4, 2:5)
+    @test axes(r, 1) ≡ cartesianrange(2, 2)
 
     # CartesianProductUnitRange getindex
-    r1 = cartesianrange((2:4) × (3:5), 2:10)
-    r2 = cartesianrange((2:3) × (2:3), 2:5)
-    @test r1[r2] ≡ cartesianrange((3:4) × (4:5), 3:6)
+    r1 = cartesianrange(2:4, 3:5, 2:10)
+    r2 = cartesianrange(2:3, 2:3, 2:5)
+    @test r1[r2] ≡ cartesianrange(3:4, 4:5, 3:6)
 
-    @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
+    @test axes(r, 1) ≡ cartesianrange(2, 2)
 
     # CartesianProductVector axes
-    r = CartesianProductVector(([2, 4]) × ([3, 5]), [3, 5, 7, 9])
-    @test axes(r) ≡ (CartesianProductUnitRange(Base.OneTo(2) × Base.OneTo(2), Base.OneTo(4)),)
+    r = cartesianproduct([2, 4], [3, 5], [3, 5, 7, 9])
+    @test axes(r) ≡ (cartesianrange(2, 2),)
 
     r = @constinferred(cartesianrange(2 × 3, 2:7))
-    @test r === cartesianrange(Base.OneTo(2) × Base.OneTo(3), 2:7)
-    @test cartesianproduct(r) === Base.OneTo(2) × Base.OneTo(3)
+    @test r === cartesianrange(Base.OneTo(2), Base.OneTo(3), 2:7)
+    @test axes(r, 1) === Base.OneTo(2) × Base.OneTo(3)
     @test unproduct(r) === 2:7
     @test length(r) == 6
     @test first(r) == 2
@@ -80,23 +78,26 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     rng = StableRNG(123)
     a = @constinferred(randn(rng, elt, 2, 2) ⊗ randn(rng, elt, 3, 3))
     b = @constinferred(randn(rng, elt, 2, 2) ⊗ randn(rng, elt, 3, 3))
-    c = @constinferred(a.arg1 ⊗ b.arg2)
-    @test a isa KroneckerArray{elt, 2, typeof(a.arg1), typeof(a.arg2)}
+    c = @constinferred(kroneckerfactors(a, 1) ⊗ kroneckerfactors(b, 2))
+    @test a isa KroneckerArray{elt, 2, kroneckerfactortypes(a)...}
     @test similar(typeof(a), (2, 3)) isa Matrix{elt}
     @test size(similar(typeof(a), (2, 3))) == (2, 3)
     @test isreal(a) == (elt <: Real)
-    @test a[1 × 1, 1 × 1] == a.arg1[1, 1] * a.arg2[1, 1]
-    @test a[1 × 3, 2 × 1] == a.arg1[1, 2] * a.arg2[3, 1]
-    @test a[1 × (2:3), 2 × 1] == a.arg1[1, 2] * a.arg2[2:3, 1]
-    @test a[1 × :, (:) × 1] == a.arg1[1, :] ⊗ a.arg2[:, 1]
-    @test a[(1:2) × (2:3), (1:2) × (2:3)] == a.arg1[1:2, 1:2] ⊗ a.arg2[2:3, 2:3]
+    aa, ab = kroneckerfactors(a)
+    for i in 1:2, j in 1:3, k in 1:2, l in 1:3
+        @test a[i × j, k × l] == aa[i, k] * ab[j, l]
+    end
+    @test a[1 × (2:3), 2 × 1] == aa[1, 2] * ab[2:3, 1]
+    @test a[1 × :, (:) × 1] == aa[1, :] ⊗ ab[:, 1]
+    @test a[(1:2) × (2:3), (1:2) × (2:3)] == aa[1:2, 1:2] ⊗ ab[2:3, 2:3]
     v = randn(elt, 2) ⊗ randn(elt, 3)
-    @test v[1 × 1] == v.arg1[1] * v.arg2[1]
-    @test v[1 × 3] == v.arg1[1] * v.arg2[3]
-    @test v[(1:2) × 3] == v.arg1[1:2] * v.arg2[3]
-    @test v[(1:2) × (2:3)] == v.arg1[1:2] ⊗ v.arg2[2:3]
+    va, vb = kroneckerfactors(v)
+    @test v[1 × 1] == va[1] * vb[1]
+    @test v[1 × 3] == va[1] * vb[3]
+    @test v[(1:2) × 3] == va[1:2] * vb[3]
+    @test v[(1:2) × (2:3)] == va[1:2] ⊗ vb[2:3]
     @test eltype(a) === elt
-    @test collect(a) == kron(collect(a.arg1), collect(a.arg2))
+    @test collect(a) == kron(collect(aa), collect(ab))
     @test size(a) == (6, 6)
     @test collect(a * b) ≈ collect(a) * collect(b)
     @test collect(-a) == -collect(a)
@@ -116,14 +117,14 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     # Views
     a = @constinferred(randn(elt, 2, 2) ⊗ randn(elt, 3, 3))
     b = @constinferred(view(a, (1:2) × (2:3), (1:2) × (2:3)))
-    @test arg1(b) === view(arg1(a), 1:2, 1:2)
-    @test arg1(b) == arg1(a)[1:2, 1:2]
-    @test arg2(b) === view(arg2(a), 2:3, 2:3)
-    @test arg2(b) == arg2(a)[2:3, 2:3]
+    @test kroneckerfactors(b, 1) === view(kroneckerfactors(a, 1), 1:2, 1:2)
+    @test kroneckerfactors(b, 1) == kroneckerfactors(a, 1)[1:2, 1:2]
+    @test kroneckerfactors(b, 2) === view(kroneckerfactors(a, 2), 2:3, 2:3)
+    @test kroneckerfactors(b, 2) == kroneckerfactors(a, 2)[2:3, 2:3]
 
     # Broadcasting
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-    style = KroneckerStyle(BroadcastStyle(typeof(a.arg1)), BroadcastStyle(typeof(a.arg2)))
+    style = KroneckerStyle(BroadcastStyle.(kroneckerfactortypes(a))...)
     @test BroadcastStyle(typeof(a)) === style
     @test_throws "not supported" sin.(a)
     a′ = similar(a)
@@ -133,7 +134,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     @test collect(a′) ≈ 2 * collect(a)
     bc = broadcasted(+, a, a)
     @test bc.style === style
-    @test similar(bc, elt) isa KroneckerArray{elt, 2, typeof(a.arg1), typeof(a.arg2)}
+    @test similar(bc, elt) isa KroneckerArray{elt, 2, kroneckerfactortypes(a)...}
     @test collect(copy(bc)) ≈ 2 * collect(a)
     bc = broadcasted(*, 2, a)
     @test bc.style === style
@@ -182,37 +183,38 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     # permutedims
     a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
     @test permutedims(a, (2, 1, 3)) ==
-        permutedims(arg1(a), (2, 1, 3)) ⊗ permutedims(arg2(a), (2, 1, 3))
+        permutedims(kroneckerfactors(a, 1), (2, 1, 3)) ⊗ permutedims(kroneckerfactors(a, 2), (2, 1, 3))
 
     # permutedims!
     a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
     b = similar(a)
     permutedims!(b, a, (2, 1, 3))
-    @test b == permutedims(arg1(a), (2, 1, 3)) ⊗ permutedims(arg2(a), (2, 1, 3))
+    @test b == permutedims(kroneckerfactors(a, 1), (2, 1, 3)) ⊗ permutedims(kroneckerfactors(a, 2), (2, 1, 3))
 
     # Adapt
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     a′ = adapt(JLArray, a)
     @test a′ isa KroneckerArray{elt, 2, JLArray{elt, 2}, JLArray{elt, 2}}
-    @test a′.arg1 isa JLArray{elt, 2}
-    @test a′.arg2 isa JLArray{elt, 2}
-    @test Array(a′.arg1) == a.arg1
-    @test Array(a′.arg2) == a.arg2
+    @test kroneckerfactors(a′, 1) isa JLArray{elt, 2}
+    @test kroneckerfactors(a′, 2) isa JLArray{elt, 2}
+    @test Array(kroneckerfactors(a′, 1)) == kroneckerfactors(a, 1)
+    @test Array(kroneckerfactors(a′, 2)) == kroneckerfactors(a, 2)
 
     a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
-    @test collect(a) ≈ kron_nd(a.arg1, a.arg2)
-    @test a[1 × 1, 1 × 1, 1 × 1] == a.arg1[1, 1, 1] * a.arg2[1, 1, 1]
-    @test a[1 × 3, 2 × 1, 2 × 2] == a.arg1[1, 2, 2] * a.arg2[3, 1, 2]
+    @test collect(a) ≈ kron_nd(kroneckerfactors(a)...)
+    for i in 1:2, j in 1:3, k in 1:2, l in 1:3, m in 1:2, n in 1:3
+        @test a[i × j, k × l, m × n] == kroneckerfactors(a, 1)[i, k, m] * kroneckerfactors(a, 2)[j, l, n]
+    end
     @test collect(a + a) ≈ 2 * collect(a)
     @test collect(2a) ≈ 2 * collect(a)
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     b = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
-    c = arg1(a) ⊗ arg2(b)
+    c = kroneckerfactors(a, 1) ⊗ kroneckerfactors(b, 2)
     U, S, V = svd(a)
     @test collect(U * diagonal(S) * V') ≈ collect(a)
-    @test arg1(svdvals(a)) ≈ arg1(S)
-    @test arg2(svdvals(a)) ≈ arg2(S)
+    @test kroneckerfactors(svdvals(a), 1) ≈ kroneckerfactors(S, 1)
+    @test kroneckerfactors(svdvals(a), 2) ≈ kroneckerfactors(S, 2)
     @test sort(collect(S); rev = true) ≈ svdvals(collect(a))
     @test collect(U'U) ≈ I
     @test collect(V * V') ≈ I
@@ -232,9 +234,7 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
 
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
     for f in KroneckerArrays.MATRIX_FUNCTIONS
-        @eval begin
-            @test_throws ArgumentError $f($a)
-        end
+        @eval @test_throws ArgumentError $f($a)
     end
 
     # isapprox
@@ -276,8 +276,9 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
 
     # KroneckerArrays.dist_kronecker
     rng = StableRNG(123)
-    a = randn(rng, (100, 100)) ⊗ randn(rng, (100, 100))
-    b = (arg1(a) + randn(rng, size(arg1(a))) / 10) ⊗
-        (arg2(a) + randn(rng, size(arg2(a))) / 10)
-    @test KroneckerArrays.dist_kronecker(a, b) ≈ norm(collect(a) - collect(b)) rtol = 1.0e-2
+    a = randn(rng, (100, 100))
+    b = randn(rng, (100, 100))
+    ab = a ⊗ b
+    ab′ = (a + randn(rng, size(a)) / 10) ⊗ (b + randn(rng, size(b)) / 10)
+    @test KroneckerArrays.dist_kronecker(ab, ab′) ≈ norm(collect(ab) - collect(ab′)) rtol = 1.0e-2
 end

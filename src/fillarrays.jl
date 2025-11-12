@@ -5,7 +5,7 @@ function FillArrays.fillsimilar(
             CartesianProductUnitRange{<:Integer}, Vararg{CartesianProductUnitRange{<:Integer}},
         },
     ) where {T}
-    return Zeros{T}(arg1.(ax)) ⊗ Zeros{T}(arg2.(ax))
+    return Zeros{T}(kroneckerfactors.(ax, 1)) ⊗ Zeros{T}(kroneckerfactors.(ax, 2))
 end
 
 # Simplification rules similar to those for FillArrays.jl:

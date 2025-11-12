@@ -1,196 +1,281 @@
-struct CartesianPair{A1, A2}
-    arg1::A1
-    arg2::A2
+# Cartesian product types
+# -----------------------
+# This file contains several different definitions for cartesian product objects.
+# The multiple types are required to get around Julia's type system not allowing parametric
+# supertypes.
+
+"""
+    CartesianPair(a, b)
+
+Represents a single element, the cartesian product of two arbitrary objects `a` and `b`.
+"""
+struct CartesianPair{A, B}
+    a::A
+    b::B
 end
-arguments(a::CartesianPair) = (arg1(a), arg2(a))
-arguments(a::CartesianPair, n::Int) = arguments(a)[n]
 
-arg1(a::CartesianPair) = getfield(a, :arg1)
-arg2(a::CartesianPair) = getfield(a, :arg2)
+"""
+    CartesianProduct(a::AbstractVector, b::AbstractVector)
 
-×(a1, a2) = CartesianPair(a1, a2)
-
-function Base.show(io::IO, a::CartesianPair)
-    print(io, arg1(a), " × ", arg2(a))
-    return nothing
-end
-
+Represents the cartesian product of two collections `a` and `b`.
+"""
 struct CartesianProduct{TA, TB, A <: AbstractVector{TA}, B <: AbstractVector{TB}} <:
     AbstractVector{CartesianPair{TA, TB}}
     a::A
     b::B
 end
-arguments(a::CartesianProduct) = (arg1(a), arg2(a))
-arguments(a::CartesianProduct, n::Int) = arguments(a)[n]
 
-arg1(a::CartesianProduct) = getfield(a, :a)
-arg2(a::CartesianProduct) = getfield(a, :b)
+"""
+    CartesianProductVector(a::AbstractVector, b::AbstractVector, values::AbstractVector{T}) <: AbstractVector{T}
 
-Base.copy(a::CartesianProduct) = copy(arg1(a)) × copy(arg2(a))
-
-function Base.show(io::IO, a::CartesianProduct)
-    print(io, arg1(a), " × ", arg2(a))
-    return nothing
-end
-function Base.show(io::IO, ::MIME"text/plain", a::CartesianProduct)
-    show(io, a)
-    return nothing
-end
-
-×(a1::AbstractVector, a2::AbstractVector) = CartesianProduct(a1, a2)
-Base.length(a::CartesianProduct) = length(arg1(a)) * length(arg2(a))
-Base.size(a::CartesianProduct) = (length(a),)
-
-function Base.getindex(a::CartesianProduct, i::CartesianProduct)
-    return arg1(a)[arg1(i)] × arg2(a)[arg2(i)]
-end
-function Base.getindex(a::CartesianProduct, i::CartesianPair)
-    return arg1(a)[arg1(i)] × arg2(a)[arg2(i)]
-end
-function Base.getindex(a::CartesianProduct, i::Int)
-    I = Tuple(CartesianIndices((length(arg2(a)), length(arg1(a))))[i])
-    return a[I[2] × I[1]]
-end
-
-struct CartesianProductVector{T, P <: CartesianProduct, V <: AbstractVector{T}} <:
-    AbstractVector{T}
-    product::P
+Similar to the [`CartesianProduct`](@ref), this represents the cartesian product of two collections `a` and `b`.
+However, as a vector it will behave as `values`, rather than `CartesianPair`s of the elements of `a` and `b`.
+"""
+struct CartesianProductVector{T, A, B, V <: AbstractVector{T}} <: AbstractVector{T}
+    a::A
+    b::B
     values::V
-end
-cartesianproduct(r::CartesianProductVector) = getfield(r, :product)
-unproduct(r::CartesianProductVector) = getfield(r, :values)
-Base.length(a::CartesianProductVector) = length(unproduct(a))
-Base.size(a::CartesianProductVector) = (length(a),)
-function Base.axes(r::CartesianProductVector)
-    prod = cartesianproduct(r)
-    prod_ax = only(axes(arg1(prod))) × only(axes(arg2(prod)))
-    return (CartesianProductUnitRange(prod_ax, only(axes(unproduct(r)))),)
-end
-function Base.copy(a::CartesianProductVector)
-    return CartesianProductVector(copy(cartesianproduct(a)), copy(unproduct(a)))
-end
-function Base.getindex(r::CartesianProductVector, i::Integer)
-    return unproduct(r)[i]
-end
 
-function Base.show(io::IO, a::CartesianProductVector)
-    show(io, unproduct(a))
-    return nothing
+    function CartesianProductVector{T, A, B, V}(
+            a::A, b::B, values::V
+        ) where {T, A, B, V <: AbstractVector{T}}
+        length(a) * length(b) == length(values) || throw(DimensionMismatch())
+        return new{T, A, B, V}(a, b, values)
+    end
 end
-function Base.show(io::IO, mime::MIME"text/plain", a::CartesianProductVector)
-    show(io, mime, cartesianproduct(a))
-    println(io)
-    show(io, mime, unproduct(a))
-    return nothing
-end
+CartesianProductVector(a, b, values::AbstractVector{T}) where {T} =
+    CartesianProductVector{T, typeof(a), typeof(b), typeof(values)}(a, b, values)
 
-struct CartesianProductUnitRange{T, P <: CartesianProduct, R <: AbstractUnitRange{T}} <:
-    AbstractUnitRange{T}
-    product::P
+"""
+    CartesianProductUnitRange(a::AbstractUnitRange, b::AbstractUnitRange, range::AbstractUnitRange{T}) <: AbstractUnitRange{T}
+
+Similar to [`CartesianProductVector`](@ref), this represents the cartesian product of two ranges `a` and `b`.
+However, as a range it will behave as `range`, rather than `CartesianPair`s of the elements of `a` and `b`.
+"""
+struct CartesianProductUnitRange{
+        T, A <: AbstractUnitRange{T}, B <: AbstractUnitRange{T}, R <: AbstractUnitRange{T},
+    } <: AbstractUnitRange{T}
+    a::A
+    b::B
     range::R
-end
-Base.first(r::CartesianProductUnitRange) = first(r.range)
-Base.last(r::CartesianProductUnitRange) = last(r.range)
 
-cartesianproduct(r::CartesianProductUnitRange) = getfield(r, :product)
-unproduct(r::CartesianProductUnitRange) = getfield(r, :range)
+    function CartesianProductUnitRange{T, A, B, R}(
+            a::A, b::B, range::R
+        ) where {T, A <: AbstractUnitRange{T}, B <: AbstractUnitRange{T}, R <: AbstractUnitRange{T}}
+        length(a) * length(b) == length(range) || throw(DimensionMismatch())
+        return new{T, A, B, R}(a, b, range)
+    end
+end
+CartesianProductUnitRange(a::AbstractUnitRange{T}, b::AbstractUnitRange{T}, range::AbstractUnitRange{T}) where {T} =
+    CartesianProductUnitRange{T, typeof(a), typeof(b), typeof(range)}(a, b, range)
+CartesianProductUnitRange(a::AbstractUnitRange{T}, b::AbstractUnitRange{T}) where {T} =
+    CartesianProductUnitRange(a, b, Base.OneTo{T}(length(a) * length(b)))
 
-arg1(a::CartesianProductUnitRange) = arg1(cartesianproduct(a))
-arg2(a::CartesianProductUnitRange) = arg2(cartesianproduct(a))
+const CartesianProductOneTo{T, A <: AbstractUnitRange{T}, B <: AbstractUnitRange{T}} =
+    CartesianProductUnitRange{T, A, B, Base.OneTo{T}}
 
-function Base.getindex(a::CartesianProductUnitRange, i::CartesianProductUnitRange)
-    prod = cartesianproduct(a)[cartesianproduct(i)]
-    range = unproduct(a)[unproduct(i)]
-    return cartesianrange(prod, range)
-end
+const AnyCartesian = Union{CartesianPair, CartesianProduct, CartesianProductVector, CartesianProductUnitRange}
 
-function Base.show(io::IO, a::CartesianProductUnitRange)
-    show(io, unproduct(a))
-    return nothing
-end
-function Base.show(io::IO, mime::MIME"text/plain", a::CartesianProductUnitRange)
-    show(io, mime, cartesianproduct(a))
-    println(io)
-    show(io, mime, unproduct(a))
-    return nothing
-end
+# Utility constructors
+# --------------------
+@doc """
+    ×(args...)
+    times(args...)
 
-function CartesianProductUnitRange(p::CartesianProduct)
-    return CartesianProductUnitRange(p, Base.OneTo(length(p)))
-end
-function CartesianProductUnitRange(a1, a2)
-    return CartesianProductUnitRange(a1 × a2)
-end
+Construct an object that represents the Cartesian product of the provided `args`.
+By default this constructs the singular [`CartesianPair`](@ref) for unknown values, while attempting to promote to more structured types wherever possible.
+See also [`CartesianProduct`](@ref), [`CartesianProductVector`](@ref) and [`CartesianProductUnitRange`](@ref).
+""" (×)
+# implement multi-argument version through a left fold
+×(x) = x
+×(x, y, z...) = foldl(×, (x, y, z...))
+const times = × # non-unicode alternative
+# fallback definition for cartesian product
+×(a, b) = CartesianPair(a, b)
+
+# attempt to construct most specific type
+×(a::AbstractVector, b::AbstractVector) = cartesianproduct(a, b)
+×(a::AbstractUnitRange{T}, b::AbstractUnitRange{T}) where {T} = cartesianrange(a, b)
+
+@doc """
+    cartesianproduct(a::AbstractVector, b::AbstractVector, [values::AbstractVector])::AbstractVector
+
+Construct an `AbstractVector` that represents the cartesian product `a × b`, but behaves as `values`.
+This behaves similar to [`×`](@ref), but forces promotion to a `AbstractVector`.
+""" cartesianproduct
+
+cartesianproduct(a::AbstractVector, b::AbstractVector) = CartesianProduct(a, b)
+cartesianproduct(a::AbstractVector, b::AbstractVector, values::AbstractVector) = CartesianProductVector(a, b, values)
+cartesianproduct(p::CartesianPair) = cartesianproduct(kroneckerfactors(p)...)
+cartesianproduct(p::CartesianPair, values::AbstractVector) = cartesianproduct(kroneckerfactors(p)..., values)
+
+@doc """
+    cartesianrange(a::AbstractUnitRange, b::AbstractUnitRange, [range::AbstractUnitRange])::AbstractUnitRange
+
+Construct a `UnitRange` that represents the cartesian product `a × b`, but behaves as `range`.
+This behaves similar to [`×`](@ref), but forces promotion to a `AbstractUnitRange`.
+""" cartesianrange
+
 to_product_indices(a::AbstractVector) = a
 to_product_indices(i::Integer) = Base.OneTo(i)
-cartesianrange(a1, a2) = cartesianrange(to_product_indices(a1) × to_product_indices(a2))
-function cartesianrange(p::CartesianPair)
-    p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
-    return cartesianrange(p′)
-end
-function cartesianrange(p::CartesianProduct)
-    p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
-    return cartesianrange(p′, Base.OneTo(length(p′)))
-end
-function cartesianrange(p::CartesianPair, range::AbstractUnitRange)
-    p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
-    return cartesianrange(p′, range)
-end
-function cartesianrange(p::CartesianProduct, range::AbstractUnitRange)
-    p′ = to_product_indices(arg1(p)) × to_product_indices(arg2(p))
-    return CartesianProductUnitRange(p′, range)
-end
 
+cartesianrange(a, b) = CartesianProductUnitRange(to_product_indices(a), to_product_indices(b))
+cartesianrange(a, b, range::AbstractUnitRange) = CartesianProductUnitRange(to_product_indices(a), to_product_indices(b), range)
+cartesianrange(p::Union{CartesianPair, CartesianProduct}) = cartesianrange(kroneckerfactors(p)...)
+cartesianrange(p::Union{CartesianPair, CartesianProduct}, range::AbstractUnitRange) = cartesianrange(kroneckerfactors(p)..., range)
+
+# KroneckerArrays interface
+# -------------------------
+kroneckerfactors(ab::AnyCartesian) = (ab.a, ab.b)
+kroneckerfactortypes(::Type{T}) where {T <: CartesianPair} = fieldtypes(T)
+kroneckerfactortypes(::Type{T}) where {T <: CartesianProduct} = kroneckerfactortypes(eltype(T))
+kroneckerfactortypes(::Type{<:CartesianProductVector{T, A, B}}) where {T, A, B} = (A, B)
+kroneckerfactortypes(::Type{<:CartesianProductUnitRange{T, A, B}}) where {T, A, B} = (A, B)
+
+@doc """
+    unproduct(a)
+
+For an object that holds a cartesian product of indices and their corresponding values,
+this function removes the cartesian product layer and returns only the values.
+""" unproduct
+
+unproduct(ab::CartesianProduct) = collect(ab)
+unproduct(ab::CartesianProductVector) = ab.values
+unproduct(ab::CartesianProductUnitRange) = ab.range
+
+# AbstractVector interface
+# ------------------------
+Base.size(a::CartesianProduct) = (prod(length, kroneckerfactors(a)),)
+Base.size(a::CartesianProductVector) = size(unproduct(a))
+Base.size(a::CartesianProductUnitRange) = size(unproduct(a))
+
+# function Base.axes(r::CartesianProduct)
+#     prod_ax = only.(axes.(kroneckerfactors(r)))
+#     return (cartesianrange(prod_ax...),)
+# end
+function Base.axes(r::CartesianProductVector)
+    prod_ax = only.(axes.(kroneckerfactors(r)))
+    return (cartesianrange(prod_ax..., only(axes(r.values))),)
+end
 function Base.axes(r::CartesianProductUnitRange)
-    prod = cartesianproduct(r)
-    prod_ax = only(axes(arg1(prod))) × only(axes(arg2(prod)))
-    return (CartesianProductUnitRange(prod_ax, only(axes(unproduct(r)))),)
+    prod_ax = only.(axes.(kroneckerfactors(r)))
+    return (cartesianrange(prod_ax..., only(axes(r.range))),)
 end
-
-function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::CartesianPair)
-    return checkindex(Bool, arg1(inds), arg1(i)) && checkindex(Bool, arg2(inds), arg2(i))
-end
-
-const CartesianProductOneTo{T, P <: CartesianProduct, R <: Base.OneTo{T}} = CartesianProductUnitRange{
-    T, P, R,
-}
+# TODO: add comment why this is here
 Base.axes(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
 Base.axes1(S::Base.Slice{<:CartesianProductOneTo}) = S.indices
 Base.unsafe_indices(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
 
+Base.copy(a::CartesianProduct) = ×(copy.(kroneckerfactors(a)...)...)
+Base.copy(a::CartesianProductVector) = cartesianproduct(copy.(kroneckerfactors(a))..., copy(unproduct(a)))
+
+@inline Base.getindex(a::CartesianProduct, i::CartesianProduct) =
+    ×(Base.getindex.(kroneckerfactors(a), kroneckerfactors(i))...)
+@inline Base.getindex(a::CartesianProduct, i::CartesianPair) =
+    ×(Base.getindex.(kroneckerfactors(a), kroneckerfactors(i))...)
+
+Base.@propagate_inbounds function Base.getindex(a::CartesianProduct, i::Int)
+    I = Tuple(CartesianIndices(reverse(length.(kroneckerfactors(a))))[i])
+    return a[I[2] × I[1]]
+end
+@inline Base.getindex(r::CartesianProductVector, i::Int) = r.values[i]
+
+Base.@propagate_inbounds function Base.getindex(a::CartesianProductUnitRange, i::CartesianProductUnitRange)
+    return cartesianrange(Base.getindex.(kroneckerfactors(a), kroneckerfactors(i))..., a.range[i.range])
+end
+
 function Base.getindex(a::CartesianProductUnitRange, I::CartesianProduct)
-    prod = cartesianproduct(a)
-    prod_I = arg1(prod)[arg1(I)] × arg2(prod)[arg2(I)]
-    return CartesianProductVector(prod_I, map(Base.Fix1(getindex, a), I))
+    return cartesianproduct(Base.getindex.(kroneckerfactors(a), kroneckerfactors(I))..., map(Base.Fix1(getindex, a), I))
 end
 
 # Reverse map from CartesianPair to linear index in the range.
-function Base.getindex(inds::CartesianProductUnitRange, i::CartesianPair)
-    i′ = (findfirst(==(arg2(i)), arg2(inds)), findfirst(==(arg1(i)), arg1(inds)))
-    return inds[LinearIndices((length(arg2(inds)), length(arg1(inds))))[i′...]]
+Base.@propagate_inbounds function Base.getindex(inds::CartesianProductUnitRange, i::CartesianPair)
+    indsa, indsb = kroneckerfactors(inds)
+    ia, ib = kroneckerfactors(i)
+    i′ = CartesianIndex(findfirst(==(ib), indsb), findfirst(==(ia), indsa))
+    i_linear = LinearIndices(reverse(length.(kroneckerfactors(inds))))[i′]
+    return inds[i_linear]
 end
 
-using Base.Broadcast: DefaultArrayStyle
+function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::CartesianPair)
+    indsa, indsb = kroneckerfactors(inds)
+    ia, ib = kroneckerfactors(i)
+    return checkindex(Bool, indsa, ia) && checkindex(Bool, indsb, ib)
+end
+
+
+# AbstractUnitRange interface
+# ---------------------------
+Base.first(r::CartesianProductUnitRange) = first(r.range)
+Base.last(r::CartesianProductUnitRange) = last(r.range)
+
+
+# Broadcasting
+# ------------
 for f in (:+, :-)
-    @eval begin
-        function Broadcast.broadcasted(
-                ::DefaultArrayStyle{1}, ::typeof($f), r::CartesianProductUnitRange, x::Integer
-            )
-            return CartesianProductUnitRange(cartesianproduct(r), $f.(unproduct(r), x))
-        end
-        function Broadcast.broadcasted(
-                ::DefaultArrayStyle{1}, ::typeof($f), x::Integer, r::CartesianProductUnitRange
-            )
-            return CartesianProductUnitRange(cartesianproduct(r), $f.(x, unproduct(r)))
-        end
-    end
+    @eval BC.broadcasted(::BC.DefaultArrayStyle{1}, ::typeof($f), r::CartesianProductUnitRange, x::Integer) =
+        cartesianrange(kroneckerfactors(r)..., $f.(unproduct(r), x))
+    @eval BC.broadcasted(::BC.DefaultArrayStyle{1}, ::typeof($f), x::Integer, r::CartesianProductUnitRange) =
+        cartesianrange(kroneckerfactors(r)..., $f.(x, unproduct(r)))
 end
 
-using Base.Broadcast: axistype
-function Base.Broadcast.axistype(
-        r1::CartesianProductUnitRange, r2::CartesianProductUnitRange
-    )
-    prod = axistype(arg1(r1), arg1(r2)) × axistype(arg2(r1), arg2(r2))
-    range = axistype(unproduct(r1), unproduct(r2))
-    return cartesianrange(prod, range)
+function BC.axistype(r1::CartesianProductUnitRange, r2::CartesianProductUnitRange)
+    r1a, r1b = kroneckerfactors(r1)
+    r2a, r2b = kroneckerfactors(r2)
+    return cartesianrange(splat(BC.axistype).(((r1a, r2a), (r1b, r2b), (unproduct(r1), unproduct(r2))))...)
+end
+
+
+# Show
+# ----
+function Base.show(io::IO, ab::Union{CartesianPair, CartesianProduct})
+    a, b = kroneckerfactors(ab)
+    show(io, a)
+    print(io, " × ")
+    show(io, b)
+    return nothing
+end
+function Base.show(io::IO, mime::MIME"text/plain", ab::Union{CartesianPair, CartesianProduct})
+    a, b = kroneckerfactors(ab)
+    compact = get(io, :compact, true)::Bool
+    show(io, mime, a)
+    compact || println(io)
+    print(io, " × ")
+    compact || println(io)
+    show(io, mime, b)
+    return nothing
+end
+
+function Base.show(io::IO, ab::CartesianProductVector)
+    a, b = kroneckerfactors(ab)
+    print(io, "cartesianproduct(")
+    show(io, a)
+    print(io, ", ")
+    show(io, b)
+    print(io, ", ")
+    show(io, unproduct(ab))
+    print(io, ")")
+    return nothing
+end
+
+function Base.show(io::IO, ab::CartesianProductUnitRange)
+    a, b = kroneckerfactors(ab)
+    range = unproduct(ab)
+    print(io, "cartesianrange(")
+    show(io, a)
+    print(io, ", ")
+    show(io, b)
+    print(io, ", ")
+    show(io, unproduct(ab))
+    print(io, ")")
+    return nothing
+end
+function Base.show(io::IO, ab::CartesianProductOneTo)
+    a, b = kroneckerfactors(ab)
+    print(io, "(")
+    show(io, a)
+    print(io, " × ")
+    show(io, b)
+    print(io, ")")
+    return nothing
 end

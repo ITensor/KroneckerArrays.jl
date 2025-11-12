@@ -6,4 +6,4 @@ KroneckerArrays = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 [compat]
 Documenter = "1"
 Literate = "2"
-KroneckerArrays = "0.2"
+KroneckerArrays = "0.3"

@@ -1,70 +1,51 @@
 module KroneckerArraysBlockSparseArraysExt
 
-using BlockArrays: Block
-using BlockSparseArrays: BlockIndexVector, GenericBlockIndex
-using KroneckerArrays: CartesianPair, CartesianProduct
-function Base.getindex(
-        b::Block{N},
-        I::Vararg{Union{CartesianPair, CartesianProduct}, N}
-    ) where {N}
-    return GenericBlockIndex(b, I)
-end
-function Base.getindex(b::Block{N}, I::Vararg{CartesianProduct, N}) where {N}
-    return BlockIndexVector(b, I)
-end
+using KroneckerArrays: KroneckerArrays, KroneckerArray, KroneckerVector,
+    CartesianPair, CartesianProduct, CartesianProductUnitRange,
+    kroneckerfactors, ⊗, isactive, cartesianrange
+using BlockArrays: BlockArrays, Block, AbstractBlockedUnitRange, mortar
+using BlockSparseArrays: BlockSparseArrays, BlockIndexVector, GenericBlockIndex, ZeroBlocks,
+    blockrange, eachblockaxis, mortar_axis
+using DiagonalArrays: ShapeInitializer
 
-using BlockSparseArrays: BlockSparseArrays, blockrange
-using KroneckerArrays: CartesianPair, CartesianProduct, cartesianrange
-function BlockSparseArrays.blockrange(bs::Vector{<:CartesianPair})
-    return blockrange(map(cartesianrange, bs))
-end
-function BlockSparseArrays.blockrange(bs::Vector{<:CartesianProduct})
-    return blockrange(map(cartesianrange, bs))
-end
 
-using BlockArrays: BlockArrays, mortar
-using BlockSparseArrays: blockrange
-using KroneckerArrays: CartesianProductUnitRange
+Base.getindex(b::Block{N}, I::Vararg{Union{CartesianPair, CartesianProduct}, N}) where {N} =
+    GenericBlockIndex(b, I)
+Base.getindex(b::Block{N}, I::Vararg{CartesianProduct, N}) where {N} =
+    BlockIndexVector(b, I)
+
+BlockSparseArrays.blockrange(bs::Vector{<:CartesianPair}) = blockrange(map(cartesianrange, bs))
+BlockSparseArrays.blockrange(bs::Vector{<:CartesianProduct}) = blockrange(map(cartesianrange, bs))
+
 # Makes sure that `mortar` results in a `BlockVector` with the correct
 # axes, otherwise the axes would not preserve the Kronecker structure.
 # This is helpful when indexing `BlockUnitRange`, for example:
 # https://github.com/JuliaArrays/BlockArrays.jl/blob/v1.7.1/src/blockaxis.jl#L540-L547
-function BlockArrays.mortar(blocks::AbstractVector{<:CartesianProductUnitRange})
-    return mortar(blocks, (blockrange(map(Base.axes1, blocks)),))
-end
+BlockArrays.mortar(blocks::AbstractVector{<:CartesianProductUnitRange}) =
+    mortar(blocks, (blockrange(map(Base.axes1, blocks)),))
 
-using BlockArrays: AbstractBlockedUnitRange
-using BlockSparseArrays: Block, ZeroBlocks, eachblockaxis, mortar_axis
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, arg1, arg2, isactive
 
-function KroneckerArrays.arg1(r::AbstractBlockedUnitRange)
-    return mortar_axis(arg1.(eachblockaxis(r)))
-end
-function KroneckerArrays.arg2(r::AbstractBlockedUnitRange)
-    return mortar_axis(arg2.(eachblockaxis(r)))
-end
+KroneckerArrays.kroneckerfactors(r::AbstractBlockedUnitRange, i::Int) =
+    mortar_axis(kroneckerfactors.(eachblockaxis(r), i))
+KroneckerArrays.kroneckerfactors(r::AbstractBlockedUnitRange) =
+    (kroneckerfactors(r, 1), kroneckerfactors(r, 2))
 
-function block_axes(
-        ax::NTuple{N, AbstractUnitRange{<:Integer}}, I::Vararg{Block{1}, N}
-    ) where {N}
+function block_axes(ax::NTuple{N, AbstractUnitRange{<:Integer}}, I::Vararg{Block{1}, N}) where {N}
     return ntuple(N) do d
         return only(axes(ax[d][I[d]]))
     end
 end
-function block_axes(ax::NTuple{N, AbstractUnitRange{<:Integer}}, I::Block{N}) where {N}
-    return block_axes(ax, Tuple(I)...)
-end
-
-using DiagonalArrays: ShapeInitializer
+block_axes(ax::NTuple{N, AbstractUnitRange{<:Integer}}, I::Block{N}) where {N} =
+    block_axes(ax, Tuple(I)...)
 
 ## TODO: Is this needed?
 function Base.getindex(
         a::ZeroBlocks{N, KroneckerArray{T, N, A1, A2}}, I::Vararg{Int, N}
     ) where {T, N, A1 <: AbstractArray{T, N}, A2 <: AbstractArray{T, N}}
-    ax_a1 = map(arg1, a.parentaxes)
-    ax_a2 = map(arg2, a.parentaxes)
-    block_ax_a1 = arg1.(block_axes(a.parentaxes, Block(I)))
-    block_ax_a2 = arg2.(block_axes(a.parentaxes, Block(I)))
+    ax_a1 = kroneckerfactors.(a.parentaxes, 1)
+    ax_a2 = kroneckerfactors.(a.parentaxes, 2)
+    block_ax_a1 = kroneckerfactors.(block_axes(a.parentaxes, Block(I)), 1)
+    block_ax_a2 = kroneckerfactors.(block_axes(a.parentaxes, Block(I)), 2)
     # TODO: Is this a good definition? It is similar to
     # the definition of `similar` and `adapt_structure`.
     return if isactive(A1) == isactive(A2)
@@ -76,10 +57,7 @@ function Base.getindex(
     end
 end
 
-using BlockSparseArrays: BlockSparseArrays
-using KroneckerArrays: KroneckerArrays, KroneckerVector
-function BlockSparseArrays.to_truncated_indices(values::KroneckerVector, I)
-    return KroneckerArrays.to_truncated_indices(values, I)
-end
+BlockSparseArrays.to_truncated_indices(values::KroneckerVector, I) =
+    KroneckerArrays.to_truncated_indices(values, I)
 
 end
