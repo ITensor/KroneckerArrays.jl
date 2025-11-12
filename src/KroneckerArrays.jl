@@ -41,9 +41,9 @@ kroneckerfactortypes(T::Type) = throw(MethodError(kroneckerfactortypes, (T,)))
     otimes(args...)
 
 Construct an object that represents the Kronecker product of the provided `args`.
-""" otimes
-function otimes(a, b) end
-const ⊗ = otimes # unicode alternative
+""" (⊗)
+function ⊗(a, b) end
+const otimes = ⊗ # non-unicode alternative
 
 # Includes
 # --------

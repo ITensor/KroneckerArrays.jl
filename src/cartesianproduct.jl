@@ -85,11 +85,11 @@ const AnyCartesian = Union{CartesianPair, CartesianProduct, CartesianProductVect
 Construct an object that represents the Cartesian product of the provided `args`.
 By default this constructs the singular [`CartesianPair`](@ref) for unknown values, while attempting to promote to more structured types wherever possible.
 See also [`CartesianProduct`](@ref), [`CartesianProductVector`](@ref) and [`CartesianProductUnitRange`](@ref).
-""" times
+""" (×)
 # implement multi-argument version through a left fold
-times(x) = x
-times(x, y, z...) = foldl(times, (x, y, z...))
-const × = times # unicode alternative
+×(x) = x
+×(x, y, z...) = foldl(×, (x, y, z...))
+const times = × # non-unicode alternative
 # fallback definition for cartesian product
 ×(a, b) = CartesianPair(a, b)
 
