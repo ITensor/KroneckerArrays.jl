@@ -4,7 +4,7 @@ using BlockSparseArrays:
     BlockSparseArray, BlockSparseMatrix, blockrange, blocksparse, blocktype, eachblockaxis
 using DiagonalArrays: DeltaMatrix, δ
 using JLArrays: JLArray
-using KroneckerArrays: KroneckerArray, ⊗, ×, arg1, arg2, cartesianrange
+using KroneckerArrays: KroneckerArray, ⊗, ×, kroneckerfactors, cartesianrange
 using LinearAlgebra: norm
 using MatrixAlgebraKit: svd_compact, svd_trunc
 using StableRNGs: StableRNG
@@ -14,17 +14,16 @@ using TestExtras: @constinferred, @constinferred_broken
 elts = (Float32, Float64, ComplexF32)
 arrayts = (Array, JLArray)
 @testset "BlockSparseArraysExt, KroneckerArray blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
-        arrayts,
-        elt in elts
+        arrayts, elt in elts
 
     # BlockUnitRange with CartesianProduct blocks
-    r = blockrange([2 × 3, 3 × 4])
-    @test r[Block(1)] ≡ cartesianrange(2 × 3, 1:6)
-    @test r[Block(2)] ≡ cartesianrange(3 × 4, 7:18)
+    r = blockrange([cartesianrange(2, 3), cartesianrange(3, 4)])
+    @test r[Block(1)] ≡ cartesianrange(2, 3, 1:6)
+    @test r[Block(2)] ≡ cartesianrange(3, 4, 7:18)
     @test eachblockaxis(r)[1] ≡ cartesianrange(2, 3)
     @test eachblockaxis(r)[2] ≡ cartesianrange(3, 4)
-    @test blockisequal(arg1(r), blockedrange([2, 3]))
-    @test blockisequal(arg2(r), blockedrange([3, 4]))
+    @test blockisequal(kroneckerfactors(r, 1), blockedrange([2, 3]))
+    @test blockisequal(kroneckerfactors(r, 2), blockedrange([3, 4]))
 
     r = blockrange([2 × 3, 3 × 4])
     r′ = r[Block.([2, 1])]
@@ -198,9 +197,7 @@ arrayts = (Array, JLArray)
 end
 
 @testset "BlockSparseArraysExt, DeltaKronecker blocks (arraytype=$arrayt, eltype=$elt)" for arrayt in
-        arrayts,
-        elt in elts
-
+        arrayts, elt in elts
     dev = adapt(arrayt)
     r = @constinferred blockrange([2 × 2, 2 × 3])
     d = Dict(
@@ -248,13 +245,13 @@ end
     I = [I1, I2]
     b = a[I, I]
     @test b[Block(1, 1)] == a[Block(1, 1)[(1:2) × [1], (1:2) × [1]]]
-    @test arg1(b[Block(1, 1)]) isa DeltaMatrix
+    @test kroneckerfactors(b[Block(1, 1)], 1) isa DeltaMatrix
     @test iszero(b[Block(2, 1)])
-    @test arg1(b[Block(2, 1)]) isa DeltaMatrix
+    @test kroneckerfactors(b[Block(2, 1)], 1) isa DeltaMatrix
     @test iszero(b[Block(1, 2)])
-    @test arg1(b[Block(1, 2)]) isa DeltaMatrix
+    @test kroneckerfactors(b[Block(1, 2)], 1) isa DeltaMatrix
     @test b[Block(2, 2)] == a[Block(2, 2)[(1:3) × [1, 3], (1:3) × [1, 3]]]
-    @test arg1(b[Block(2, 2)]) isa DeltaMatrix
+    @test kroneckerfactors(b[Block(2, 2)], 1) isa DeltaMatrix
 
     # Slicing
     r = blockrange([2 × 2, 3 × 3])
