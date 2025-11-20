@@ -80,7 +80,11 @@ end
 
 for f in (:eig_vals, :eigh_vals, :svd_vals)
     f! = Symbol(f, :!)
-    @eval MAK.initialize_output(::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm) = nothing
+    @eval function MAK.initialize_output(
+            ::typeof($f!), a::AbstractMatrix, alg::KroneckerAlgorithm
+        )
+        return nothing
+    end
     @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F, alg::KroneckerAlgorithm)
         a, b = kroneckerfactors(ab)
         algA, algB = kroneckerfactors(alg)
@@ -88,26 +92,97 @@ for f in (:eig_vals, :eigh_vals, :svd_vals)
     end
 end
 
-for f in (:left_orth, :right_orth)
-    f! = Symbol(f, :!)
-    @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) = nothing
-    @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
-        a, b = kroneckerfactors(ab)
-        Fa = MAK.$f(a; kwargs..., kwargs1...)
-        Fb = MAK.$f(b; kwargs..., kwargs2...)
-        return Fa .⊗ Fb
+# TODO: Delete this loop once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/104
+# is merged.
+for kind in ("polar", "qr", "svd")
+    @eval begin
+        function MAK.initialize_output(
+                ::typeof(left_orth!), a::AbstractKroneckerMatrix,
+                alg::MAK.LeftOrthAlgorithm{Symbol($kind)},
+            )
+            return nothing
+        end
+        function MAK.left_orth!(
+                ab::AbstractKroneckerMatrix, F, alg::MAK.LeftOrthAlgorithm{Symbol($kind)};
+                kwargs1 = (;), kwargs2 = (;), kwargs...,
+            )
+            a, b = kroneckerfactors(ab)
+            Fa = MAK.left_orth!(a; kwargs..., kwargs1...)
+            Fb = MAK.left_orth!(b; kwargs..., kwargs2...)
+            return Fa .⊗ Fb
+        end
     end
 end
 
-for f in [:left_null, :right_null]
-    f! = Symbol(f, :!)
-    @eval MAK.initialize_output(::typeof($f!), a::AbstractKroneckerMatrix) =
-        nothing
-    @eval function MAK.$f!(ab::AbstractKroneckerMatrix, F; kwargs1 = (;), kwargs2 = (;), kwargs...)
-        a, b = kroneckerfactors(ab)
-        Na = MAK.$f(a; kwargs..., kwargs1...)
-        Nb = MAK.$f(b; kwargs..., kwargs2...)
-        return Na ⊗ Nb
+# TODO: Delete this loop once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/104
+# is merged.
+for kind in ("lq", "polar", "svd")
+    @eval begin
+        function MAK.initialize_output(
+                ::typeof(right_orth!), a::AbstractKroneckerMatrix,
+                alg::MAK.RightOrthAlgorithm{Symbol($kind)},
+            )
+            return nothing
+        end
+        function MAK.right_orth!(
+                ab::AbstractKroneckerMatrix, F, alg::MAK.RightOrthAlgorithm{Symbol($kind)};
+                kwargs1 = (;), kwargs2 = (;), kwargs...,
+            )
+            a, b = kroneckerfactors(ab)
+            Fa = MAK.right_orth!(a; kwargs..., kwargs1...)
+            Fb = MAK.right_orth!(b; kwargs..., kwargs2...)
+            return Fa .⊗ Fb
+        end
+    end
+end
+
+# TODO: Delete this loop once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/104
+# is merged.
+for Alg in (
+        :(MAK.LeftNullViaQR),
+        :(MAK.LeftNullViaSVD{<:MAK.TruncatedAlgorithm}),
+        :(MAK.LeftNullViaSVD{<:MAK.TruncatedAlgorithm{<:MAK.GPU_Randomized}}),
+    )
+    @eval begin
+        function MAK.initialize_output(
+                ::typeof(left_null!), a::AbstractKroneckerMatrix, alg::$Alg
+            )
+            return nothing
+        end
+        function MAK.left_null!(
+                ab::AbstractKroneckerMatrix, F, alg::$Alg;
+                kwargs1 = (;), kwargs2 = (;), kwargs...,
+            )
+            a, b = kroneckerfactors(ab)
+            Na = MAK.left_null!(a; kwargs..., kwargs1...)
+            Nb = MAK.left_null!(b; kwargs..., kwargs2...)
+            return Na ⊗ Nb
+        end
+    end
+end
+
+# TODO: Delete this loop once https://github.com/QuantumKitHub/MatrixAlgebraKit.jl/pull/104
+# is merged.
+for Alg in (
+        :(MAK.RightNullViaLQ),
+        :(MAK.RightNullViaSVD{<:MAK.TruncatedAlgorithm}),
+        :(MAK.RightNullViaSVD{<:MAK.TruncatedAlgorithm{<:MAK.GPU_Randomized}}),
+    )
+    @eval begin
+        function MAK.initialize_output(
+                ::typeof(right_null!), a::AbstractKroneckerMatrix, alg::$Alg
+            )
+            return nothing
+        end
+        function MAK.right_null!(
+                ab::AbstractKroneckerMatrix, F, alg::$Alg;
+                kwargs1 = (;), kwargs2 = (;), kwargs...,
+            )
+            a, b = kroneckerfactors(ab)
+            Na = MAK.right_null!(a; kwargs..., kwargs1...)
+            Nb = MAK.right_null!(b; kwargs..., kwargs2...)
+            return Na ⊗ Nb
+        end
     end
 end
 
