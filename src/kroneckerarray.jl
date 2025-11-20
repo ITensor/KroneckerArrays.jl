@@ -415,6 +415,29 @@ function Base.reshape(
     return reshape(a, kroneckerfactors.(ax, 1)) ⊗ reshape(b, kroneckerfactors.(ax, 2))
 end
 
+function Base.fill!(ab::AbstractKroneckerArray, v)
+    a, b = kroneckerfactors(ab)
+    fill!(a, √v)
+    fill!(b, √v)
+    return ab
+end
+function Base.fill!(ab::AbstractKroneckerMatrix, v)
+    a, b = kroneckerfactors(ab)
+    (!isactive(a) && isone(a)) && (fill!(b, v); return ab)
+    (!isactive(b) && isone(b)) && (fill!(a, v); return ab)
+    fill!(a, √v)
+    fill!(b, √v)
+    return ab
+end
+function Base.fill!(ab::AbstractKroneckerVector, v)
+    a, b = kroneckerfactors(ab)
+    (!isactive(a) && all(isone, a)) && (fill!(b, v); return ab)
+    (!isactive(b) && all(isone, b)) && (fill!(a, v); return ab)
+    fill!(a, √v)
+    fill!(b, √v)
+    return ab
+end
+
 using Base.Broadcast: Broadcast, AbstractArrayStyle, BroadcastStyle, Broadcasted
 
 struct KroneckerStyle{N, A, B} <: BC.AbstractArrayStyle{N} end
