@@ -42,7 +42,7 @@ kroneckerfactortypes(T::Type) = throw(MethodError(kroneckerfactortypes, (T,)))
 
 Construct an object that represents the Kronecker product of the provided `args`.
 """ (⊗)
-function ⊗(a, b) end
+function ⊗ end
 const otimes = ⊗ # non-unicode alternative
 
 # Includes
