@@ -19,6 +19,9 @@ TensorProducts = "decf83d6-1968-43f4-96dc-fdb3fe15fc6d"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestExtras = "5ed8adda-3752-4e41-b88a-e8b09835ee3a"
 
+[sources]
+KroneckerArrays = {path = ".."}
+
 [compat]
 Adapt = "4"
 Aqua = "0.8"
@@ -35,7 +38,7 @@ MatrixAlgebraKit = "0.6"
 SafeTestsets = "0.1"
 StableRNGs = "1.0"
 Suppressor = "0.2"
-TensorAlgebra = "0.3.10, 0.4"
+TensorAlgebra = "0.5"
 TensorProducts = "0.1.7"
 Test = "1.10"
 TestExtras = "0.3"
