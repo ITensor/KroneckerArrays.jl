@@ -1,6 +1,6 @@
 name = "KroneckerArrays"
 uuid = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [deps]
@@ -36,7 +36,7 @@ GPUArraysCore = "0.2"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.10"
 MatrixAlgebraKit = "0.6"
-TensorAlgebra = "0.3.10, 0.4"
+TensorAlgebra = "0.5"
 TensorProducts = "0.1.7"
 TypeParameterAccessors = "0.4.2"
 julia = "1.10"
