@@ -20,7 +20,6 @@ TestExtras = "5ed8adda-3752-4e41-b88a-e8b09835ee3a"
 
 [sources]
 KroneckerArrays = {path = ".."}
-TensorAlgebra = {path = "/Users/mfishman/.julia/dev/TensorAlgebra"}
 
 [compat]
 Adapt = "4"
