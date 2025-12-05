@@ -1,9 +1,12 @@
-using TensorAlgebra: matricize, tensor_product_axis, unmatricize
+using TensorAlgebra: matricize, tensor_product_axis, trivial_axis, unmatricize
 using KroneckerArrays: ⊗, cartesianrange, kroneckerfactors, unproduct
 using Test: @test, @testset
 
 @testset "TensorAlgebraExt" begin
     @testset "tensor_product_axis" begin
+        r = cartesianrange(2, 3)
+        @test trivial_axis(r) ≡ cartesianrange(1, 1)
+
         r1 = cartesianrange(2, 3)
         r2 = cartesianrange(4, 5)
         r = tensor_product_axis(r1, r2)
@@ -15,7 +18,8 @@ using Test: @test, @testset
     @testset "matricize/unmatricize" begin
         a = randn(2, 2, 2) ⊗ randn(3, 3, 3)
         m = matricize(a, (1, 2), (3,))
-        @test m == matricize(kroneckerfactors(a, 1), (1, 2), (3,)) ⊗ matricize(kroneckerfactors(a, 2), (1, 2), (3,))
+        @test m == matricize(kroneckerfactors(a, 1), (1, 2), (3,)) ⊗
+            matricize(kroneckerfactors(a, 2), (1, 2), (3,))
         @test unmatricize(m, (axes(a, 1), axes(a, 2)), (axes(a, 3),)) == a
     end
 end
