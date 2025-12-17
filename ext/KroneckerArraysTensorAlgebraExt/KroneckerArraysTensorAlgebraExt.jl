@@ -14,6 +14,9 @@ function KroneckerFusion{A, B}() where {A <: FusionStyle, B <: FusionStyle}
 end
 KroneckerArrays.kroneckerfactors(style::KroneckerFusion) = (style.a, style.b)
 KroneckerArrays.kroneckerfactortypes(::Type{KroneckerFusion{A, B}}) where {A, B} = (A, B)
+function KroneckerArrays.:⊗(style1::FusionStyle, style2::FusionStyle)
+    return KroneckerFusion(style1, style2)
+end
 
 function TensorAlgebra.FusionStyle(A::Type{<:AbstractKroneckerArray})
     return KroneckerFusion(FusionStyle.(kroneckerfactortypes(A))...)
