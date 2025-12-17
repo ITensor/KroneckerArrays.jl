@@ -1,4 +1,5 @@
-using TensorAlgebra: FusionStyle, matricize, tensor_product_axis, trivial_axis, unmatricize
+using TensorAlgebra: FusionStyle, ReshapeFusion, matricize, tensor_product_axis,
+    trivial_axis, unmatricize
 using KroneckerArrays: ⊗, cartesianrange, kroneckerfactors, unproduct
 using Test: @test, @testset
 
