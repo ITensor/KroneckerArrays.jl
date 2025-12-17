@@ -1,8 +1,17 @@
-using TensorAlgebra: matricize, tensor_product_axis, trivial_axis, unmatricize
+using TensorAlgebra: FusionStyle, ReshapeFusion, matricize, tensor_product_axis,
+    trivial_axis, unmatricize
 using KroneckerArrays: ⊗, cartesianrange, kroneckerfactors, unproduct
 using Test: @test, @testset
 
 @testset "TensorAlgebraExt" begin
+    @testset "FusionStyle" begin
+        a1 = randn(2, 2, 2)
+        a2 = randn(2, 2, 2)
+        a = a1 ⊗ a2
+        @test FusionStyle(a) ≡ ReshapeFusion() ⊗ ReshapeFusion()
+        @test kroneckerfactors(FusionStyle(a)) ≡ (ReshapeFusion(), ReshapeFusion())
+        @test typeof(FusionStyle(a))() ≡ FusionStyle(a)
+    end
     @testset "tensor_product_axis" begin
         r = cartesianrange(2, 3)
         @test trivial_axis(r) ≡ cartesianrange(1, 1)
