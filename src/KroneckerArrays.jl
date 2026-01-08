@@ -9,7 +9,7 @@ export ⊗, ×
 import Base.Broadcast as BC
 using LinearAlgebra: LinearAlgebra, Diagonal, diag, isdiag
 using DiagonalArrays: DiagonalArrays
-using DerivableInterfaces: DerivableInterfaces
+using FunctionImplementations: FunctionImplementations
 using MapBroadcast: MapBroadcast, MapFunction, LinearCombination, Summed
 using GPUArraysCore: GPUArraysCore
 using Adapt: Adapt

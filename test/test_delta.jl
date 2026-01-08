@@ -1,7 +1,7 @@
 using Adapt: adapt
-using DerivableInterfaces: zero!
 using DiagonalArrays: δ
 using FillArrays: Eye, Zeros
+using FunctionImplementations: zero!
 using JLArrays: JLArray, jl
 using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, ×, kroneckerfactors, cartesianrange
 using LinearAlgebra: det, norm, pinv
@@ -265,7 +265,7 @@ using TestExtras: @constinferred
         @test a′ isa KroneckerArray{Float32, ndims(a)}
     end
 
-    # DerivableInterfaces.zero!
+    # FunctionImplementations.zero!
     for a in (Eye(2) ⊗ randn(3, 3), randn(3, 3) ⊗ Eye(2))
         zero!(a)
         @test iszero(a)

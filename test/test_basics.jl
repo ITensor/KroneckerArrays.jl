@@ -1,7 +1,7 @@
 using Adapt: adapt
 using Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted
-using DerivableInterfaces: zero!
 using DiagonalArrays: diagonal
+using FunctionImplementations: zero!
 using GPUArraysCore: @allowscalar
 using JLArrays: JLArray
 using KroneckerArrays: KroneckerArrays, KroneckerArray, KroneckerStyle,
