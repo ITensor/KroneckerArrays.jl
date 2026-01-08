@@ -1,13 +1,13 @@
 name = "KroneckerArrays"
 uuid = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.3.6"
+version = "0.3.7"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-DerivableInterfaces = "6c5e35bf-e59e-4898-b73c-732dcc4ba65f"
 DiagonalArrays = "74fd4be6-21e2-4f6f-823a-4360d37c7a77"
 FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+FunctionImplementations = "7c7cc465-9c6a-495f-bdd1-f42428e86d0c"
 GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MapBroadcast = "ebd9b9da-f48d-417c-9660-449667d60261"
@@ -27,9 +27,9 @@ KroneckerArraysTensorAlgebraExt = "TensorAlgebra"
 Adapt = "4.3"
 BlockArrays = "1.6"
 BlockSparseArrays = "0.9, 0.10.3"
-DerivableInterfaces = "0.5.3"
 DiagonalArrays = "0.3.19"
 FillArrays = "1.13"
+FunctionImplementations = "0.3.1"
 GPUArraysCore = "0.2"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.10"
@@ -37,3 +37,6 @@ MatrixAlgebraKit = "0.6"
 TensorAlgebra = "0.6.3"
 TypeParameterAccessors = "0.4.2"
 julia = "1.10"
+
+[workspace]
+projects = ["benchmark", "dev", "docs", "examples", "test"]

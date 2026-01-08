@@ -1,5 +1,8 @@
 [deps]
 KroneckerArrays = "05d0b138-81bc-4ff7-84be-08becefb1ccc"
 
+[sources]
+KroneckerArrays = {path = ".."}
+
 [compat]
 KroneckerArrays = "0.3"

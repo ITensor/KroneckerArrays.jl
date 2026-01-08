@@ -9,7 +9,7 @@ using LinearAlgebra: norm
 using MatrixAlgebraKit: svd_compact, svd_trunc
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @testset
-using TestExtras: @constinferred, @constinferred_broken
+using TestExtras: @constinferred
 
 elts = (Float32, Float64, ComplexF32)
 arrayts = (Array, JLArray)
@@ -335,12 +335,7 @@ end
         Block(2, 2) => dev(δ(elt, (3, 3)) ⊗ randn(elt, 3, 3)),
     )
     a = dev(blocksparse(d, (r, r)))
-    if VERSION ≥ v"1.11-"
-        @test @constinferred(norm(a)) ≈ norm(Array(a))
-    else
-        # Type inference fails in Julia 1.10.
-        @test @constinferred_broken(norm(a)) ≈ norm(Array(a))
-    end
+    @test @constinferred(norm(a)) ≈ norm(Array(a))
 
     r = blockrange([2 × 2, 3 × 3])
     d = Dict(

@@ -179,8 +179,8 @@ end
 
 Base.permutedims(ab::AbstractKroneckerArray, perm) =
     ⊗(permutedims.(kroneckerfactors(ab), (perm,))...)
-DerivableInterfaces.permuteddims(ab::AbstractKroneckerArray, perm) =
-    ⊗(DerivableInterfaces.permuteddims.(kroneckerfactors(ab), (perm,))...)
+FunctionImplementations.permuteddims(ab::AbstractKroneckerArray, perm) =
+    ⊗(FunctionImplementations.permuteddims.(kroneckerfactors(ab), (perm,))...)
 
 function Base.permutedims!(dest::AbstractKroneckerArray, src::AbstractKroneckerArray, perm)
     return mutate_active_args!(
@@ -229,11 +229,11 @@ function Base.zero(ab::AbstractKroneckerArray)
     end
 end
 
-function DerivableInterfaces.zero!(ab::AbstractKroneckerArray)
+function FunctionImplementations.zero!(ab::AbstractKroneckerArray)
     a, b = kroneckerfactors(ab)
     (isactive(a) || isactive(b)) || error("Can't mutate immutable KroneckerArray.")
-    isactive(a) && DerivableInterfaces.zero!(a)
-    isactive(b) && DerivableInterfaces.zero!(b)
+    isactive(a) && FunctionImplementations.zero!(a)
+    isactive(b) && FunctionImplementations.zero!(b)
     return ab
 end
 
