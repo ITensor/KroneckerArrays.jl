@@ -1,5 +1,5 @@
-using KroneckerArrays: KroneckerArrays
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
+using KroneckerArrays: KroneckerArrays
 
 DocMeta.setdocmeta!(
     KroneckerArrays, :DocTestSetup, :(using KroneckerArrays); recursive = true

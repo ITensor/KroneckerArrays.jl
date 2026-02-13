@@ -1,5 +1,5 @@
-using Literate: Literate
 using KroneckerArrays: KroneckerArrays
+using Literate: Literate
 
 function ccq_logo(content)
     include_ccq_logo = """
