@@ -3,7 +3,8 @@ using DiagonalArrays: δ
 using FillArrays: Eye, Zeros
 using FunctionImplementations: zero!
 using JLArrays: JLArray, jl
-using KroneckerArrays: KroneckerArrays, KroneckerArray, ⊗, ×, kroneckerfactors, cartesianrange
+using KroneckerArrays:
+    KroneckerArrays, KroneckerArray, cartesianrange, kroneckerfactors, ×, ⊗
 using LinearAlgebra: det, norm, pinv
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
@@ -24,10 +25,15 @@ using TestExtras: @constinferred
     @test_broken kroneckerfactors(a[(:) × (:), (:) × (:)], 1) ≡ Eye(2)
     @test_broken kroneckerfactors(view(a, (:) × (:), (:) × (:)), 1) ≡ Eye(2)
     @test_broken kroneckerfactors(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)], 1) ≡ Eye(2)
-    @test_broken kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:)), 1) ≡ Eye(2)
+    @test_broken kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:)), 1) ≡
+        Eye(2)
     @test_broken kroneckerfactors(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)], 1) ≡ Eye(2)
-    @test_broken kroneckerfactors(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:)), 1) ≡ Eye(2)
-    @test_broken kroneckerfactors(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)], 1) ≡
+    @test_broken kroneckerfactors(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:)), 1) ≡
+        Eye(2)
+    @test_broken kroneckerfactors(
+        a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)],
+        1
+    ) ≡
         Eye(2)
     @test_broken kroneckerfactors(
         view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)), 1
@@ -35,10 +41,19 @@ using TestExtras: @constinferred
     @test kroneckerfactors(adapt(JLArray, a), 1) ≡ Eye(2)
     @test kroneckerfactors(adapt(JLArray, a), 2) == jl(kroneckerfactors(a, 2))
     @test kroneckerfactors(adapt(JLArray, a), 2) isa JLArray
-    @test_broken kroneckerfactors(similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2))), 1) ≡ Eye(3)
-    @test_broken kroneckerfactors(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2))), 1) ≡
+    @test_broken kroneckerfactors(
+        similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2))),
+        1
+    ) ≡ Eye(3)
+    @test_broken kroneckerfactors(
+        similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2))),
+        1
+    ) ≡
         Eye(3)
-    @test_broken kroneckerfactors(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))), 1 ≡
+    @test_broken kroneckerfactors(
+            similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2)))
+        ),
+        1 ≡
         Eye{Float32}(3)
     @test kroneckerfactors(copy(a), 1) ≡ Eye(2)
     @test kroneckerfactors(copy(a), 2) == kroneckerfactors(a, 2)
@@ -46,10 +61,12 @@ using TestExtras: @constinferred
     @test kroneckerfactors(copyto!(b, a), 1) ≡ Eye(2)
     @test kroneckerfactors(copyto!(b, a), 2) == kroneckerfactors(a, 2)
     @test kroneckerfactors(permutedims(a, (2, 1)), 1) ≡ Eye(2)
-    @test kroneckerfactors(permutedims(a, (2, 1)), 2) == permutedims(kroneckerfactors(a, 2), (2, 1))
+    @test kroneckerfactors(permutedims(a, (2, 1)), 2) ==
+        permutedims(kroneckerfactors(a, 2), (2, 1))
     b = similar(a)
     @test kroneckerfactors(permutedims!(b, a, (2, 1)), 1) ≡ Eye(2)
-    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 2) == permutedims(kroneckerfactors(a, 2), (2, 1))
+    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 2) ==
+        permutedims(kroneckerfactors(a, 2), (2, 1))
 
     a = randn(3, 3) ⊗ Eye(2)
     @test size(a) == (6, 6)
@@ -59,10 +76,15 @@ using TestExtras: @constinferred
     @test_broken kroneckerfactors(a[(:) × (:), (:) × (:)], 2) ≡ Eye(2)
     @test_broken kroneckerfactors(view(a, (:) × (:), (:) × (:)), 2) ≡ Eye(2)
     @test_broken kroneckerfactors(a[Base.Slice(Base.OneTo(2)) × (:), (:) × (:)], 2) ≡ Eye(2)
-    @test_broken kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:)), 2) ≡ Eye(2)
+    @test_broken kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:)), 2) ≡
+        Eye(2)
     @test_broken kroneckerfactors(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)], 2) ≡ Eye(2)
-    @test_broken kroneckerfactors(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:)), 2) ≡ Eye(2)
-    @test_broken kroneckerfactors(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)], 2) ≡
+    @test_broken kroneckerfactors(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:)), 2) ≡
+        Eye(2)
+    @test_broken kroneckerfactors(
+        a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)],
+        2
+    ) ≡
         Eye(2)
     @test_broken kroneckerfactors(
         view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)), 2
@@ -70,10 +92,19 @@ using TestExtras: @constinferred
     @test kroneckerfactors(adapt(JLArray, a), 2) ≡ Eye(2)
     @test kroneckerfactors(adapt(JLArray, a), 1) == jl(kroneckerfactors(a, 1))
     @test kroneckerfactors(adapt(JLArray, a), 1) isa JLArray
-    @test_broken kroneckerfactors(similar(a, (cartesianrange(2 × 3), cartesianrange(2 × 3))), 2) ≡ Eye(3)
-    @test_broken kroneckerfactors(similar(typeof(a), (cartesianrange(2 × 3), cartesianrange(2 × 3))), 2) ≡
+    @test_broken kroneckerfactors(
+        similar(a, (cartesianrange(2 × 3), cartesianrange(2 × 3))),
+        2
+    ) ≡ Eye(3)
+    @test_broken kroneckerfactors(
+        similar(typeof(a), (cartesianrange(2 × 3), cartesianrange(2 × 3))),
+        2
+    ) ≡
         Eye(3)
-    @test_broken kroneckerfactors(similar(a, Float32, (cartesianrange(2 × 3), cartesianrange(2 × 3))), 2) ≡
+    @test_broken kroneckerfactors(
+        similar(a, Float32, (cartesianrange(2 × 3), cartesianrange(2 × 3))),
+        2
+    ) ≡
         Eye{Float32}(3)
     @test kroneckerfactors(copy(a), 2) ≡ Eye(2)
     @test kroneckerfactors(copy(a), 2) == kroneckerfactors(a, 2)
@@ -81,10 +112,12 @@ using TestExtras: @constinferred
     @test kroneckerfactors(copyto!(b, a), 2) ≡ Eye(2)
     @test kroneckerfactors(copyto!(b, a), 2) == kroneckerfactors(a, 2)
     @test kroneckerfactors(permutedims(a, (2, 1)), 2) ≡ Eye(2)
-    @test kroneckerfactors(permutedims(a, (2, 1)), 1) == permutedims(kroneckerfactors(a, 1), (2, 1))
+    @test kroneckerfactors(permutedims(a, (2, 1)), 1) ==
+        permutedims(kroneckerfactors(a, 1), (2, 1))
     b = similar(a)
     @test kroneckerfactors(permutedims!(b, a, (2, 1)), 2) ≡ Eye(2)
-    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 1) == permutedims(kroneckerfactors(a, 1), (2, 1))
+    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 1) ==
+        permutedims(kroneckerfactors(a, 1), (2, 1))
 
     a = δ(2, 2) ⊗ randn(3, 3)
     @test size(a) == (6, 6)
@@ -96,16 +129,31 @@ using TestExtras: @constinferred
     @test kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:)), 1) ≡ δ(2, 2)
     @test kroneckerfactors(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)], 1) ≡ δ(2, 2)
     @test kroneckerfactors(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:)), 1) ≡ δ(2, 2)
-    @test kroneckerfactors(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)], 1) ≡ δ(2, 2)
-    @test kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)), 1) ≡
+    @test kroneckerfactors(
+        a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)],
+        1
+    ) ≡ δ(2, 2)
+    @test kroneckerfactors(
+        view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)),
+        1
+    ) ≡
         δ(2, 2)
     @test kroneckerfactors(adapt(JLArray, a), 1) ≡ δ(2, 2)
     @test kroneckerfactors(adapt(JLArray, a), 2) == jl(kroneckerfactors(a, 2))
     @test kroneckerfactors(adapt(JLArray, a), 2) isa JLArray
-    @test_broken kroneckerfactors(similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2))), 1) ≡ δ(3, 3)
-    @test_broken kroneckerfactors(similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2))), 1) ≡
+    @test_broken kroneckerfactors(
+        similar(a, (cartesianrange(3 × 2), cartesianrange(3 × 2))),
+        1
+    ) ≡ δ(3, 3)
+    @test_broken kroneckerfactors(
+        similar(typeof(a), (cartesianrange(3 × 2), cartesianrange(3 × 2))),
+        1
+    ) ≡
         δ(3, 3)
-    @test_broken kroneckerfactors(similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2))), 1) ≡
+    @test_broken kroneckerfactors(
+        similar(a, Float32, (cartesianrange(3 × 2), cartesianrange(3 × 2))),
+        1
+    ) ≡
         δ(Float32, 3, 3)
     @test kroneckerfactors(copy(a), 1) ≡ δ(2, 2)
     @test kroneckerfactors(copy(a), 2) == kroneckerfactors(a, 2)
@@ -113,10 +161,12 @@ using TestExtras: @constinferred
     @test kroneckerfactors(copyto!(b, a), 1) ≡ δ(2, 2)
     @test kroneckerfactors(copyto!(b, a), 2) == kroneckerfactors(a, 2)
     @test kroneckerfactors(permutedims(a, (2, 1)), 1) ≡ δ(2, 2)
-    @test kroneckerfactors(permutedims(a, (2, 1)), 2) == permutedims(kroneckerfactors(a, 2), (2, 1))
+    @test kroneckerfactors(permutedims(a, (2, 1)), 2) ==
+        permutedims(kroneckerfactors(a, 2), (2, 1))
     b = similar(a)
     @test kroneckerfactors(permutedims!(b, a, (2, 1)), 1) ≡ δ(2, 2)
-    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 2) == permutedims(kroneckerfactors(a, 2), (2, 1))
+    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 2) ==
+        permutedims(kroneckerfactors(a, 2), (2, 1))
 
     a = randn(3, 3) ⊗ δ(2, 2)
     @test size(a) == (6, 6)
@@ -129,16 +179,31 @@ using TestExtras: @constinferred
     @test kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), (:) × (:)), 2) ≡ δ(2, 2)
     @test kroneckerfactors(a[(:) × (:), Base.Slice(Base.OneTo(2)) × (:)], 2) ≡ δ(2, 2)
     @test kroneckerfactors(view(a, (:) × (:), Base.Slice(Base.OneTo(2)) × (:)), 2) ≡ δ(2, 2)
-    @test kroneckerfactors(a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)], 2) ≡ δ(2, 2)
-    @test kroneckerfactors(view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)), 2) ≡
+    @test kroneckerfactors(
+        a[Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)],
+        2
+    ) ≡ δ(2, 2)
+    @test kroneckerfactors(
+        view(a, Base.Slice(Base.OneTo(2)) × (:), Base.Slice(Base.OneTo(2)) × (:)),
+        2
+    ) ≡
         δ(2, 2)
     @test kroneckerfactors(adapt(JLArray, a), 2) ≡ δ(2, 2)
     @test kroneckerfactors(adapt(JLArray, a), 1) == jl(kroneckerfactors(a, 1))
     @test kroneckerfactors(adapt(JLArray, a), 1) isa JLArray
-    @test_broken kroneckerfactors(similar(a, (cartesianrange(2 × 3), cartesianrange(2 × 3))), 2) ≡ δ(3, 3)
-    @test_broken kroneckerfactors(similar(typeof(a), (cartesianrange(2 × 3), cartesianrange(2 × 3))), 2) ≡
+    @test_broken kroneckerfactors(
+        similar(a, (cartesianrange(2 × 3), cartesianrange(2 × 3))),
+        2
+    ) ≡ δ(3, 3)
+    @test_broken kroneckerfactors(
+        similar(typeof(a), (cartesianrange(2 × 3), cartesianrange(2 × 3))),
+        2
+    ) ≡
         δ(3, 3)
-    @test_broken kroneckerfactors(similar(a, Float32, (cartesianrange(2 × 3), cartesianrange(2 × 3))), 2) ≡
+    @test_broken kroneckerfactors(
+        similar(a, Float32, (cartesianrange(2 × 3), cartesianrange(2 × 3))),
+        2
+    ) ≡
         δ(Float32, (3, 3))
     @test kroneckerfactors(copy(a), 2) ≡ δ(2, 2)
     @test kroneckerfactors(copy(a), 2) == kroneckerfactors(a, 2)
@@ -146,10 +211,12 @@ using TestExtras: @constinferred
     @test kroneckerfactors(copyto!(b, a), 2) ≡ δ(2, 2)
     @test kroneckerfactors(copyto!(b, a), 2) == kroneckerfactors(a, 2)
     @test kroneckerfactors(permutedims(a, (2, 1)), 2) ≡ δ(2, 2)
-    @test kroneckerfactors(permutedims(a, (2, 1)), 1) == permutedims(kroneckerfactors(a, 1), (2, 1))
+    @test kroneckerfactors(permutedims(a, (2, 1)), 1) ==
+        permutedims(kroneckerfactors(a, 1), (2, 1))
     b = similar(a)
     @test kroneckerfactors(permutedims!(b, a, (2, 1)), 2) ≡ δ(2, 2)
-    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 1) == permutedims(kroneckerfactors(a, 1), (2, 1))
+    @test kroneckerfactors(permutedims!(b, a, (2, 1)), 1) ==
+        permutedims(kroneckerfactors(a, 1), (2, 1))
 
     # Views
     a = @constinferred(Eye(2) ⊗ randn(3, 3))
@@ -251,7 +318,8 @@ using TestExtras: @constinferred
 
     a = Eye(3) ⊗ Eye(2)
     for a′ in (
-            similar(a), similar(a, eltype(a)), similar(a, axes(a)), similar(a, eltype(a), axes(a)),
+            similar(a), similar(a, eltype(a)), similar(a, axes(a)),
+            similar(a, eltype(a), axes(a)),
         )
         @test size(a′) == (6, 6)
         @test a′ isa KroneckerArray{eltype(a), ndims(a)}

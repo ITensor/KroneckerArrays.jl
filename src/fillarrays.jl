@@ -3,7 +3,7 @@ function FillArrays.fillsimilar(
         a::Zeros{T},
         ax::Tuple{
             CartesianProductUnitRange{<:Integer}, Vararg{CartesianProductUnitRange{<:Integer}},
-        },
+        }
     ) where {T}
     return Zeros{T}(kroneckerfactors.(ax, 1)) ⊗ Zeros{T}(kroneckerfactors.(ax, 2))
 end
@@ -15,7 +15,7 @@ function Base.broadcasted(
         style::KroneckerStyle,
         ::typeof(+),
         a::KroneckerArray,
-        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
+        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros}
     )
     # TODO: Promote the element types.
     return a
@@ -24,7 +24,7 @@ function Base.broadcasted(
         style::KroneckerStyle,
         ::typeof(+),
         a::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
-        b::KroneckerArray,
+        b::KroneckerArray
     )
     # TODO: Promote the element types.
     return b
@@ -33,7 +33,7 @@ function Base.broadcasted(
         style::KroneckerStyle,
         ::typeof(+),
         a::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
-        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
+        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros}
     )
     # TODO: Promote the element types and axes.
     return b
@@ -42,7 +42,7 @@ function Base.broadcasted(
         style::KroneckerStyle,
         ::typeof(-),
         a::KroneckerArray,
-        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
+        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros}
     )
     # TODO: Promote the element types.
     return a
@@ -51,7 +51,7 @@ function Base.broadcasted(
         style::KroneckerStyle,
         ::typeof(-),
         a::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
-        b::KroneckerArray,
+        b::KroneckerArray
     )
     # TODO: Promote the element types.
     # TODO: Return `broadcasted(-, b)`.
@@ -61,7 +61,7 @@ function Base.broadcasted(
         style::KroneckerStyle,
         ::typeof(-),
         a::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
-        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros},
+        b::KroneckerArray{<:Any, <:Any, <:Zeros, <:Zeros}
     )
     # TODO: Promote the element types and axes.
     return b

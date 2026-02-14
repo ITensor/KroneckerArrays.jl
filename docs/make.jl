@@ -1,5 +1,5 @@
-using KroneckerArrays: KroneckerArrays
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
+using KroneckerArrays: KroneckerArrays
 
 DocMeta.setdocmeta!(
     KroneckerArrays, :DocTestSetup, :(using KroneckerArrays); recursive = true
@@ -14,9 +14,9 @@ makedocs(;
     format = Documenter.HTML(;
         canonical = "https://itensor.github.io/KroneckerArrays.jl",
         edit_link = "main",
-        assets = ["assets/favicon.ico", "assets/extras.css"],
+        assets = ["assets/favicon.ico", "assets/extras.css"]
     ),
-    pages = ["Home" => "index.md", "Reference" => "reference.md"],
+    pages = ["Home" => "index.md", "Reference" => "reference.md"]
 )
 
 deploydocs(;

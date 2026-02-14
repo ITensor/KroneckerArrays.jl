@@ -43,8 +43,9 @@ struct CartesianProductVector{T, A, B, V <: AbstractVector{T}} <: AbstractVector
         return new{T, A, B, V}(a, b, values)
     end
 end
-CartesianProductVector(a, b, values::AbstractVector{T}) where {T} =
-    CartesianProductVector{T, typeof(a), typeof(b), typeof(values)}(a, b, values)
+function CartesianProductVector(a, b, values::AbstractVector{T}) where {T}
+    return CartesianProductVector{T, typeof(a), typeof(b), typeof(values)}(a, b, values)
+end
 
 """
     CartesianProductUnitRange(a::AbstractUnitRange, b::AbstractUnitRange, range::AbstractUnitRange{T}) <: AbstractUnitRange{T}
@@ -61,20 +62,39 @@ struct CartesianProductUnitRange{
 
     function CartesianProductUnitRange{T, A, B, R}(
             a::A, b::B, range::R
-        ) where {T, A <: AbstractUnitRange{T}, B <: AbstractUnitRange{T}, R <: AbstractUnitRange{T}}
+        ) where {
+            T,
+            A <: AbstractUnitRange{T},
+            B <: AbstractUnitRange{T},
+            R <: AbstractUnitRange{T},
+        }
         length(a) * length(b) == length(range) || throw(DimensionMismatch())
         return new{T, A, B, R}(a, b, range)
     end
 end
-CartesianProductUnitRange(a::AbstractUnitRange{T}, b::AbstractUnitRange{T}, range::AbstractUnitRange{T}) where {T} =
-    CartesianProductUnitRange{T, typeof(a), typeof(b), typeof(range)}(a, b, range)
-CartesianProductUnitRange(a::AbstractUnitRange{T}, b::AbstractUnitRange{T}) where {T} =
-    CartesianProductUnitRange(a, b, Base.OneTo{T}(length(a) * length(b)))
+function CartesianProductUnitRange(
+        a::AbstractUnitRange{T},
+        b::AbstractUnitRange{T},
+        range::AbstractUnitRange{T}
+    ) where {T}
+    return CartesianProductUnitRange{T, typeof(a), typeof(b), typeof(range)}(a, b, range)
+end
+function CartesianProductUnitRange(
+        a::AbstractUnitRange{T},
+        b::AbstractUnitRange{T}
+    ) where {T}
+    return CartesianProductUnitRange(a, b, Base.OneTo{T}(length(a) * length(b)))
+end
 
 const CartesianProductOneTo{T, A <: AbstractUnitRange{T}, B <: AbstractUnitRange{T}} =
     CartesianProductUnitRange{T, A, B, Base.OneTo{T}}
 
-const AnyCartesian = Union{CartesianPair, CartesianProduct, CartesianProductVector, CartesianProductUnitRange}
+const AnyCartesian = Union{
+    CartesianPair,
+    CartesianProduct,
+    CartesianProductVector,
+    CartesianProductUnitRange,
+}
 
 # Utility constructors
 # --------------------
@@ -105,9 +125,13 @@ This behaves similar to [`×`](@ref), but forces promotion to a `AbstractVector`
 """ cartesianproduct
 
 cartesianproduct(a::AbstractVector, b::AbstractVector) = CartesianProduct(a, b)
-cartesianproduct(a::AbstractVector, b::AbstractVector, values::AbstractVector) = CartesianProductVector(a, b, values)
+function cartesianproduct(a::AbstractVector, b::AbstractVector, values::AbstractVector)
+    return CartesianProductVector(a, b, values)
+end
 cartesianproduct(p::CartesianPair) = cartesianproduct(kroneckerfactors(p)...)
-cartesianproduct(p::CartesianPair, values::AbstractVector) = cartesianproduct(kroneckerfactors(p)..., values)
+function cartesianproduct(p::CartesianPair, values::AbstractVector)
+    return cartesianproduct(kroneckerfactors(p)..., values)
+end
 
 @doc """
     cartesianrange(a::AbstractUnitRange, b::AbstractUnitRange, [range::AbstractUnitRange])::AbstractUnitRange
@@ -119,16 +143,26 @@ This behaves similar to [`×`](@ref), but forces promotion to a `AbstractUnitRan
 to_product_indices(a::AbstractVector) = a
 to_product_indices(i::Integer) = Base.OneTo(i)
 
-cartesianrange(a, b) = CartesianProductUnitRange(to_product_indices(a), to_product_indices(b))
-cartesianrange(a, b, range::AbstractUnitRange) = CartesianProductUnitRange(to_product_indices(a), to_product_indices(b), range)
-cartesianrange(p::Union{CartesianPair, CartesianProduct}) = cartesianrange(kroneckerfactors(p)...)
-cartesianrange(p::Union{CartesianPair, CartesianProduct}, range::AbstractUnitRange) = cartesianrange(kroneckerfactors(p)..., range)
+function cartesianrange(a, b)
+    return CartesianProductUnitRange(to_product_indices(a), to_product_indices(b))
+end
+function cartesianrange(a, b, range::AbstractUnitRange)
+    return CartesianProductUnitRange(to_product_indices(a), to_product_indices(b), range)
+end
+function cartesianrange(p::Union{CartesianPair, CartesianProduct})
+    return cartesianrange(kroneckerfactors(p)...)
+end
+function cartesianrange(p::Union{CartesianPair, CartesianProduct}, range::AbstractUnitRange)
+    return cartesianrange(kroneckerfactors(p)..., range)
+end
 
 # KroneckerArrays interface
 # -------------------------
 kroneckerfactors(ab::AnyCartesian) = (ab.a, ab.b)
 kroneckerfactortypes(::Type{T}) where {T <: CartesianPair} = fieldtypes(T)
-kroneckerfactortypes(::Type{T}) where {T <: CartesianProduct} = kroneckerfactortypes(eltype(T))
+function kroneckerfactortypes(::Type{T}) where {T <: CartesianProduct}
+    return kroneckerfactortypes(eltype(T))
+end
 kroneckerfactortypes(::Type{<:CartesianProductVector{T, A, B}}) where {T, A, B} = (A, B)
 kroneckerfactortypes(::Type{<:CartesianProductUnitRange{T, A, B}}) where {T, A, B} = (A, B)
 
@@ -167,7 +201,9 @@ Base.axes1(S::Base.Slice{<:CartesianProductOneTo}) = S.indices
 Base.unsafe_indices(S::Base.Slice{<:CartesianProductOneTo}) = (S.indices,)
 
 Base.copy(a::CartesianProduct) = ×(copy.(kroneckerfactors(a)...)...)
-Base.copy(a::CartesianProductVector) = cartesianproduct(copy.(kroneckerfactors(a))..., copy(unproduct(a)))
+function Base.copy(a::CartesianProductVector)
+    return cartesianproduct(copy.(kroneckerfactors(a))..., copy(unproduct(a)))
+end
 
 @inline Base.getindex(a::CartesianProduct, i::CartesianProduct) =
     ×(Base.getindex.(kroneckerfactors(a), kroneckerfactors(i))...)
@@ -180,16 +216,28 @@ Base.@propagate_inbounds function Base.getindex(a::CartesianProduct, i::Int)
 end
 @inline Base.getindex(r::CartesianProductVector, i::Int) = r.values[i]
 
-Base.@propagate_inbounds function Base.getindex(a::CartesianProductUnitRange, i::CartesianProductUnitRange)
-    return cartesianrange(Base.getindex.(kroneckerfactors(a), kroneckerfactors(i))..., a.range[i.range])
+Base.@propagate_inbounds function Base.getindex(
+        a::CartesianProductUnitRange,
+        i::CartesianProductUnitRange
+    )
+    return cartesianrange(
+        Base.getindex.(kroneckerfactors(a), kroneckerfactors(i))...,
+        a.range[i.range]
+    )
 end
 
 function Base.getindex(a::CartesianProductUnitRange, I::CartesianProduct)
-    return cartesianproduct(Base.getindex.(kroneckerfactors(a), kroneckerfactors(I))..., map(Base.Fix1(getindex, a), I))
+    return cartesianproduct(
+        Base.getindex.(kroneckerfactors(a), kroneckerfactors(I))...,
+        map(Base.Fix1(getindex, a), I)
+    )
 end
 
 # Reverse map from CartesianPair to linear index in the range.
-Base.@propagate_inbounds function Base.getindex(inds::CartesianProductUnitRange, i::CartesianPair)
+Base.@propagate_inbounds function Base.getindex(
+        inds::CartesianProductUnitRange,
+        i::CartesianPair
+    )
     indsa, indsb = kroneckerfactors(inds)
     ia, ib = kroneckerfactors(i)
     i′ = CartesianIndex(findfirst(==(ib), indsb), findfirst(==(ia), indsa))
@@ -203,28 +251,37 @@ function Base.checkindex(::Type{Bool}, inds::CartesianProductUnitRange, i::Carte
     return checkindex(Bool, indsa, ia) && checkindex(Bool, indsb, ib)
 end
 
-
 # AbstractUnitRange interface
 # ---------------------------
 Base.first(r::CartesianProductUnitRange) = first(r.range)
 Base.last(r::CartesianProductUnitRange) = last(r.range)
 
-
 # Broadcasting
 # ------------
 for f in (:+, :-)
-    @eval BC.broadcasted(::BC.DefaultArrayStyle{1}, ::typeof($f), r::CartesianProductUnitRange, x::Integer) =
+    @eval BC.broadcasted(
+        ::BC.DefaultArrayStyle{1},
+        ::typeof($f),
+        r::CartesianProductUnitRange,
+        x::Integer
+    ) =
         cartesianrange(kroneckerfactors(r)..., $f.(unproduct(r), x))
-    @eval BC.broadcasted(::BC.DefaultArrayStyle{1}, ::typeof($f), x::Integer, r::CartesianProductUnitRange) =
+    @eval BC.broadcasted(
+        ::BC.DefaultArrayStyle{1},
+        ::typeof($f),
+        x::Integer,
+        r::CartesianProductUnitRange
+    ) =
         cartesianrange(kroneckerfactors(r)..., $f.(x, unproduct(r)))
 end
 
 function BC.axistype(r1::CartesianProductUnitRange, r2::CartesianProductUnitRange)
     r1a, r1b = kroneckerfactors(r1)
     r2a, r2b = kroneckerfactors(r2)
-    return cartesianrange(splat(BC.axistype).(((r1a, r2a), (r1b, r2b), (unproduct(r1), unproduct(r2))))...)
+    return cartesianrange(
+        splat(BC.axistype).(((r1a, r2a), (r1b, r2b), (unproduct(r1), unproduct(r2))))...
+    )
 end
-
 
 # Show
 # ----
@@ -235,7 +292,11 @@ function Base.show(io::IO, ab::Union{CartesianPair, CartesianProduct})
     show(io, b)
     return nothing
 end
-function Base.show(io::IO, mime::MIME"text/plain", ab::Union{CartesianPair, CartesianProduct})
+function Base.show(
+        io::IO,
+        mime::MIME"text/plain",
+        ab::Union{CartesianPair, CartesianProduct}
+    )
     a, b = kroneckerfactors(ab)
     compact = get(io, :compact, true)::Bool
     show(io, mime, a)

@@ -1,5 +1,5 @@
-using KroneckerArrays: KroneckerArrays
 using Aqua: Aqua
+using KroneckerArrays: KroneckerArrays
 using Test: @testset
 
 @testset "Code quality (Aqua.jl)" begin
