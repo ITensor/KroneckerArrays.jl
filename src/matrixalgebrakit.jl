@@ -1,24 +1,11 @@
-using MatrixAlgebraKit:
-    MatrixAlgebraKit,
-    AbstractAlgorithm, TruncationStrategy,
-    eig_full!, eig_full, eig_trunc!, eig_trunc, eig_vals!, eig_vals,
-    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eigh_vals!, eigh_vals,
-    initialize_output,
-    left_null!, left_null, left_orth!, left_orth, left_polar!, left_polar,
-    lq_compact!, lq_compact, lq_full!, lq_full,
-    qr_compact!, qr_compact, qr_full!, qr_full,
-    right_null!, right_null, right_orth!, right_orth, right_polar!, right_polar,
-    svd_compact!, svd_compact, svd_full!, svd_full, svd_trunc!, svd_trunc, svd_vals!, svd_vals,
-    truncate
-using MatrixAlgebraKit:
-    eig_full, eig_vals, eigh_full, eigh_vals,
-    qr_compact, qr_full,
-    left_null, left_orth, left_polar,
-    lq_compact, lq_full,
-    right_null, right_orth, right_polar,
-    svd_compact, svd_full
-using MatrixAlgebraKit: TruncationStrategy, findtruncated, truncate
 import MatrixAlgebraKit as MAK
+using MatrixAlgebraKit: MatrixAlgebraKit, AbstractAlgorithm, TruncationStrategy, eig_full,
+    eig_full!, eig_trunc, eig_trunc!, eig_vals, eig_vals!, eigh_full, eigh_full!,
+    eigh_trunc, eigh_trunc!, eigh_vals, eigh_vals!, findtruncated, initialize_output,
+    left_null, left_null!, left_orth, left_orth!, left_polar, left_polar!, lq_compact,
+    lq_compact!, lq_full, lq_full!, qr_compact, qr_compact!, qr_full, qr_full!, right_null,
+    right_null!, right_orth, right_orth!, right_polar, right_polar!, svd_compact,
+    svd_compact!, svd_full, svd_full!, svd_trunc, svd_trunc!, svd_vals, svd_vals!, truncate
 
 function DiagonalArrays.diagview(a::AbstractKroneckerMatrix)
     return ⊗(DiagonalArrays.diagview.(kroneckerfactors(a))...)
@@ -124,7 +111,7 @@ end
 for f! in (:left_orth!, :right_orth!)
     @eval begin
         function MAK.$f!(
-                ab, F, alg::KroneckerAlgorithm; kwargs1 = (;), kwargs2 = (;), kwargs...,
+                ab, F, alg::KroneckerAlgorithm; kwargs1 = (;), kwargs2 = (;), kwargs...
             )
             a, b = kroneckerfactors(ab)
             Fa = MAK.$f!(a; kwargs..., kwargs1...)
@@ -137,7 +124,7 @@ for f! in (:left_null!, :right_null!)
     @eval begin
         function MAK.$f!(
                 ab, F, alg::KroneckerAlgorithm;
-                kwargs1 = (;), kwargs2 = (;), kwargs...,
+                kwargs1 = (;), kwargs2 = (;), kwargs...
             )
             a, b = kroneckerfactors(ab)
             Fa = MAK.$f!(a; kwargs..., kwargs1...)
@@ -206,13 +193,13 @@ end
 for f in (:eig_trunc!, :eigh_trunc!)
     @eval function MAK.truncate(
             ::typeof($f), DV::NTuple{2, AbstractKroneckerMatrix},
-            strategy::TruncationStrategy,
+            strategy::TruncationStrategy
         )
         return MAK.truncate($f, DV, KroneckerTruncationStrategy(strategy))
     end
     @eval function MAK.truncate(
             ::typeof($f), (D, V)::NTuple{2, AbstractKroneckerMatrix},
-            strategy::KroneckerTruncationStrategy,
+            strategy::KroneckerTruncationStrategy
         )
         I = MAK.findtruncated(MAK.diagview(D), strategy)
         return (D[I, I], V[(:) × (:), I]), I
@@ -221,13 +208,13 @@ end
 
 function MAK.truncate(
         f::typeof(svd_trunc!), USVᴴ::NTuple{3, AbstractKroneckerMatrix},
-        strategy::TruncationStrategy,
+        strategy::TruncationStrategy
     )
     return MAK.truncate(f, USVᴴ, KroneckerTruncationStrategy(strategy))
 end
 function MAK.truncate(
         ::typeof(svd_trunc!), (U, S, Vᴴ)::NTuple{3, AbstractKroneckerMatrix},
-        strategy::KroneckerTruncationStrategy,
+        strategy::KroneckerTruncationStrategy
     )
     I = MAK.findtruncated(MAK.diagview(S), strategy)
     return (U[(:) × (:), I], S[I, I], Vᴴ[I, (:) × (:)]), I

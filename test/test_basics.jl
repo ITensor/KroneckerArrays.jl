@@ -4,9 +4,9 @@ using DiagonalArrays: diagonal
 using FunctionImplementations: zero!
 using GPUArraysCore: @allowscalar
 using JLArrays: JLArray
-using KroneckerArrays: KroneckerArrays, KroneckerArray, KroneckerStyle,
-    CartesianProductUnitRange, CartesianProductVector, ⊗, ×, kroneckerfactors, kroneckerfactortypes,
-    cartesianproduct, cartesianrange, kron_nd, unproduct
+using KroneckerArrays: KroneckerArrays, CartesianProductUnitRange, CartesianProductVector,
+    KroneckerArray, KroneckerStyle, cartesianproduct, cartesianrange, kron_nd,
+    kroneckerfactors, kroneckerfactortypes, unproduct, ×, ⊗
 using LinearAlgebra: Diagonal, I, det, eigen, eigvals, lq, norm, pinv, qr, svd, svdvals, tr
 using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
@@ -35,7 +35,8 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     @test r[2 × 3] == 6
 
     @test sprint(show, cartesianrange(2, 3)) == "(Base.OneTo(2) × Base.OneTo(3))"
-    @test sprint(show, cartesianrange(2, 3, 2:7)) == "cartesianrange(Base.OneTo(2), Base.OneTo(3), 2:7)"
+    @test sprint(show, cartesianrange(2, 3, 2:7)) ==
+        "cartesianrange(Base.OneTo(2), Base.OneTo(3), 2:7)"
 
     # CartesianProductUnitRange axes
     r = cartesianrange(2:3, 3:4, 2:5)
@@ -183,13 +184,16 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     # permutedims
     a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
     @test permutedims(a, (2, 1, 3)) ==
-        permutedims(kroneckerfactors(a, 1), (2, 1, 3)) ⊗ permutedims(kroneckerfactors(a, 2), (2, 1, 3))
+        permutedims(kroneckerfactors(a, 1), (2, 1, 3)) ⊗
+        permutedims(kroneckerfactors(a, 2), (2, 1, 3))
 
     # permutedims!
     a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
     b = similar(a)
     permutedims!(b, a, (2, 1, 3))
-    @test b == permutedims(kroneckerfactors(a, 1), (2, 1, 3)) ⊗ permutedims(kroneckerfactors(a, 2), (2, 1, 3))
+    @test b ==
+        permutedims(kroneckerfactors(a, 1), (2, 1, 3)) ⊗
+        permutedims(kroneckerfactors(a, 2), (2, 1, 3))
 
     # Adapt
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)
@@ -203,7 +207,8 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     a = randn(elt, 2, 2, 2) ⊗ randn(elt, 3, 3, 3)
     @test collect(a) ≈ kron_nd(kroneckerfactors(a)...)
     for i in 1:2, j in 1:3, k in 1:2, l in 1:3, m in 1:2, n in 1:3
-        @test a[i × j, k × l, m × n] == kroneckerfactors(a, 1)[i, k, m] * kroneckerfactors(a, 2)[j, l, n]
+        @test a[i × j, k × l, m × n] ==
+            kroneckerfactors(a, 1)[i, k, m] * kroneckerfactors(a, 2)[j, l, n]
     end
     @test collect(a + a) ≈ 2 * collect(a)
     @test collect(2a) ≈ 2 * collect(a)
@@ -280,5 +285,6 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     b = randn(rng, (100, 100))
     ab = a ⊗ b
     ab′ = (a + randn(rng, size(a)) / 10) ⊗ (b + randn(rng, size(b)) / 10)
-    @test KroneckerArrays.dist_kronecker(ab, ab′) ≈ norm(collect(ab) - collect(ab′)) rtol = 1.0e-2
+    @test KroneckerArrays.dist_kronecker(ab, ab′) ≈ norm(collect(ab) - collect(ab′)) rtol =
+        1.0e-2
 end

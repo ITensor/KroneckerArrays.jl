@@ -1,9 +1,8 @@
-using KroneckerArrays: ⊗, kroneckerfactors
+using KroneckerArrays: kroneckerfactors, ⊗
 using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
-using MatrixAlgebraKit: eig_full, eig_trunc, eig_vals, eigh_full, eigh_trunc,
-    eigh_vals, left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
-    qr_full, right_null, right_orth, right_polar, svd_compact, svd_full, svd_trunc,
-    svd_vals
+using MatrixAlgebraKit: eig_full, eig_trunc, eig_vals, eigh_full, eigh_trunc, eigh_vals,
+    left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_null,
+    right_orth, right_polar, svd_compact, svd_full, svd_trunc, svd_vals
 using Test: @test, @test_throws, @testset
 using TestExtras: @constinferred
 

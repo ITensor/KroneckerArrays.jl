@@ -1,15 +1,21 @@
-KroneckerArray(J::LinearAlgebra.UniformScaling, ax::Tuple) =
-    DiagonalArrays.δ(eltype(J), kroneckerfactors.(ax, 1)) ⊗ DiagonalArrays.δ(eltype(J), kroneckerfactors.(ax, 2))
+function KroneckerArray(J::LinearAlgebra.UniformScaling, ax::Tuple)
+    return DiagonalArrays.δ(eltype(J), kroneckerfactors.(ax, 1)) ⊗
+        DiagonalArrays.δ(eltype(J), kroneckerfactors.(ax, 2))
+end
 
 function Base.copyto!(a::KroneckerArray, J::LinearAlgebra.UniformScaling)
     copyto!(a, KroneckerArray(J, axes(a)))
     return a
 end
 
-LinearAlgebra.pinv(a::KroneckerArray; kwargs...) = ⊗(LinearAlgebra.pinv.(kroneckerfactors(a); kwargs...)...)
+function LinearAlgebra.pinv(a::KroneckerArray; kwargs...)
+    return ⊗(LinearAlgebra.pinv.(kroneckerfactors(a); kwargs...)...)
+end
 LinearAlgebra.diag(a::AbstractKroneckerArray) = copy(DiagonalArrays.diagview(a))
 LinearAlgebra.tr(a::AbstractKroneckerArray) = *(LinearAlgebra.tr.(kroneckerfactors(a))...)
-LinearAlgebra.norm(a::AbstractKroneckerArray, p::Real = 2) = *(LinearAlgebra.norm.(kroneckerfactors(a), p)...)
+function LinearAlgebra.norm(a::AbstractKroneckerArray, p::Real = 2)
+    return *(LinearAlgebra.norm.(kroneckerfactors(a), p)...)
+end
 
 function Base.:*(A::AbstractKroneckerArray, B::AbstractKroneckerArray)
     a, b = kroneckerfactors(A)
@@ -18,10 +24,15 @@ function Base.:*(A::AbstractKroneckerArray, B::AbstractKroneckerArray)
 end
 
 function LinearAlgebra.mul!(
-        c::AbstractKroneckerArray, a::AbstractKroneckerArray, b::AbstractKroneckerArray, α::Number, β::Number
+        c::AbstractKroneckerArray, a::AbstractKroneckerArray, b::AbstractKroneckerArray,
+        α::Number, β::Number
     )
     iszero(β) || iszero(c) ||
-        throw(ArgumentError("Can't multiply KroneckerArrays with nonzero β and nonzero destination."))
+        throw(
+        ArgumentError(
+            "Can't multiply KroneckerArrays with nonzero β and nonzero destination."
+        )
+    )
     # TODO: Only perform in-place operation on the non-active argument(s).
     ca, cb = kroneckerfactors(c)
     aa, ab = kroneckerfactors(a)
@@ -30,7 +41,6 @@ function LinearAlgebra.mul!(
     LinearAlgebra.mul!(cb, ab, bb, α, β)
     return c
 end
-
 
 # Matrix functions
 const MATRIX_FUNCTIONS = [
@@ -96,13 +106,17 @@ function LinearAlgebra.svd(ab::AbstractKroneckerArray; kwargs...)
     Fa, Fb = LinearAlgebra.svd.(kroneckerfactors(ab); kwargs...)
     return LinearAlgebra.SVD(Fa.U ⊗ Fb.U, Fa.S ⊗ Fb.S, Fa.Vt ⊗ Fb.Vt)
 end
-LinearAlgebra.svdvals(a::AbstractKroneckerArray) = ⊗(LinearAlgebra.svdvals.(kroneckerfactors(a))...)
+function LinearAlgebra.svdvals(a::AbstractKroneckerArray)
+    return ⊗(LinearAlgebra.svdvals.(kroneckerfactors(a))...)
+end
 
 function LinearAlgebra.eigen(a::AbstractKroneckerArray; kwargs...)
     Fa, Fb = LinearAlgebra.eigen.(kroneckerfactors(a); kwargs...)
     return LinearAlgebra.Eigen(Fa.values ⊗ Fb.values, Fa.vectors ⊗ Fb.vectors)
 end
-LinearAlgebra.eigvals(a::AbstractKroneckerArray) = ⊗(LinearAlgebra.eigvals.(kroneckerfactors(a))...)
+function LinearAlgebra.eigvals(a::AbstractKroneckerArray)
+    return ⊗(LinearAlgebra.eigvals.(kroneckerfactors(a))...)
+end
 
 struct KroneckerQ{A, B}
     a::A
@@ -112,8 +126,12 @@ kroneckerfactors(q::KroneckerQ) = q.a, q.b
 kroneckerfactortypes(::Type{KroneckerQ{A, B}}) where {A, B} = (A, B)
 
 Base.:*(a::KroneckerQ, b::KroneckerQ) = ⊗((kroneckerfactors(a) .* kroneckerfactors(b))...)
-Base.:*(a::KroneckerQ, b::AbstractKroneckerArray) = ⊗((kroneckerfactors(a) .* kroneckerfactors(b))...)
-Base.:*(a::AbstractKroneckerArray, b::KroneckerQ) = ⊗((kroneckerfactors(a) .* kroneckerfactors(b))...)
+function Base.:*(a::KroneckerQ, b::AbstractKroneckerArray)
+    return ⊗((kroneckerfactors(a) .* kroneckerfactors(b))...)
+end
+function Base.:*(a::AbstractKroneckerArray, b::KroneckerQ)
+    return ⊗((kroneckerfactors(a) .* kroneckerfactors(b))...)
+end
 Base.adjoint(a::KroneckerQ) = KroneckerQ(adjoint.(kroneckerfactors(a))...)
 
 struct KroneckerQR{QQ, RR}

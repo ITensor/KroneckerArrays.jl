@@ -1,13 +1,10 @@
+using DiagonalArrays: DeltaMatrix, δ
 using FillArrays: Ones
-using DiagonalArrays: δ, DeltaMatrix
-using KroneckerArrays: ⊗, kroneckerfactors
+using KroneckerArrays: kroneckerfactors, ⊗
 using LinearAlgebra: Hermitian, I, diag, hermitianpart, norm
-using MatrixAlgebraKit:
-    eig_full, eig_trunc, eig_vals, eigh_full, eigh_trunc, eigh_vals,
-    left_null, left_orth, left_polar,
-    lq_compact, lq_full, qr_compact, qr_full,
-    right_null, right_orth, right_polar,
-    svd_compact, svd_full, svd_trunc, svd_vals
+using MatrixAlgebraKit: eig_full, eig_trunc, eig_vals, eigh_full, eigh_trunc, eigh_vals,
+    left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full, right_null,
+    right_orth, right_polar, svd_compact, svd_full, svd_trunc, svd_vals
 using Test: @test, @test_broken, @test_throws, @testset
 using TestExtras: @constinferred
 
@@ -102,7 +99,8 @@ herm(a) = parent(hermitianpart(a))
     end
 
     for f in (
-            left_orth, right_orth, left_polar, right_polar, qr_compact, lq_compact, qr_full, lq_full,
+            left_orth, right_orth, left_polar, right_polar, qr_compact, lq_compact, qr_full,
+            lq_full,
         )
         a = δ(3, 3) ⊗ randn(3, 3)
         if VERSION ≥ v"1.11-"

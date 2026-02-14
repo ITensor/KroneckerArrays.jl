@@ -42,7 +42,11 @@ struct KroneckerArray{T, N, A <: AbstractArray{T, N}, B <: AbstractArray{T, N}} 
 end
 function KroneckerArray(a::AbstractArray, b::AbstractArray)
     ndims(a) == ndims(b) ||
-        throw(DimensionMismatch("Kronecker product requires arrays of the same number of dimensions."))
+        throw(
+        DimensionMismatch(
+            "Kronecker product requires arrays of the same number of dimensions."
+        )
+    )
     elt = promote_type(eltype(a), eltype(b))
     return _convert(AbstractArray{elt}, a) ⊗ _convert(AbstractArray{elt}, b)
 end
@@ -54,7 +58,6 @@ const KroneckerVector{T, A <: AbstractVector{T}, B <: AbstractVector{T}} =
 
 kroneckerfactors(ab::KroneckerArray) = (ab.a, ab.b)
 kroneckerfactortypes(::Type{KroneckerArray{T, N, A, B}}) where {T, N, A, B} = (A, B)
-
 
 function mutate_active_args!(f!, f, C, A)
     Ca, Cb = kroneckerfactors(C)
@@ -93,7 +96,10 @@ end
 
 # TODO: copyto! is typically reserved for contiguous copies (i.e. also for copying from a
 # vector into an array), it might be better to not define that here.
-function Base.copyto!(dest::AbstractKroneckerArray{<:Any, N}, src::AbstractKroneckerArray{<:Any, N}) where {N}
+function Base.copyto!(
+        dest::AbstractKroneckerArray{<:Any, N},
+        src::AbstractKroneckerArray{<:Any, N}
+    ) where {N}
     return mutate_active_args!(copyto!, copy, dest, src)
 end
 
@@ -113,12 +119,16 @@ maybe_promot_eltype(a, elt) = eltype(a) <: elt ? a : elt.(a)
 function Base.similar(
         ab::AbstractKroneckerArray,
         elt::Type,
-        axs::Tuple{CartesianProductUnitRange{<:Integer}, Vararg{CartesianProductUnitRange{<:Integer}}}
+        axs::Tuple{
+            CartesianProductUnitRange{<:Integer},
+            Vararg{CartesianProductUnitRange{<:Integer}},
+        }
     )
     # TODO: Is this a good definition?
     a, b = kroneckerfactors(ab)
     return if isactive(a) == isactive(b)
-        similar(a, elt, kroneckerfactors.(axs, 1)) ⊗ similar(b, elt, kroneckerfactors.(axs, 2))
+        similar(a, elt, kroneckerfactors.(axs, 1)) ⊗
+            similar(b, elt, kroneckerfactors.(axs, 2))
     elseif isactive(a)
         @assert kroneckerfactors.(axs, 2) == axes(b)
         similar(a, elt, kroneckerfactors.(axs, 1)) ⊗ maybe_promot_eltype(b, elt)
@@ -153,38 +163,55 @@ end
 function Base.similar(
         a::AbstractArray,
         elt::Type,
-        axs::Tuple{CartesianProductUnitRange{<:Integer}, Vararg{CartesianProductUnitRange{<:Integer}}}
+        axs::Tuple{
+            CartesianProductUnitRange{<:Integer},
+            Vararg{CartesianProductUnitRange{<:Integer}},
+        }
     )
-    return similar(a, elt, kroneckerfactors.(axs, 1)) ⊗ similar(a, elt, kroneckerfactors.(axs, 2))
+    return similar(a, elt, kroneckerfactors.(axs, 1)) ⊗
+        similar(a, elt, kroneckerfactors.(axs, 2))
 end
 
 function Base.similar(
         ::Type{ArrayT},
-        axs::Tuple{CartesianProductUnitRange{<:Integer}, Vararg{CartesianProductUnitRange{<:Integer}}}
+        axs::Tuple{
+            CartesianProductUnitRange{<:Integer},
+            Vararg{CartesianProductUnitRange{<:Integer}},
+        }
     ) where {ArrayT <: AbstractKroneckerArray}
     A, B = kroneckerfactortypes(ArrayT)
     return similar(A, kroneckerfactors.(axs, 1)) ⊗ similar(B, kroneckerfactors.(axs, 2))
 end
-function Base.similar(::Type{ArrayT}, sz::Tuple{Int, Vararg{Int}}) where {ArrayT <: AbstractKroneckerArray}
+function Base.similar(
+        ::Type{ArrayT},
+        sz::Tuple{Int, Vararg{Int}}
+    ) where {ArrayT <: AbstractKroneckerArray}
     A, B = kroneckerfactortypes(ArrayT)
     return similar(promote_type(A, B), sz)
 end
 
 function Base.similar(
         arrayt::Type{<:AbstractArray},
-        axs::Tuple{CartesianProductUnitRange{<:Integer}, Vararg{CartesianProductUnitRange{<:Integer}}}
+        axs::Tuple{
+            CartesianProductUnitRange{<:Integer},
+            Vararg{CartesianProductUnitRange{<:Integer}},
+        }
     )
-    return similar(arrayt, kroneckerfactors.(axs, 1)) ⊗ similar(arrayt, kroneckerfactors.(axs, 2))
+    return similar(arrayt, kroneckerfactors.(axs, 1)) ⊗
+        similar(arrayt, kroneckerfactors.(axs, 2))
 end
 
-Base.permutedims(ab::AbstractKroneckerArray, perm) =
-    ⊗(permutedims.(kroneckerfactors(ab), (perm,))...)
-FunctionImplementations.permuteddims(ab::AbstractKroneckerArray, perm) =
-    ⊗(FunctionImplementations.permuteddims.(kroneckerfactors(ab), (perm,))...)
+function Base.permutedims(ab::AbstractKroneckerArray, perm)
+    return ⊗(permutedims.(kroneckerfactors(ab), (perm,))...)
+end
+function FunctionImplementations.permuteddims(ab::AbstractKroneckerArray, perm)
+    return ⊗(FunctionImplementations.permuteddims.(kroneckerfactors(ab), (perm,))...)
+end
 
 function Base.permutedims!(dest::AbstractKroneckerArray, src::AbstractKroneckerArray, perm)
     return mutate_active_args!(
-        (dest, src) -> permutedims!(dest, src, perm), Base.Fix2(permutedims, perm), dest, src
+        (dest, src) -> permutedims!(dest, src, perm), Base.Fix2(permutedims, perm), dest,
+        src
     )
 end
 
@@ -214,7 +241,9 @@ kron_nd(a1::AbstractVector, a2::AbstractVector) = kron(a1, a2)
 
 # Eagerly collect arguments to make more general on GPU.
 Base.collect(ab::AbstractKroneckerArray) = kron_nd(collect.(kroneckerfactors(ab))...)
-Base.collect(T::Type, ab::AbstractKroneckerArray) = kron_nd(collect.(T, kroneckerfactors(ab))...)
+function Base.collect(T::Type, ab::AbstractKroneckerArray)
+    return kron_nd(collect.(T, kroneckerfactors(ab))...)
+end
 
 function Base.zero(ab::AbstractKroneckerArray)
     a, b = kroneckerfactors(ab)
@@ -276,7 +305,8 @@ end
 
 # Indexing logic.
 function Base.to_indices(
-        ab::AbstractKroneckerArray, inds, I::Tuple{Union{CartesianPair, CartesianProduct}, Vararg}
+        ab::AbstractKroneckerArray, inds,
+        I::Tuple{Union{CartesianPair, CartesianProduct}, Vararg}
     )
     a, b = kroneckerfactors(ab)
     I1 = to_indices(a, kroneckerfactors.(inds, 1), kroneckerfactors.(I, 1))
@@ -285,7 +315,8 @@ function Base.to_indices(
 end
 
 function Base.getindex(
-        ab::AbstractKroneckerArray{<:Any, N}, I::Vararg{Union{CartesianPair, CartesianProduct, CartesianProductUnitRange}, N}
+        ab::AbstractKroneckerArray{<:Any, N},
+        I::Vararg{Union{CartesianPair, CartesianProduct, CartesianProductUnitRange}, N}
     ) where {N}
     I′ = to_indices(ab, I)
     a, b = kroneckerfactors(ab)
@@ -300,14 +331,17 @@ kroneckerfactors(::Base.Slice) = ((:), (:))
 
 function Base.view(
         ab::AbstractKroneckerArray{<:Any, N},
-        I::Vararg{Union{CartesianProduct, CartesianProductUnitRange, Base.Slice, Colon}, N},
+        I::Vararg{Union{CartesianProduct, CartesianProductUnitRange, Base.Slice, Colon}, N}
     ) where {N}
     a, b = kroneckerfactors(ab)
     Ia = kroneckerfactors.(I, 1)
     Ib = kroneckerfactors.(I, 2)
     return view(a, Ia...) ⊗ view(b, Ib...)
 end
-function Base.view(ab::AbstractKroneckerArray{<:Any, N}, I::Vararg{CartesianPair, N}) where {N}
+function Base.view(
+        ab::AbstractKroneckerArray{<:Any, N},
+        I::Vararg{CartesianPair, N}
+    ) where {N}
     a, b = kroneckerfactors(ab)
     Ia = kroneckerfactors.(I, 1)
     Ib = kroneckerfactors.(I, 2)
@@ -345,7 +379,7 @@ end
 using LinearAlgebra: dot, promote_leaf_eltypes
 function Base.isapprox(
         a::AbstractKroneckerArray, b::AbstractKroneckerArray; atol::Real = 0,
-        rtol::Real = Base.rtoldefault(promote_leaf_eltypes(a), promote_leaf_eltypes(b), atol),
+        rtol::Real = Base.rtoldefault(promote_leaf_eltypes(a), promote_leaf_eltypes(b), atol)
     )
     a1, a2 = kroneckerfactors(a)
     b1, b2 = kroneckerfactors(b)
@@ -378,7 +412,9 @@ function Base.isreal(ab::KroneckerArray)
     return isreal(a) && isreal(b)
 end
 
-DiagonalArrays.diagonal(ab::KroneckerArray) = ⊗(DiagonalArrays.diagonal.(kroneckerfactors(ab))...)
+function DiagonalArrays.diagonal(ab::KroneckerArray)
+    return ⊗(DiagonalArrays.diagonal.(kroneckerfactors(ab))...)
+end
 
 Base.real(ab::AbstractKroneckerArray{<:Real}) = ab
 # TODO: the extra checks here are probably as expensive as the general case
@@ -409,7 +445,8 @@ for f in (:transpose, :adjoint, :inv)
 end
 
 function Base.reshape(
-        ab::AbstractKroneckerArray, ax::Tuple{CartesianProductUnitRange, Vararg{CartesianProductUnitRange}}
+        ab::AbstractKroneckerArray,
+        ax::Tuple{CartesianProductUnitRange, Vararg{CartesianProductUnitRange}}
     )
     a, b = kroneckerfactors(ab)
     return reshape(a, kroneckerfactors.(ax, 1)) ⊗ reshape(b, kroneckerfactors.(ax, 2))
@@ -438,19 +475,26 @@ function Base.fill!(ab::AbstractKroneckerVector, v)
     return ab
 end
 
-using Base.Broadcast: Broadcast, AbstractArrayStyle, BroadcastStyle, Broadcasted
+using Base.Broadcast: AbstractArrayStyle, Broadcast, BroadcastStyle, Broadcasted
 
 struct KroneckerStyle{N, A, B} <: BC.AbstractArrayStyle{N} end
 
 kroneckerfactors(::Type{KroneckerStyle{N, A, B}}) where {N, A, B} = (A, B)
 kroneckerfactors(style::KroneckerStyle) = kroneckerfactors(typeof(style))
 
-KroneckerStyle{N}(A::BroadcastStyle, B::BroadcastStyle) where {N} = KroneckerStyle{N, A, B}()
-KroneckerStyle(A::AbstractArrayStyle{N}, B::AbstractArrayStyle{N}) where {N} = KroneckerStyle{N}(A, B)
-KroneckerStyle{N, A, B}(v::Val{M}) where {N, A, B, M} = KroneckerStyle{M, typeof(A)(v), typeof(B)(v)}()
+function KroneckerStyle{N}(A::BroadcastStyle, B::BroadcastStyle) where {N}
+    return KroneckerStyle{N, A, B}()
+end
+function KroneckerStyle(A::AbstractArrayStyle{N}, B::AbstractArrayStyle{N}) where {N}
+    return KroneckerStyle{N}(A, B)
+end
+function KroneckerStyle{N, A, B}(v::Val{M}) where {N, A, B, M}
+    return KroneckerStyle{M, typeof(A)(v), typeof(B)(v)}()
+end
 
-Base.BroadcastStyle(::Type{T}) where {T <: AbstractKroneckerArray} =
-    KroneckerStyle{ndims(T)}(BroadcastStyle.(kroneckerfactortypes(T))...)
+function Base.BroadcastStyle(::Type{T}) where {T <: AbstractKroneckerArray}
+    return KroneckerStyle{ndims(T)}(BroadcastStyle.(kroneckerfactortypes(T))...)
+end
 function Base.BroadcastStyle(style1::KroneckerStyle{N}, style2::KroneckerStyle{N}) where {N}
     A1, B1 = kroneckerfactors(style1)
     A2, B2 = kroneckerfactors(style2)
@@ -474,7 +518,12 @@ end
 function Base.map(f, a1::AbstractKroneckerArray, a_rest::AbstractKroneckerArray...)
     return Broadcast.broadcast_preserving_zero_d(f, a1, a_rest...)
 end
-function Base.map!(f, dest::AbstractKroneckerArray, a1::AbstractKroneckerArray, a_rest::AbstractKroneckerArray...)
+function Base.map!(
+        f,
+        dest::AbstractKroneckerArray,
+        a1::AbstractKroneckerArray,
+        a_rest::AbstractKroneckerArray...
+    )
     dest .= f.(a1, a_rest...)
     return dest
 end
@@ -486,7 +535,8 @@ function KroneckerBroadcast(a::Summed{<:KroneckerStyle})
     arg2s = kroneckerfactors.(args, 2)
     arg1_isunique = allequal(arg1s)
     arg2_isunique = allequal(arg2s)
-    (arg1_isunique || arg2_isunique) || error("This operation doesn't preserve the Kronecker structure.")
+    (arg1_isunique || arg2_isunique) ||
+        error("This operation doesn't preserve the Kronecker structure.")
     broadcast_arg = if arg1_isunique && arg2_isunique
         isactive(first(arg1s)) ? 1 : 2
     elseif arg1_isunique
@@ -502,9 +552,13 @@ function KroneckerBroadcast(a::Summed{<:KroneckerStyle})
 end
 
 Base.copy(a::Summed{<:KroneckerStyle}) = copy(KroneckerBroadcast(a))
-Base.copyto!(dest::AbstractKroneckerArray, a::Summed{<:KroneckerStyle}) = copyto!(dest, KroneckerBroadcast(a))
+function Base.copyto!(dest::AbstractKroneckerArray, a::Summed{<:KroneckerStyle})
+    return copyto!(dest, KroneckerBroadcast(a))
+end
 
-BC.broadcasted(::KroneckerStyle, f, as...) = error("Arbitrary broadcasting not supported for KroneckerStyle.")
+function BC.broadcasted(::KroneckerStyle, f, as...)
+    return error("Arbitrary broadcasting not supported for KroneckerStyle.")
+end
 
 # Linear operations.
 BC.broadcasted(::KroneckerStyle, ::typeof(+), a1, a2) = Summed(a1) + Summed(a2)
@@ -518,17 +572,38 @@ BC.broadcasted(::KroneckerStyle, ::typeof(/), a, c::Number) = Summed(a) / c
 BC.broadcasted(::KroneckerStyle, ::typeof(-), a) = -Summed(a)
 
 # Rewrite rules to canonicalize broadcast expressions.
-BC.broadcasted(style::KroneckerStyle, f::Base.Fix1{typeof(*), <:Number}, a) = BC.broadcasted(style, *, f.x, a)
-BC.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(*), <:Number}, a) = BC.broadcasted(style, *, a, f.x)
-BC.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(/), <:Number}, a) = BC.broadcasted(style, /, a, f.x)
+function BC.broadcasted(style::KroneckerStyle, f::Base.Fix1{typeof(*), <:Number}, a)
+    return BC.broadcasted(style, *, f.x, a)
+end
+function BC.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(*), <:Number}, a)
+    return BC.broadcasted(style, *, a, f.x)
+end
+function BC.broadcasted(style::KroneckerStyle, f::Base.Fix2{typeof(/), <:Number}, a)
+    return BC.broadcasted(style, /, a, f.x)
+end
 
 # Compatibility with MapBroadcast.jl.
-BC.broadcasted(style::KroneckerStyle, f::MapFunction{typeof(*), <:Tuple{<:Number, MapBroadcast.Arg}}, a) =
-    BC.broadcasted(style, *, f.args[1], a)
-BC.broadcasted(style::KroneckerStyle, f::MapFunction{typeof(*), <:Tuple{MapBroadcast.Arg, <:Number}}, a) =
-    BC.broadcasted(style, *, a, f.args[2])
-BC.broadcasted(style::KroneckerStyle, f::MapFunction{typeof(/), <:Tuple{MapBroadcast.Arg, <:Number}}, a) =
-    BC.broadcasted(style, /, a, f.args[2])
+function BC.broadcasted(
+        style::KroneckerStyle,
+        f::MapFunction{typeof(*), <:Tuple{<:Number, MapBroadcast.Arg}},
+        a
+    )
+    return BC.broadcasted(style, *, f.args[1], a)
+end
+function BC.broadcasted(
+        style::KroneckerStyle,
+        f::MapFunction{typeof(*), <:Tuple{MapBroadcast.Arg, <:Number}},
+        a
+    )
+    return BC.broadcasted(style, *, a, f.args[2])
+end
+function BC.broadcasted(
+        style::KroneckerStyle,
+        f::MapFunction{typeof(/), <:Tuple{MapBroadcast.Arg, <:Number}},
+        a
+    )
+    return BC.broadcasted(style, /, a, f.args[2])
+end
 
 # Use to determine the element type of KroneckerBroadcasted.
 _eltype(x) = eltype(x)
@@ -576,7 +651,11 @@ end
 
 # Operations that preserve the Kronecker structure.
 for f in (:identity, :conj)
-    @eval function BC.broadcasted(::KroneckerStyle{<:Any, A, B}, ::typeof($f), ab) where {A, B}
+    @eval function BC.broadcasted(
+            ::KroneckerStyle{<:Any, A, B},
+            ::typeof($f),
+            ab
+        ) where {A, B}
         a, b = kroneckerfactors(ab)
         return BC.broadcasted(A, $f, a) ⊗ BC.broadcasted(B, $f, b)
     end

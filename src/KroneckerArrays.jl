@@ -7,12 +7,12 @@ export ⊗, ×
 # Imports
 # -------
 import Base.Broadcast as BC
-using LinearAlgebra: LinearAlgebra, Diagonal, diag, isdiag
+using Adapt: Adapt
 using DiagonalArrays: DiagonalArrays
 using FunctionImplementations: FunctionImplementations
-using MapBroadcast: MapBroadcast, MapFunction, LinearCombination, Summed
 using GPUArraysCore: GPUArraysCore
-using Adapt: Adapt
+using LinearAlgebra: LinearAlgebra, Diagonal, diag, isdiag
+using MapBroadcast: MapBroadcast, LinearCombination, MapFunction, Summed
 
 # Interfaces
 # ----------
