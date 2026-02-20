@@ -1,3 +1,4 @@
+
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
@@ -18,8 +19,9 @@ TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestExtras = "5ed8adda-3752-4e41-b88a-e8b09835ee3a"
 
-[sources]
-KroneckerArrays = {path = ".."}
+
+[sources.KroneckerArrays]
+path = ".."
 
 [compat]
 Adapt = "4"
@@ -35,7 +37,7 @@ KroneckerArrays = "0.3"
 LinearAlgebra = "1.10"
 MatrixAlgebraKit = "0.6"
 SafeTestsets = "0.1"
-StableRNGs = "1.0"
+StableRNGs = "1"
 Suppressor = "0.2"
 TensorAlgebra = "0.6.2, 0.7"
 Test = "1.10"
