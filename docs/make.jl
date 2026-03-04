@@ -1,11 +1,12 @@
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
+using ITensorFormatter: ITensorFormatter
 using KroneckerArrays: KroneckerArrays
 
 DocMeta.setdocmeta!(
     KroneckerArrays, :DocTestSetup, :(using KroneckerArrays); recursive = true
 )
 
-include("make_index.jl")
+ITensorFormatter.make_index!(pkgdir(KroneckerArrays))
 
 makedocs(;
     modules = [KroneckerArrays],
