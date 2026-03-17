@@ -12,6 +12,20 @@ using StableRNGs: StableRNG
 using Test: @test, @test_broken, @test_throws, @testset
 using TestExtras: @constinferred
 
+module TestBasicsUtils
+    using KroneckerArrays: KroneckerArrays
+
+    struct WrappedKroneckerArray{T, N, A <: AbstractArray{T, N}, B <: AbstractArray{T, N}} <:
+        KroneckerArrays.AbstractKroneckerArray{T, N}
+        a::A
+        b::B
+    end
+    function WrappedKroneckerArray(a::AbstractArray{T, N}, b::AbstractArray{T, N}) where {T, N}
+        return WrappedKroneckerArray{T, N, typeof(a), typeof(b)}(a, b)
+    end
+    KroneckerArrays.kroneckerfactors(ab::WrappedKroneckerArray) = (ab.a, ab.b)
+end
+
 elts = (Float32, Float64, ComplexF32, ComplexF64)
 @testset "KroneckerArrays (eltype=$elt)" for elt in elts
     p = [1, 2] × [3, 4, 5]
@@ -140,6 +154,11 @@ elts = (Float32, Float64, ComplexF32, ComplexF64)
     bc = broadcasted(*, 2, a)
     @test bc.style === style
     @test collect(copy(bc)) ≈ 2 * collect(a)
+
+    # Display
+    aw = TestBasicsUtils.WrappedKroneckerArray(randn(elt, 2, 2), randn(elt, 3, 3))
+    @test occursin(" ⊗ ", sprint(show, aw))
+    @test occursin("\n ⊗\n", sprint(show, MIME("text/plain"), aw))
 
     # Mapping
     a = randn(elt, 2, 2) ⊗ randn(elt, 3, 3)

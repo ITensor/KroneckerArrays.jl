@@ -275,18 +275,24 @@ function Base.axes(ab::AbstractKroneckerArray)
     return axes(a) .× axes(b)
 end
 
-function Base.print_array(io::IO, ab::KroneckerArray)
+function Base.print_array(io::IO, ab::AbstractKroneckerArray)
     a, b = kroneckerfactors(ab)
     Base.print_array(io, a)
     println(io, "\n ⊗")
     Base.print_array(io, b)
     return nothing
 end
-function Base.show(io::IO, ab::KroneckerArray)
+function Base.show(io::IO, ab::AbstractKroneckerArray)
     a, b = kroneckerfactors(ab)
     show(io, a)
     print(io, " ⊗ ")
     show(io, b)
+    return nothing
+end
+function Base.show(io::IO, ::MIME"text/plain", ab::AbstractKroneckerArray)
+    summary(io, ab)
+    println(io, ":")
+    Base.print_array(io, ab)
     return nothing
 end
 
